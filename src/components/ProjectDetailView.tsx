@@ -58,6 +58,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [saveSuccessNotice, setSaveSuccessNotice] = useState<boolean>(false);
   const [exportNotice, setExportNotice] = useState<{ fileName: string; size: number } | null>(null);
+  const [exportErrorNotice, setExportErrorNotice] = useState<string | null>(null);
 
   // Group Create/Edit Modal State
   const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
@@ -83,7 +84,12 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   };
 
   // Run diagnostics before export
-  const handleExportClick = async () => {
+  const handleExportClick = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
     const issues = runProjectDiagnostics(project);
     const hasBlockingErrors = issues.some((i) => i.severity === 'error');
 
@@ -94,6 +100,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
 
     try {
       setIsExporting(true);
+      setExportErrorNotice(null);
       const res = await exportAddonToMcaddon(project);
       setExportNotice(res);
       confetti({
@@ -102,9 +109,12 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
         origin: { y: 0.6 },
         colors: ['#10b981', '#06b6d4', '#f59e0b'],
       });
-      setTimeout(() => setExportNotice(null), 5000);
-    } catch (err) {
+      setTimeout(() => setExportNotice(null), 6000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error inesperado al exportar el Addon.';
       console.error('Error al exportar:', err);
+      setExportErrorNotice(msg);
+      setTimeout(() => setExportErrorNotice(null), 6000);
     } finally {
       setIsExporting(false);
     }
@@ -251,6 +261,16 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           <div>
             <span className="font-bold">¡{exportNotice.fileName} exportado!</span>
             <p className="text-[10px] text-emerald-400">Listo para abrir e instalar en Minecraft Bedrock.</p>
+          </div>
+        </div>
+      )}
+
+      {exportErrorNotice && (
+        <div className="mx-4 mt-3 p-2.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-200 text-xs flex items-center gap-2 animate-in fade-in duration-200">
+          <i className="bx bx-error-circle text-lg text-rose-400 shrink-0" />
+          <div>
+            <span className="font-bold">Error en la exportación</span>
+            <p className="text-[10px] text-rose-300">{exportErrorNotice}</p>
           </div>
         </div>
       )}

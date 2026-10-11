@@ -1,15 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import {
+  BlockComponentItem,
   BlockFaceKey,
   BlockGroup,
   BlockTranslation,
   CustomBlock,
   CustomTexture,
   FaceTextures,
+  LootDropType,
+  PreferredToolType,
   SUPPORTED_LANGUAGES,
   TextureMode,
+  ToolTier,
 } from '../types/addon';
 import { CubeAtlasEditor } from './CubeAtlasEditor';
+import { BlockComponentsManager } from './BlockComponentsManager';
 import { isValidBedrockIdentifier } from '../utils/diagnostics';
 
 interface FullBlockEditorModalProps {
@@ -25,7 +30,8 @@ interface FullBlockEditorModalProps {
   onOpenTutorial: () => void;
 }
 
-type EditorTab = 'identity' | 'textures' | 'properties';
+// v0.1.4.1: Reorganizado en cuatro secciones claras: Identidad, Atlas Core, Propiedades, Comportamiento
+type EditorTab = 'identity' | 'atlas' | 'properties' | 'behavior';
 
 export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
   isOpen,
@@ -39,18 +45,24 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
   onOpenTextureLibraryForFace,
   onOpenTutorial,
 }) => {
-  // Tabs
+  // Navigation Tabs: Identidad, Atlas Core, Propiedades, Comportamiento
   const [activeTab, setActiveTab] = useState<EditorTab>('identity');
 
-  // Fields
+  // =========================================================================
+  // SECCIÓN 1: IDENTIDAD
+  // =========================================================================
   const [identifier, setIdentifier] = useState<string>('nuevo_bloque');
   const [displayName, setDisplayName] = useState<string>('Nuevo Bloque');
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [groupSearchQuery, setGroupSearchQuery] = useState<string>('');
   const [isGroupDropdownOpen, setIsGroupDropdownOpen] = useState<boolean>(false);
   const [translations, setTranslations] = useState<BlockTranslation[]>([]);
-  const [textureMode, setTextureMode] = useState<TextureMode>('one');
+  const [selectedLangToAdd, setSelectedLangToAdd] = useState<string>('es_ES');
 
+  // =========================================================================
+  // SECCIÓN 2: ATLAS CORE
+  // =========================================================================
+  const [textureMode, setTextureMode] = useState<TextureMode>('one');
   const [faceTextures, setFaceTextures] = useState<FaceTextures>({
     up: '',
     down: '',
@@ -60,44 +72,82 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
     west: '',
   });
 
-  // Properties & Accordion states
+  // =========================================================================
+  // SECCIÓN 3: PROPIEDADES
+  // =========================================================================
+  const [destroyTime, setDestroyTime] = useState<number>(1.5);
+  const [explosionResistance, setExplosionResistance] = useState<number>(6.0);
   const [emitsLight, setEmitsLight] = useState<boolean>(false);
   const [lightLevel, setLightLevel] = useState<number>(0);
+  const [lightDampening, setLightDampening] = useState<number>(15);
+  const [friction, setFriction] = useState<number>(0.4);
+  const [flammable, setFlammable] = useState<boolean>(false);
+  const [flameOdds, setFlameOdds] = useState<number>(5);
+  const [burnOdds, setBurnOdds] = useState<number>(20);
 
+  // =========================================================================
+  // SECCIÓN 4: COMPORTAMIENTO
+  // =========================================================================
+  // Control modal de incorporar comportamiento
+  const [isAddBehaviorModalOpen, setIsAddBehaviorModalOpen] = useState<boolean>(false);
+
+  // Comportamientos activos en este bloque
+  const [enabledBehaviors, setEnabledBehaviors] = useState<{
+    mining: boolean;
+    loot: boolean;
+    redstone: boolean;
+    particles: boolean;
+    placement: boolean;
+  }>({
+    mining: true,
+    loot: true,
+    redstone: false,
+    particles: false,
+    placement: false,
+  });
+
+  // Reglas de minado y herramientas
+  const [preferredTool, setPreferredTool] = useState<PreferredToolType>('any');
+  const [minToolTier, setMinToolTier] = useState<ToolTier>('any');
+
+  // Botín y recompensas al romperse
+  const [lootDrop, setLootDrop] = useState<LootDropType>('self');
+  const [customDropItem, setCustomDropItem] = useState<string>('');
+  const [customDropCount, setCustomDropCount] = useState<number>(1);
+  const [xpDropAmount, setXpDropAmount] = useState<number>(0);
+
+  // Redstone
   const [consumesRedstone, setConsumesRedstone] = useState<boolean>(false);
   const [allowsSignalPropagation, setAllowsSignalPropagation] = useState<boolean>(true);
 
-  const [destroyTime, setDestroyTime] = useState<number>(1.5);
-  const [explosionResistance, setExplosionResistance] = useState<number>(6.0);
-
-  // Destruction Particles
+  // Partículas
   const [destructionParticlesEnabled, setDestructionParticlesEnabled] = useState<boolean>(false);
   const [destructionParticleTextureId, setDestructionParticleTextureId] = useState<string>('');
   const [destructionParticleCount, setDestructionParticleCount] = useState<number>(8);
 
-  // Step Particles
   const [stepParticlesEnabled, setStepParticlesEnabled] = useState<boolean>(false);
   const [stepParticleTextureId, setStepParticleTextureId] = useState<string>('');
   const [stepParticleIntensity, setStepParticleIntensity] = useState<number>(5);
 
-  // Accordion collapsed state
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    light: true,
+  // Componentes oficiales de colocación Bedrock
+  const [componentsList, setComponentsList] = useState<BlockComponentItem[]>([]);
+
+  // Accordion collapsed states for sub-panels
+  const [openBehaviorPanels, setOpenBehaviorPanels] = useState<Record<string, boolean>>({
+    mining: true,
+    loot: true,
     redstone: true,
-    destruction_particles: true,
-    step_particles: true,
-    physics: false,
-    translations: false,
+    particles: true,
+    placement: true,
   });
 
-  const toggleSection = (key: string) => {
-    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggleBehaviorPanel = (key: string) => {
+    setOpenBehaviorPanels((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   const [validationError, setValidationError] = useState<string>('');
-  const [selectedLangToAdd, setSelectedLangToAdd] = useState<string>('es_ES');
 
-  // Cleanly synchronize all state whenever modal opens or active block changes
+  // Sincronizar estado al abrir o cambiar de bloque
   useEffect(() => {
     if (isOpen) {
       if (block) {
@@ -127,153 +177,276 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                 west: block.textureDataUrl || '',
               }
         );
+
+        // Propiedades
+        setDestroyTime(block.destroyTime ?? 1.5);
+        setExplosionResistance(block.explosionResistance ?? 6.0);
         setEmitsLight(block.emitsLight || false);
         setLightLevel(block.lightLevel ?? 15);
+        setLightDampening(block.lightDampening ?? 15);
+        setFriction(block.friction ?? 0.4);
+        setFlammable(block.flammable || false);
+        setFlameOdds(block.flameOdds ?? 5);
+        setBurnOdds(block.burnOdds ?? 20);
+
+        // Comportamientos
+        const hasCustomMining =
+          Boolean(block.behaviorRules?.preferredTool && block.behaviorRules.preferredTool !== 'any') ||
+          Boolean(block.behaviorRules?.minToolTier && block.behaviorRules.minToolTier !== 'any');
+        const hasCustomLoot =
+          Boolean(block.behaviorRules?.lootDrop && block.behaviorRules.lootDrop !== 'self') ||
+          Boolean(block.behaviorRules?.xpDropAmount && block.behaviorRules.xpDropAmount > 0);
+        const hasRedstone = Boolean(block.consumesRedstone);
+        const hasParticles = Boolean(
+          block.destructionParticles?.enabled || block.stepParticles?.enabled
+        );
+        const hasPlacement = Boolean(block.componentsList && block.componentsList.length > 0);
+
+        setEnabledBehaviors({
+          mining: hasCustomMining || true,
+          loot: hasCustomLoot || true,
+          redstone: hasRedstone,
+          particles: hasParticles,
+          placement: hasPlacement,
+        });
+
+        setPreferredTool(block.behaviorRules?.preferredTool || 'any');
+        setMinToolTier(block.behaviorRules?.minToolTier || 'any');
+        setLootDrop(block.behaviorRules?.lootDrop || 'self');
+        setCustomDropItem(block.behaviorRules?.customDropItem || '');
+        setCustomDropCount(block.behaviorRules?.customDropCount ?? 1);
+        setXpDropAmount(block.behaviorRules?.xpDropAmount ?? 0);
+
         setConsumesRedstone(block.consumesRedstone || false);
         setAllowsSignalPropagation(
           block.redstoneConfig?.propagatesPower ??
             block.redstoneConfig?.allowsSignalPropagation ??
             true
         );
-        setDestroyTime(block.destroyTime ?? 1.5);
-        setExplosionResistance(block.explosionResistance ?? 6.0);
+
         setDestructionParticlesEnabled(block.destructionParticles?.enabled || false);
         setDestructionParticleTextureId(block.destructionParticles?.particleTextureId || '');
         setDestructionParticleCount(block.destructionParticles?.particleCount ?? 8);
+
         setStepParticlesEnabled(block.stepParticles?.enabled || false);
         setStepParticleTextureId(block.stepParticles?.particleTextureId || '');
         setStepParticleIntensity(block.stepParticles?.intensity ?? 5);
+
+        setComponentsList(
+          block.componentsList ? JSON.parse(JSON.stringify(block.componentsList)) : []
+        );
       } else {
         const randSuf = Math.floor(Math.random() * 899 + 100);
         const defaultName = `Bloque Personalizado ${randSuf}`;
         setIdentifier(`bloque_${randSuf}`);
         setDisplayName(defaultName);
+        setSelectedGroupId('');
+        setGroupSearchQuery('');
+        setIsGroupDropdownOpen(false);
         setTranslations([
           { langCode: 'es_ES', name: defaultName },
           { langCode: 'en_US', name: `Custom Block ${randSuf}` },
         ]);
         setTextureMode('one');
+
+        const initialTex = availableTextures[0]?.dataUrl || '';
         setFaceTextures({
-          up: '',
-          down: '',
-          north: '',
-          south: '',
-          east: '',
-          west: '',
+          up: initialTex,
+          down: initialTex,
+          north: initialTex,
+          south: initialTex,
+          east: initialTex,
+          west: initialTex,
         });
-        setEmitsLight(false);
-        setLightLevel(0);
-        setConsumesRedstone(false);
-        setAllowsSignalPropagation(true);
+
         setDestroyTime(1.5);
         setExplosionResistance(6.0);
+        setEmitsLight(false);
+        setLightLevel(0);
+        setLightDampening(15);
+        setFriction(0.4);
+        setFlammable(false);
+        setFlameOdds(5);
+        setBurnOdds(20);
+
+        setEnabledBehaviors({
+          mining: true,
+          loot: true,
+          redstone: false,
+          particles: false,
+          placement: false,
+        });
+
+        setPreferredTool('any');
+        setMinToolTier('any');
+        setLootDrop('self');
+        setCustomDropItem('');
+        setCustomDropCount(1);
+        setXpDropAmount(0);
+
+        setConsumesRedstone(false);
+        setAllowsSignalPropagation(true);
+
         setDestructionParticlesEnabled(false);
         setDestructionParticleTextureId('');
         setDestructionParticleCount(8);
+
         setStepParticlesEnabled(false);
         setStepParticleTextureId('');
         setStepParticleIntensity(5);
+
+        setComponentsList([]);
       }
       setValidationError('');
-      setActiveTab('identity');
     }
-  }, [isOpen, block]);
+  }, [isOpen, block, availableTextures]);
 
-  // Handle incoming texture assignment from library or painter
+  // Recibir textura asignada desde la biblioteca de texturas
   useEffect(() => {
-    if (assignedTexture && assignedTexture.face && assignedTexture.texDataUrl) {
-      handleFaceTextureChange(assignedTexture.face, assignedTexture.texDataUrl);
+    if (assignedTexture && isOpen) {
+      setFaceTextures((prev) => {
+        const next = { ...prev, [assignedTexture.face]: assignedTexture.texDataUrl };
+        if (textureMode === 'one') {
+          next.up = assignedTexture.texDataUrl;
+          next.down = assignedTexture.texDataUrl;
+          next.north = assignedTexture.texDataUrl;
+          next.south = assignedTexture.texDataUrl;
+          next.east = assignedTexture.texDataUrl;
+          next.west = assignedTexture.texDataUrl;
+        } else if (
+          textureMode === 'three' &&
+          (assignedTexture.face === 'north' ||
+            assignedTexture.face === 'south' ||
+            assignedTexture.face === 'east' ||
+            assignedTexture.face === 'west')
+        ) {
+          next.north = assignedTexture.texDataUrl;
+          next.south = assignedTexture.texDataUrl;
+          next.east = assignedTexture.texDataUrl;
+          next.west = assignedTexture.texDataUrl;
+        }
+        return next;
+      });
     }
-  }, [assignedTexture]);
+  }, [assignedTexture, isOpen, textureMode]);
 
   if (!isOpen) return null;
 
-  // Validation
-  const validateBlock = (): boolean => {
-    const rawId = identifier.trim().toLowerCase();
-    if (!rawId) {
-      setValidationError('El identificador técnico no puede estar vacío.');
+  // Validación y guardado
+  const handleSave = () => {
+    const trimmedId = identifier.trim().toLowerCase();
+    const trimmedName = displayName.trim();
+
+    if (!trimmedId) {
+      setValidationError('El identificador del bloque es obligatorio.');
       setActiveTab('identity');
-      return false;
+      return;
     }
-    if (!isValidBedrockIdentifier(rawId)) {
-      setValidationError('El identificador solo puede contener letras minúsculas (a-z), números (0-9) y guiones bajos (_).');
+
+    if (!isValidBedrockIdentifier(trimmedId)) {
+      setValidationError('El identificador solo puede contener letras minúsculas, números y guiones bajos (_).');
       setActiveTab('identity');
-      return false;
+      return;
     }
-    // Check collisions with other blocks in same project
-    const collision = existingBlocks.find((b) => b.id !== block?.id && b.identifier === rawId);
-    if (collision) {
-      setValidationError(`Ya existe otro bloque con el identificador "custom:${rawId}". Debe ser único.`);
+
+    const isDuplicate = existingBlocks.some(
+      (b) => b.identifier === trimmedId && (!block || b.id !== block.id)
+    );
+    if (isDuplicate) {
+      setValidationError(`Ya existe otro bloque con el identificador "${trimmedId}". Usa uno diferente.`);
       setActiveTab('identity');
-      return false;
+      return;
     }
-    if (!displayName.trim()) {
+
+    if (!trimmedName) {
       setValidationError('El nombre visible del bloque no puede estar vacío.');
       setActiveTab('identity');
-      return false;
+      return;
     }
-    return true;
-  };
 
-  const handleSave = () => {
-    if (!validateBlock()) return;
-
-    // Build face textures depending on mode
     const finalFaces: FaceTextures = { ...faceTextures };
     if (textureMode === 'one') {
-      const single = faceTextures.up || '';
+      const single = faceTextures.up || faceTextures.north || '';
+      finalFaces.up = single;
       finalFaces.down = single;
       finalFaces.north = single;
       finalFaces.south = single;
       finalFaces.east = single;
       finalFaces.west = single;
     } else if (textureMode === 'three') {
-      const side = faceTextures.north || faceTextures.up || '';
+      const side = faceTextures.north || '';
       finalFaces.south = side;
       finalFaces.east = side;
       finalFaces.west = side;
     }
 
-    const assignedGroupObj = availableGroups.find((g) => g.id === selectedGroupId);
+    const assignedGroup = availableGroups.find((g) => g.id === selectedGroupId);
 
     const saved: CustomBlock = {
-      id: block?.id || `block_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      identifier: identifier.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_'),
-      displayName: displayName.trim(),
-      groupId: selectedGroupId ? selectedGroupId : undefined,
-      groupName: assignedGroupObj ? assignedGroupObj.name : undefined,
-      translations: translations.filter((t) => t.name.trim().length > 0),
+      id: block?.id || `blk_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      identifier: trimmedId,
+      displayName: trimmedName,
+      groupId: selectedGroupId || undefined,
+      groupName: assignedGroup?.name,
+      translations: translations.length > 0 ? translations : undefined,
       textureMode,
       faceTextures: finalFaces,
-      textureDataUrl: finalFaces.up,
-      emitsLight,
-      lightLevel: emitsLight ? Math.min(15, Math.max(0, lightLevel)) : 0,
-      consumesRedstone,
-      redstoneConfig: consumesRedstone
-        ? {
-            minPower: 1,
-            propagatesPower: allowsSignalPropagation,
-            minSignalStrength: 1,
-            allowsSignalPropagation,
-          }
-        : undefined,
+      textureDataUrl: finalFaces.up || finalFaces.north || '',
+
+      // Propiedades Físicas y Visuales
       destroyTime: Math.max(0.1, destroyTime),
       explosionResistance: Math.max(0, explosionResistance),
-      destructionParticles: destructionParticlesEnabled
-        ? {
-            enabled: true,
-            particleTextureId: destructionParticleTextureId || finalFaces.up,
-            particleCount: Math.min(24, Math.max(1, destructionParticleCount)),
-          }
-        : undefined,
-      stepParticles: stepParticlesEnabled
-        ? {
-            enabled: true,
-            particleTextureId: stepParticleTextureId || finalFaces.up,
-            intensity: Math.min(10, Math.max(1, stepParticleIntensity)),
-          }
-        : undefined,
+      emitsLight,
+      lightLevel: emitsLight ? Math.min(15, Math.max(0, lightLevel)) : 0,
+      lightDampening: Math.min(15, Math.max(0, Math.round(lightDampening))),
+      friction: Math.min(1.0, Math.max(0.1, friction)),
+      flammable,
+      flameOdds: flammable ? Math.max(1, flameOdds) : undefined,
+      burnOdds: flammable ? Math.max(1, burnOdds) : undefined,
+
+      // Reglas de Comportamiento
+      behaviorRules: {
+        preferredTool: enabledBehaviors.mining ? preferredTool : 'any',
+        minToolTier: enabledBehaviors.mining && preferredTool !== 'any' ? minToolTier : undefined,
+        lootDrop: enabledBehaviors.loot ? lootDrop : 'self',
+        customDropItem: enabledBehaviors.loot && lootDrop === 'custom_item' ? customDropItem.trim() : undefined,
+        customDropCount: enabledBehaviors.loot && lootDrop === 'custom_item' ? Math.max(1, customDropCount) : undefined,
+        xpDropAmount: enabledBehaviors.loot ? Math.max(0, xpDropAmount) : 0,
+      },
+
+      consumesRedstone: enabledBehaviors.redstone ? consumesRedstone : false,
+      redstoneConfig:
+        enabledBehaviors.redstone && consumesRedstone
+          ? {
+              minPower: 1,
+              propagatesPower: allowsSignalPropagation,
+              minSignalStrength: 1,
+              allowsSignalPropagation,
+            }
+          : undefined,
+
+      destructionParticles:
+        enabledBehaviors.particles && destructionParticlesEnabled
+          ? {
+              enabled: true,
+              particleTextureId: destructionParticleTextureId || finalFaces.up,
+              particleCount: Math.min(24, Math.max(1, destructionParticleCount)),
+            }
+          : undefined,
+
+      stepParticles:
+        enabledBehaviors.particles && stepParticlesEnabled
+          ? {
+              enabled: true,
+              particleTextureId: stepParticleTextureId || finalFaces.up,
+              intensity: Math.min(10, Math.max(1, stepParticleIntensity)),
+            }
+          : undefined,
+
+      // Componentes Oficiales de Colocación
+      componentsList:
+        enabledBehaviors.placement && componentsList.length > 0 ? componentsList : undefined,
+
       createdAt: block?.createdAt || Date.now(),
       updatedAt: Date.now(),
     };
@@ -282,7 +455,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
     onClose();
   };
 
-  // Face texture change handler
+  // Manejador de cambio de cara en Atlas Core
   const handleFaceTextureChange = (face: BlockFaceKey, val: string) => {
     setFaceTextures((prev) => {
       const next = { ...prev, [face]: val };
@@ -293,7 +466,10 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         next.south = val;
         next.east = val;
         next.west = val;
-      } else if (textureMode === 'three' && (face === 'north' || face === 'south' || face === 'east' || face === 'west')) {
+      } else if (
+        textureMode === 'three' &&
+        (face === 'north' || face === 'south' || face === 'east' || face === 'west')
+      ) {
         next.north = val;
         next.south = val;
         next.east = val;
@@ -303,23 +479,28 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
     });
   };
 
+  const assignedGroupObj = availableGroups.find((g) => g.id === selectedGroupId);
+
+  // Cantidad de comportamientos activos para badge
+  const activeBehaviorsCount = Object.values(enabledBehaviors).filter(Boolean).length;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
       <div className="relative w-full max-w-lg bg-[#0d1322] border border-slate-800 rounded-3xl p-5 shadow-2xl flex flex-col max-h-[94vh] overflow-y-auto">
-        {/* Header */}
+        {/* Header Superior del Modal */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-          <div className="flex items-center gap-2">
-            <i className="bx bxs-cube text-xl text-emerald-400" />
-            <div>
-              <h2 className="text-sm font-bold text-slate-100">
-                {block ? `Editar: ${displayName}` : 'Editor de Bloque Personalizado'}
+          <div className="flex items-center gap-2 min-w-0">
+            <i className="bx bxs-cube text-xl text-emerald-400 shrink-0" />
+            <div className="min-w-0">
+              <h2 className="text-sm font-bold text-slate-100 truncate">
+                {block ? `Editar: ${displayName}` : 'Editor de Bloque Bedrock'}
               </h2>
-              <span className="text-[10px] font-mono text-emerald-400">
+              <span className="text-[10px] font-mono text-emerald-400 truncate block">
                 custom:{identifier || 'sin_id'}
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
             <button
               type="button"
               onClick={onOpenTutorial}
@@ -327,7 +508,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
               title="Abrir Tutorial Rápido"
             >
               <i className="bx bx-help-circle text-base" />
-              <span>Tutorial</span>
+              <span className="hidden sm:inline">Tutorial</span>
             </button>
             <button
               type="button"
@@ -346,53 +527,117 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
           </div>
         )}
 
-        {/* Top Navigation Tabs */}
-        <div className="grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-2xl border border-slate-800 my-3">
+        {/* ================================================================= */}
+        {/* CUATRO SECCIONES ORGANIZADAS: IDENTIDAD, ATLAS CORE, PROPIEDADES, COMPORTAMIENTO */}
+        {/* ================================================================= */}
+        <div className="grid grid-cols-4 gap-1 bg-slate-950 p-1 rounded-2xl border border-slate-800 my-3 shrink-0">
+          {/* SECCIÓN 1: IDENTIDAD */}
           <button
             type="button"
             onClick={() => setActiveTab('identity')}
-            className={`min-h-[42px] px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${
+            className={`min-h-[44px] px-1 rounded-xl text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 transition-all ${
               activeTab === 'identity'
                 ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
+            title="Identidad: Identificador, Nombre, Grupo y Traducciones"
           >
-            <i className="bx bx-id-card text-sm" />
-            <span>Identidad</span>
+            <i className="bx bxs-id-card text-base" />
+            <span className="truncate">Identidad</span>
           </button>
 
+          {/* SECCIÓN 2: ATLAS CORE */}
           <button
             type="button"
-            onClick={() => setActiveTab('textures')}
-            className={`min-h-[42px] px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${
-              activeTab === 'textures'
+            onClick={() => setActiveTab('atlas')}
+            className={`min-h-[44px] px-1 rounded-xl text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 transition-all ${
+              activeTab === 'atlas'
                 ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
+            title="Atlas Core: Mapeo y Texturas 3D"
           >
-            <i className="bx bxs-cube-alt text-sm" />
-            <span>Atlas Caras</span>
+            <i className="bx bxs-cube-alt text-base" />
+            <span className="truncate">Atlas Core</span>
           </button>
 
+          {/* SECCIÓN 3: PROPIEDADES */}
           <button
             type="button"
             onClick={() => setActiveTab('properties')}
-            className={`min-h-[42px] px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${
+            className={`min-h-[44px] px-1 rounded-xl text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 transition-all ${
               activeTab === 'properties'
                 ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
+            title="Propiedades: Dureza, Explosión, Luz, Fricción e Inflamabilidad"
           >
-            <i className="bx bx-slider-alt text-sm" />
-            <span>Propiedades</span>
+            <i className="bx bx-slider-alt text-base" />
+            <span className="truncate">Propiedades</span>
+          </button>
+
+          {/* SECCIÓN 4: COMPORTAMIENTO */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('behavior')}
+            className={`min-h-[44px] px-1 rounded-xl text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 transition-all relative ${
+              activeTab === 'behavior'
+                ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+            title="Comportamiento: Reglas de minado, botín, redstone y efectos"
+          >
+            <i className="bx bxs-cog text-base" />
+            <span className="truncate">Comportam.</span>
+            {activeBehaviorsCount > 0 && (
+              <span
+                className={`ml-0.5 text-[9px] px-1 rounded-full font-mono font-bold ${
+                  activeTab === 'behavior'
+                    ? 'bg-slate-950 text-emerald-400'
+                    : 'bg-emerald-500/20 text-emerald-300'
+                }`}
+              >
+                {activeBehaviorsCount}
+              </span>
+            )}
           </button>
         </div>
 
-        {/* Tab 1: Identidad del bloque */}
+        {/* ================================================================= */}
+        {/* TAB 1: IDENTIDAD                                                  */}
+        {/* ================================================================= */}
         {activeTab === 'identity' && (
-          <div className="flex flex-col gap-4 animate-in fade-in duration-150">
+          <div className="flex flex-col gap-3.5 animate-in fade-in duration-150">
+            {/* 1. Identificador del Bloque */}
             <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 flex flex-col gap-3.5">
               <div>
+                <label className="block text-xs font-bold text-slate-200 mb-1">
+                  Identificador Técnico Único (Namespace) *
+                </label>
+                <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl overflow-hidden focus-within:border-emerald-500">
+                  <span className="px-3 text-xs text-slate-400 font-mono select-none">custom:</span>
+                  <input
+                    type="text"
+                    value={identifier}
+                    onChange={(e) => {
+                      const cleaned = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+                      setIdentifier(cleaned);
+                      setValidationError('');
+                    }}
+                    placeholder="mineral_rubi"
+                    className="w-full min-h-[46px] pr-3 bg-transparent text-sm font-mono text-emerald-400 focus:outline-none"
+                  />
+                </div>
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  Identificador oficial para el comando Minecraft:{' '}
+                  <code className="font-mono text-slate-300 bg-slate-900 px-1 py-0.5 rounded">
+                    /give @s custom:{identifier || 'bloque'}
+                  </code>
+                </span>
+              </div>
+
+              {/* 2. Nombre Visible */}
+              <div className="pt-2 border-t border-slate-800/80">
                 <label className="block text-xs font-bold text-slate-200 mb-1">
                   Nombre Visible en el Juego *
                 </label>
@@ -407,38 +652,15 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                   className="w-full min-h-[46px] px-3.5 bg-slate-900 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-emerald-500"
                 />
                 <span className="text-[11px] text-slate-400 mt-1 block">
-                  El nombre que aparecerá traducido en el inventario de Minecraft.
+                  El título que ve el jugador en el inventario creativo y al sostener el bloque en mano.
                 </span>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-200 mb-1">
-                  Identificador Técnico Único *
-                </label>
-                <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl overflow-hidden focus-within:border-emerald-500">
-                  <span className="px-3 text-xs text-slate-400 font-mono select-none">custom:</span>
-                  <input
-                    type="text"
-                    value={identifier}
-                    onChange={(e) => {
-                      const cleaned = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_');
-                      setIdentifier(cleaned);
-                      setValidationError('');
-                    }}
-                    placeholder="ruby_ore"
-                    className="w-full min-h-[46px] pr-3 bg-transparent text-sm font-mono text-emerald-400 focus:outline-none"
-                  />
-                </div>
-                <span className="text-[11px] text-slate-400 mt-1 block">
-                  Usado para comandos: <code className="font-mono text-slate-300">/give @s custom:{identifier || 'bloque'}</code>.
-                </span>
-              </div>
-
-              {/* Group Assignment Section */}
+              {/* 3. Grupo al que Pertenece */}
               <div className="pt-2 border-t border-slate-800/80">
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-xs font-bold text-slate-200">
-                    Grupo del Addon (Inventario Creativo)
+                    Grupo del Addon (Pestaña Creativa)
                   </label>
                   {selectedGroupId && (
                     <button
@@ -452,269 +674,200 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                   )}
                 </div>
 
-                {/* Selected Group Pill or Selector Trigger */}
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsGroupDropdownOpen(!isGroupDropdownOpen)}
-                      className="flex-1 min-h-[44px] px-3.5 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-xl text-xs flex items-center justify-between text-left transition-colors"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        {selectedGroupId ? (
-                          (() => {
-                            const grp = availableGroups.find((g) => g.id === selectedGroupId);
-                            return (
-                              <>
-                                <span
-                                  className="w-3 h-3 rounded-full shrink-0"
-                                  style={{ backgroundColor: grp?.color || '#10b981' }}
-                                />
-                                <span className="font-bold text-slate-100 truncate">
-                                  {grp?.name || 'Grupo asignado'}
-                                </span>
-                                {grp?.category && (
-                                  <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
-                                    {grp.category}
-                                  </span>
-                                )}
-                              </>
-                            );
-                          })()
-                        ) : (
-                          <div className="flex items-center gap-2 text-slate-400">
-                            <i className="bx bx-category text-base text-slate-500" />
-                            <span>Sin grupo asignado (Organización general)</span>
-                          </div>
-                        )}
-                      </div>
-                      <i
-                        className={`bx bx-chevron-down text-lg text-slate-400 transition-transform ${
-                          isGroupDropdownOpen ? 'rotate-180' : ''
-                        }`}
-                      />
-                    </button>
-                  </div>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsGroupDropdownOpen(!isGroupDropdownOpen)}
+                    className="w-full min-h-[46px] px-3.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-left flex items-center justify-between hover:border-slate-700 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      {assignedGroupObj ? (
+                        <>
+                          <span
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: assignedGroupObj.color || '#10b981' }}
+                          />
+                          <span className="font-bold text-slate-100 truncate">
+                            {assignedGroupObj.name}
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-400 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 shrink-0">
+                            {assignedGroupObj.category || 'construction'}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-slate-400 italic">
+                          Sin grupo asignado (Predeterminado del Addon)
+                        </span>
+                      )}
+                    </div>
+                    <i
+                      className={`bx bx-chevron-down text-lg text-slate-400 transition-transform ${
+                        isGroupDropdownOpen ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
 
-                  {/* Dropdown with live search filter */}
                   {isGroupDropdownOpen && (
-                    <div className="p-3 bg-slate-900 border border-slate-800 rounded-2xl flex flex-col gap-2 animate-in fade-in duration-150">
-                      <div className="relative">
-                        <i className="bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs" />
+                    <div className="absolute top-full left-0 right-0 mt-1.5 bg-[#0d1322] border border-slate-800 rounded-2xl p-2 shadow-2xl z-30 flex flex-col gap-1.5 max-h-56 overflow-y-auto">
+                      <div className="p-1">
                         <input
                           type="text"
                           value={groupSearchQuery}
                           onChange={(e) => setGroupSearchQuery(e.target.value)}
-                          placeholder="Buscar grupo por nombre..."
-                          className="w-full pl-8 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                          placeholder="Buscar grupo..."
+                          className="w-full min-h-[36px] px-2.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
                         />
                       </div>
 
-                      <div className="flex flex-col gap-1 max-h-40 overflow-y-auto pr-1">
-                        {/* Option: None */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedGroupId('');
-                            setIsGroupDropdownOpen(false);
-                          }}
-                          className={`p-2 rounded-xl text-xs flex items-center justify-between text-left transition-colors ${
-                            !selectedGroupId
-                              ? 'bg-emerald-500/15 text-emerald-300 font-bold border border-emerald-500/30'
-                              : 'hover:bg-slate-800 text-slate-400'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <i className="bx bx-minus-circle text-sm" />
-                            <span>Sin grupo asignado</span>
-                          </div>
-                          {!selectedGroupId && <i className="bx bx-check text-emerald-400" />}
-                        </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedGroupId('');
+                          setIsGroupDropdownOpen(false);
+                        }}
+                        className={`min-h-[38px] px-2.5 rounded-xl text-xs text-left flex items-center gap-2 hover:bg-slate-900 transition-colors ${
+                          !selectedGroupId ? 'bg-emerald-500/10 text-emerald-300 font-bold' : 'text-slate-400'
+                        }`}
+                      >
+                        <i className="bx bx-minus text-slate-500" />
+                        <span>Sin grupo asignado</span>
+                      </button>
 
-                        {availableGroups.length === 0 ? (
-                          <div className="py-3 text-center text-xs text-slate-500">
-                            No has creado grupos en este proyecto todavía.
-                          </div>
-                        ) : (
-                          availableGroups
-                            .filter(
-                              (g) =>
-                                !groupSearchQuery.trim() ||
-                                g.name.toLowerCase().includes(groupSearchQuery.toLowerCase())
-                            )
-                            .map((grp) => (
-                              <button
-                                key={grp.id}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedGroupId(grp.id);
-                                  setIsGroupDropdownOpen(false);
-                                }}
-                                className={`p-2 rounded-xl text-xs flex items-center justify-between text-left transition-colors ${
-                                  selectedGroupId === grp.id
-                                    ? 'bg-emerald-500/15 text-emerald-300 font-bold border border-emerald-500/30'
-                                    : 'hover:bg-slate-800 text-slate-200'
-                                }`}
-                              >
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <span
-                                    className="w-2.5 h-2.5 rounded-full shrink-0"
-                                    style={{ backgroundColor: grp.color || '#10b981' }}
-                                  />
-                                  <span className="truncate">{grp.name}</span>
-                                  {grp.category && (
-                                    <span className="text-[10px] text-slate-400 font-mono">
-                                      ({grp.category})
-                                    </span>
-                                  )}
-                                </div>
-                                {selectedGroupId === grp.id && (
-                                  <i className="bx bx-check text-emerald-400" />
-                                )}
-                              </button>
-                            ))
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  <span className="text-[11px] text-slate-400 leading-relaxed">
-                    Los bloques agrupados se organizan juntos en el espacio de trabajo y se clasifican en la categoría del inventario creativo de Bedrock seleccionada.
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Multilingual Translations Accordion */}
-            <div className="bg-slate-950/70 rounded-2xl border border-slate-800 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => toggleSection('translations')}
-                className="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-900/60 transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <i className="bx bx-world text-emerald-400 text-base" />
-                  <span className="text-xs font-bold text-slate-200">Traducciones de Nombre (.lang)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 px-2 py-0.5 rounded font-mono">
-                    {translations.length} {translations.length === 1 ? 'idioma' : 'idiomas'}
-                  </span>
-                  <i
-                    className={`bx bx-chevron-down text-lg text-slate-400 transition-transform ${
-                      openSections.translations ? 'rotate-180' : ''
-                    }`}
-                  />
-                </div>
-              </button>
-
-              {openSections.translations && (
-                <div className="p-3.5 pt-0 border-t border-slate-800/80 flex flex-col gap-2.5">
-                  <p className="text-[11px] text-slate-400 pt-2 leading-relaxed">
-                    Define cómo se llamará este bloque cuando los jugadores tengan Minecraft en diferentes idiomas.
-                  </p>
-
-                  {/* Translations List */}
-                  <div className="flex flex-col gap-2">
-                    {translations.map((trans, idx) => {
-                      const langMeta = SUPPORTED_LANGUAGES.find((l) => l.code === trans.langCode);
-                      return (
-                        <div
-                          key={`trans-${trans.langCode}-${idx}`}
-                          className="flex items-center gap-2 p-2 bg-slate-900/80 rounded-xl border border-slate-800"
-                        >
-                          <span className="px-2 py-1 bg-slate-950 border border-slate-800 text-[10px] font-mono text-emerald-400 rounded shrink-0">
-                            {trans.langCode}
-                          </span>
-                          <div className="flex-1 min-w-0">
-                            <input
-                              type="text"
-                              value={trans.name}
-                              onChange={(e) => {
-                                const next = [...translations];
-                                next[idx] = { ...next[idx], name: e.target.value };
-                                setTranslations(next);
-                              }}
-                              placeholder={langMeta ? langMeta.label : trans.langCode}
-                              className="w-full min-h-[36px] px-2 bg-transparent text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-b focus:border-emerald-500"
-                            />
-                          </div>
+                      {availableGroups
+                        .filter((g) =>
+                          g.name.toLowerCase().includes(groupSearchQuery.toLowerCase())
+                        )
+                        .map((grp) => (
                           <button
+                            key={grp.id}
                             type="button"
                             onClick={() => {
-                              setTranslations((prev) => prev.filter((_, i) => i !== idx));
+                              setSelectedGroupId(grp.id);
+                              setIsGroupDropdownOpen(false);
                             }}
-                            className="min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10"
-                            title="Eliminar traducción"
+                            className={`min-h-[38px] px-2.5 rounded-xl text-xs text-left flex items-center justify-between hover:bg-slate-900 transition-colors ${
+                              selectedGroupId === grp.id
+                                ? 'bg-emerald-500/15 text-emerald-300 font-bold border border-emerald-500/30'
+                                : 'text-slate-200'
+                            }`}
                           >
-                            <i className="bx bx-trash text-sm" />
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span
+                                className="w-2.5 h-2.5 rounded-full shrink-0"
+                                style={{ backgroundColor: grp.color || '#10b981' }}
+                              />
+                              <span className="truncate">{grp.name}</span>
+                            </div>
+                            <span className="text-[10px] font-mono text-slate-500">
+                              {grp.category}
+                            </span>
                           </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Add Language Row */}
-                  <div className="flex items-center gap-2 pt-2 border-t border-slate-800/80">
-                    <select
-                      value={selectedLangToAdd}
-                      onChange={(e) => setSelectedLangToAdd(e.target.value)}
-                      className="flex-1 min-h-[40px] px-3 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
-                    >
-                      {SUPPORTED_LANGUAGES.filter(
-                        (l) => !translations.some((t) => t.langCode === l.code)
-                      ).map((lang) => (
-                        <option key={lang.code} value={lang.code}>
-                          {lang.label} ({lang.code})
-                        </option>
-                      ))}
-                    </select>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!selectedLangToAdd) return;
-                        if (!translations.some((t) => t.langCode === selectedLangToAdd)) {
-                          setTranslations((prev) => [
-                            ...prev,
-                            { langCode: selectedLangToAdd, name: displayName || '' },
-                          ]);
-                        }
-                      }}
-                      className="min-h-[40px] px-3 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-semibold flex items-center gap-1 active:scale-95 transition-all"
-                    >
-                      <i className="bx bx-plus text-sm" />
-                      <span>Añadir</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Block Mini Preview Card */}
-            <div className="p-3.5 bg-slate-950/50 rounded-2xl border border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 p-0.5 overflow-hidden pixelated flex items-center justify-center shadow-inner">
-                  {faceTextures.up ? (
-                    <img src={faceTextures.up} alt="Preview" className="w-full h-full object-contain pixelated" />
-                  ) : (
-                    <i className="bx bxs-cube text-2xl text-slate-600" />
+                        ))}
+                    </div>
                   )}
                 </div>
-                <div>
-                  <span className="text-xs font-bold text-slate-100 block">{displayName}</span>
-                  <span className="text-[10px] font-mono text-emerald-400">custom:{identifier}</span>
-                </div>
               </div>
-              <span className="text-[10px] bg-slate-900 border border-slate-800 text-slate-400 px-2 py-1 rounded-lg font-mono">
-                Modo: {textureMode === 'one' ? '1 cara' : textureMode === 'three' ? '3 caras' : '6 caras'}
-              </span>
+            </div>
+
+            {/* 4. Configuración de Idioma y Traducciones (.lang) */}
+            <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <i className="bx bx-world text-emerald-400 text-base" />
+                  <span className="text-xs font-bold text-slate-200">
+                    Configuración de Idioma y Traducciones (.lang)
+                  </span>
+                </div>
+                <span className="text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 px-2 py-0.5 rounded font-mono">
+                  {translations.length} {translations.length === 1 ? 'idioma' : 'idiomas'}
+                </span>
+              </div>
+
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Genera los archivos oficiales <code className="font-mono text-slate-300">texts/es_ES.lang</code>, etc., para que Minecraft muestre el nombre del bloque según el idioma del jugador.
+              </p>
+
+              {/* Lista de traducciones existentes */}
+              <div className="flex flex-col gap-2 pt-1">
+                {translations.map((trans, idx) => {
+                  const langMeta = SUPPORTED_LANGUAGES.find((l) => l.code === trans.langCode);
+                  return (
+                    <div
+                      key={`trans-${trans.langCode}-${idx}`}
+                      className="flex items-center gap-2 p-2 bg-slate-900/80 rounded-xl border border-slate-800"
+                    >
+                      <span className="px-2 py-1 bg-slate-950 border border-slate-800 text-[10px] font-mono text-emerald-400 rounded shrink-0">
+                        {trans.langCode}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <input
+                          type="text"
+                          value={trans.name}
+                          onChange={(e) => {
+                            const next = [...translations];
+                            next[idx] = { ...next[idx], name: e.target.value };
+                            setTranslations(next);
+                          }}
+                          placeholder={langMeta ? langMeta.label : trans.langCode}
+                          className="w-full min-h-[36px] px-2 bg-transparent text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-b focus:border-emerald-500"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTranslations((prev) => prev.filter((_, i) => i !== idx));
+                        }}
+                        className="min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10"
+                        title="Eliminar traducción"
+                      >
+                        <i className="bx bx-trash text-sm" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Añadir nuevo idioma */}
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-800/80">
+                <select
+                  value={selectedLangToAdd}
+                  onChange={(e) => setSelectedLangToAdd(e.target.value)}
+                  className="flex-1 min-h-[40px] px-3 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
+                >
+                  {SUPPORTED_LANGUAGES.filter(
+                    (l) => !translations.some((t) => t.langCode === l.code)
+                  ).map((lang) => (
+                    <option key={lang.code} value={lang.code}>
+                      {lang.label} ({lang.code})
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!selectedLangToAdd) return;
+                    if (!translations.some((t) => t.langCode === selectedLangToAdd)) {
+                      setTranslations((prev) => [
+                        ...prev,
+                        { langCode: selectedLangToAdd, name: displayName || '' },
+                      ]);
+                    }
+                  }}
+                  className="min-h-[40px] px-3 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-semibold flex items-center gap-1 active:scale-95 transition-all shrink-0"
+                >
+                  <i className="bx bx-plus text-sm" />
+                  <span>Añadir</span>
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Tab 2: Atlas de Texturas (1, 3 o 6 caras) */}
-        {activeTab === 'textures' && (
+        {/* ================================================================= */}
+        {/* TAB 2: ATLAS CORE (Texturas y Mapeo de Caras)                     */}
+        {/* ================================================================= */}
+        {activeTab === 'atlas' && (
           <div className="flex flex-col gap-3 animate-in fade-in duration-150">
             <CubeAtlasEditor
               mode={textureMode}
@@ -728,327 +881,1002 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
           </div>
         )}
 
-        {/* Tab 3: Propiedades en Paneles Desplegables */}
+        {/* ================================================================= */}
+        {/* TAB 3: PROPIEDADES (Físicas, Iluminación, Fricción, Inflamabilidad)*/}
+        {/* ================================================================= */}
         {activeTab === 'properties' && (
-          <div className="flex flex-col gap-3 animate-in fade-in duration-150">
-            {/* Panel 1: Iluminación */}
-            <div className="bg-slate-950/70 rounded-2xl border border-slate-800 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => toggleSection('light')}
-                className="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-900/60 transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <i className="bx bxs-sun text-amber-400 text-base" />
-                  <span className="text-xs font-bold text-slate-200">Iluminación (Emisión de Luz)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {emitsLight && (
-                    <span className="text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/20 px-2 py-0.5 rounded font-mono">
-                      Nivel {lightLevel}/15
-                    </span>
-                  )}
-                  <i className={`bx bx-chevron-down text-lg text-slate-400 transition-transform ${openSections.light ? 'rotate-180' : ''}`} />
-                </div>
-              </button>
+          <div className="flex flex-col gap-3.5 animate-in fade-in duration-150">
+            {/* Panel 1: Dureza de Minado y Resistencia a Explosión */}
+            <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <i className="bx bxs-shield text-emerald-400 text-base" />
+                <span className="text-xs font-bold text-slate-200">
+                  Dureza de Minado y Resistencia a Explosión
+                </span>
+              </div>
 
-              {openSections.light && (
-                <div className="p-3.5 pt-0 border-t border-slate-800/80 flex flex-col gap-3">
-                  <div className="flex items-center justify-between pt-2">
-                    <span className="text-xs text-slate-300">¿El bloque emite luz?</span>
-                    {/* 16px+ Mobile Touch Toggle */}
-                    <label className="relative inline-flex items-center cursor-pointer min-h-[44px] min-w-[44px] justify-center">
-                      <input
-                        type="checkbox"
-                        checked={emitsLight}
-                        onChange={(e) => setEmitsLight(e.target.checked)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-12 h-7 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[11px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500 shadow-inner" />
-                    </label>
-                  </div>
-
-                  {emitsLight && (
-                    <div className="flex flex-col gap-1.5 pt-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-400">Intensidad de luz:</span>
-                        <span className="font-mono font-bold text-amber-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                          {lightLevel} / 15
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min={0}
-                        max={15}
-                        value={lightLevel}
-                        onChange={(e) => setLightLevel(parseInt(e.target.value, 10))}
-                        className="w-full accent-amber-400 min-h-[36px]"
-                      />
-                      <div className="flex justify-between text-[10px] text-slate-400">
-                        <span>0 (Apagado)</span>
-                        <span>7 (Redstone)</span>
-                        <span>15 (Sol / Glowstone)</span>
-                      </div>
-                    </div>
-                  )}
+              {/* Dureza / Tiempo de picado */}
+              <div className="flex flex-col gap-1.5 pt-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-300">Tiempo de picado (destructible_by_mining):</span>
+                  <span className="font-mono font-bold text-emerald-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                    {destroyTime.toFixed(1)}s
+                  </span>
                 </div>
-              )}
+                <input
+                  type="range"
+                  min={0.1}
+                  max={30.0}
+                  step={0.1}
+                  value={destroyTime}
+                  onChange={(e) => setDestroyTime(parseFloat(e.target.value))}
+                  className="w-full accent-emerald-500 min-h-[36px]"
+                />
+                <div className="flex justify-between text-[10px] text-slate-500">
+                  <span>0.1s (Tierra/Vidrio)</span>
+                  <span>1.5s (Piedra)</span>
+                  <span>10.0s+ (Obsidiana)</span>
+                </div>
+              </div>
+
+              {/* Resistencia a explosiones */}
+              <div className="flex flex-col gap-1.5 pt-2 border-t border-slate-800/80">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-300">Resistencia a explosiones (destructible_by_explosion):</span>
+                  <span className="font-mono font-bold text-rose-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                    {explosionResistance.toFixed(1)}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={explosionResistance}
+                  onChange={(e) => setExplosionResistance(parseFloat(e.target.value))}
+                  className="w-full accent-rose-500 min-h-[36px]"
+                />
+              </div>
             </div>
 
-            {/* Panel 2: Consumidor de Redstone */}
-            <div className="bg-slate-950/70 rounded-2xl border border-slate-800 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => toggleSection('redstone')}
-                className="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-900/60 transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <i className="bx bxs-zap text-rose-500 text-base" />
-                  <span className="text-xs font-bold text-slate-200">Consumidor de Redstone</span>
+            {/* Panel 2: Iluminación (Emisión y Atenuación de Luz) */}
+            <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <i className="bx bxs-sun text-amber-400 text-base" />
+                <span className="text-xs font-bold text-slate-200">
+                  Iluminación (Emisión y Atenuación)
+                </span>
+              </div>
+
+              {/* Emisión de luz */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs text-slate-300 block">¿Emite luz propia en la oscuridad?</span>
+                  <span className="text-[10px] text-slate-400">
+                    Genera el componente oficial minecraft:light_emission
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  {consumesRedstone && (
-                    <span className="text-[10px] bg-rose-500/10 text-rose-300 border border-rose-500/20 px-2 py-0.5 rounded font-mono">
-                      Activo
+                <label className="relative inline-flex items-center cursor-pointer min-h-[44px] min-w-[44px] justify-center">
+                  <input
+                    type="checkbox"
+                    checked={emitsLight}
+                    onChange={(e) => setEmitsLight(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-12 h-7 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[11px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500 shadow-inner" />
+                </label>
+              </div>
+
+              {emitsLight && (
+                <div className="flex flex-col gap-1.5 pt-2 border-t border-slate-800/80">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">Nivel de brillo (0 a 15):</span>
+                    <span className="font-mono font-bold text-amber-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                      Nivel {lightLevel}
                     </span>
-                  )}
-                  <i className={`bx bx-chevron-down text-lg text-slate-400 transition-transform ${openSections.redstone ? 'rotate-180' : ''}`} />
-                </div>
-              </button>
-
-              {openSections.redstone && (
-                <div className="p-3.5 pt-0 border-t border-slate-800/80 flex flex-col gap-3">
-                  <div className="flex items-center justify-between pt-2">
-                    <div>
-                      <span className="text-xs text-slate-300 block">¿Conduce señal de Redstone?</span>
-                      <span className="text-[10px] text-slate-400">Genera minecraft:redstone_conductivity oficial</span>
-                    </div>
-                    {/* 16px+ Mobile Touch Toggle */}
-                    <label className="relative inline-flex items-center cursor-pointer min-h-[44px] min-w-[44px] justify-center">
-                      <input
-                        type="checkbox"
-                        checked={consumesRedstone}
-                        onChange={(e) => setConsumesRedstone(e.target.checked)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-12 h-7 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[11px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500 shadow-inner" />
-                    </label>
                   </div>
-
-                  {consumesRedstone && (
-                    <div className="flex items-center justify-between pt-1 border-t border-slate-800/80">
-                      <span className="text-xs text-slate-400">Permitir propagación descendente</span>
-                      <button
-                        type="button"
-                        onClick={() => setAllowsSignalPropagation(!allowsSignalPropagation)}
-                        className={`px-3 py-1 text-xs rounded-lg border transition-colors ${
-                          allowsSignalPropagation
-                            ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
-                            : 'bg-slate-900 text-slate-400 border-slate-800'
-                        }`}
-                      >
-                        {allowsSignalPropagation ? 'Sí' : 'No'}
-                      </button>
-                    </div>
-                  )}
+                  <input
+                    type="range"
+                    min={0}
+                    max={15}
+                    value={lightLevel}
+                    onChange={(e) => setLightLevel(parseInt(e.target.value, 10))}
+                    className="w-full accent-amber-500 min-h-[36px]"
+                  />
                 </div>
               )}
+
+              {/* Atenuación de luz */}
+              <div className="flex flex-col gap-1.5 pt-2 border-t border-slate-800/80">
+                <div className="flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-slate-300 block">Atenuación de luz (light_dampening):</span>
+                    <span className="text-[10px] text-slate-500">
+                      15 = bloque completamente opaco; 0 = transparente como cristal
+                    </span>
+                  </div>
+                  <span className="font-mono font-bold text-cyan-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800 shrink-0">
+                    {lightDampening}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={15}
+                  value={lightDampening}
+                  onChange={(e) => setLightDampening(parseInt(e.target.value, 10))}
+                  className="w-full accent-cyan-400 min-h-[36px]"
+                />
+              </div>
             </div>
 
-            {/* Panel 3: Partículas al Romper */}
-            <div className="bg-slate-950/70 rounded-2xl border border-slate-800 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => toggleSection('destruction_particles')}
-                className="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-900/60 transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <i className="bx bxs-bomb text-orange-400 text-base" />
-                  <span className="text-xs font-bold text-slate-200">Partículas al Romper</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {destructionParticlesEnabled && (
-                    <span className="text-[10px] bg-orange-500/10 text-orange-300 border border-orange-500/20 px-2 py-0.5 rounded font-mono">
-                      {destructionParticleCount} partículas
+            {/* Panel 3: Fricción Física e Inflamabilidad */}
+            <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <i className="bx bxs-flame text-orange-400 text-base" />
+                <span className="text-xs font-bold text-slate-200">
+                  Fricción Física e Inflamabilidad
+                </span>
+              </div>
+
+              {/* Fricción */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-slate-300 block">Fricción (minecraft:friction):</span>
+                    <span className="text-[10px] text-slate-500">
+                      0.4 = estándar; 0.98 = muy resbaladizo como hielo
                     </span>
-                  )}
-                  <i className={`bx bx-chevron-down text-lg text-slate-400 transition-transform ${openSections.destruction_particles ? 'rotate-180' : ''}`} />
-                </div>
-              </button>
-
-              {openSections.destruction_particles && (
-                <div className="p-3.5 pt-0 border-t border-slate-800/80 flex flex-col gap-3">
-                  <div className="flex items-center justify-between pt-2">
-                    <div>
-                      <span className="text-xs text-slate-300 block">Activar partículas de rotura</span>
-                      <span className="text-[10px] text-slate-400">Efecto visual al minar o destruir el bloque</span>
-                    </div>
-                    {/* 16px+ Mobile Touch Toggle */}
-                    <label className="relative inline-flex items-center cursor-pointer min-h-[44px] min-w-[44px] justify-center">
-                      <input
-                        type="checkbox"
-                        checked={destructionParticlesEnabled}
-                        onChange={(e) => setDestructionParticlesEnabled(e.target.checked)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-12 h-7 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[11px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500 shadow-inner" />
-                    </label>
                   </div>
+                  <span className="font-mono font-bold text-blue-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800 shrink-0">
+                    {friction.toFixed(2)}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0.1}
+                  max={1.0}
+                  step={0.02}
+                  value={friction}
+                  onChange={(e) => setFriction(parseFloat(e.target.value))}
+                  className="w-full accent-blue-400 min-h-[36px]"
+                />
+              </div>
 
-                  {destructionParticlesEnabled && (
-                    <div className="flex flex-col gap-2 pt-1 border-t border-slate-800/80">
+              {/* Inflamabilidad */}
+              <div className="flex flex-col gap-2 pt-2 border-t border-slate-800/80">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs text-slate-300 block">¿Es inflamable? (minecraft:flammable)</span>
+                    <span className="text-[10px] text-slate-500">
+                      Permite que el bloque se prenda fuego con lava o fuego adyacente
+                    </span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer min-h-[44px] min-w-[44px] justify-center">
+                    <input
+                      type="checkbox"
+                      checked={flammable}
+                      onChange={(e) => setFlammable(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-12 h-7 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[11px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500 shadow-inner" />
+                  </label>
+                </div>
+
+                {flammable && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    <div className="flex flex-col gap-1 p-2 bg-slate-900 rounded-xl border border-slate-800">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-400">Número de partículas emitidas:</span>
-                        <span className="font-mono font-bold text-orange-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                          {destructionParticleCount}
-                        </span>
+                        <span className="text-slate-400">Probabilidad de fuego:</span>
+                        <span className="font-mono font-bold text-orange-400">{flameOdds}%</span>
                       </div>
                       <input
                         type="range"
                         min={1}
-                        max={24}
-                        value={destructionParticleCount}
-                        onChange={(e) => setDestructionParticleCount(parseInt(e.target.value, 10))}
-                        className="w-full accent-orange-400 min-h-[36px]"
+                        max={100}
+                        value={flameOdds}
+                        onChange={(e) => setFlameOdds(parseInt(e.target.value, 10))}
+                        className="w-full accent-orange-400 min-h-[30px]"
                       />
                     </div>
-                  )}
-                </div>
-              )}
-            </div>
 
-            {/* Panel 4: Partículas al Pisar (Walking detection via Script API) */}
-            <div className="bg-slate-950/70 rounded-2xl border border-slate-800 overflow-hidden">
+                    <div className="flex flex-col gap-1 p-2 bg-slate-900 rounded-xl border border-slate-800">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-400">Probabilidad de quemarse:</span>
+                        <span className="font-mono font-bold text-rose-400">{burnOdds}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={1}
+                        max={100}
+                        value={burnOdds}
+                        onChange={(e) => setBurnOdds(parseInt(e.target.value, 10))}
+                        className="w-full accent-rose-400 min-h-[30px]"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* TAB 4: COMPORTAMIENTO (Sección Nueva, Clara y Organizada)          */}
+        {/* ================================================================= */}
+        {activeTab === 'behavior' && (
+          <div className="flex flex-col gap-3.5 animate-in fade-in duration-150">
+            {/* Cabecera de la sección con botón principal destacado */}
+            <div className="bg-gradient-to-r from-purple-950/40 to-slate-950/80 p-4 rounded-2xl border border-purple-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+              <div className="flex items-start gap-2.5">
+                <i className="bx bxs-cog text-xl text-purple-400 shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-xs font-bold text-slate-100">
+                    Reglas de Comportamiento del Bloque
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                    Define la interacción al picar, recompensas de botín, señales de redstone o colocación.
+                  </p>
+                </div>
+              </div>
+
+              {/* BOTÓN PRINCIPAL REQUERIDO: «+ Agregar comportamiento» */}
               <button
                 type="button"
-                onClick={() => toggleSection('step_particles')}
-                className="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-900/60 transition-colors"
+                onClick={() => setIsAddBehaviorModalOpen(true)}
+                className="w-full sm:w-auto min-h-[44px] px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-md shadow-emerald-500/20 active:scale-95 transition-all shrink-0"
               >
-                <div className="flex items-center gap-2">
-                  <i className="bx bxs-sparkles text-purple-400 text-base" />
-                  <span className="text-xs font-bold text-slate-200">Partículas al Pisar (Walking)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {stepParticlesEnabled && (
-                    <span className="text-[10px] bg-purple-500/10 text-purple-300 border border-purple-500/20 px-2 py-0.5 rounded font-mono">
-                      Script API
-                    </span>
-                  )}
-                  <i className={`bx bx-chevron-down text-lg text-slate-400 transition-transform ${openSections.step_particles ? 'rotate-180' : ''}`} />
-                </div>
+                <i className="bx bx-plus text-base font-extrabold" />
+                <span>+ Agregar comportamiento</span>
               </button>
+            </div>
 
-              {openSections.step_particles && (
-                <div className="p-3.5 pt-0 border-t border-slate-800/80 flex flex-col gap-3">
-                  <div className="flex items-center justify-between pt-2">
-                    <div>
-                      <span className="text-xs text-slate-300 block">Detectar paso de entidades</span>
-                      <span className="text-[10px] text-slate-400">Genera partículas al caminar continuamente sobre él</span>
+            {/* Lista organizada de comportamientos configurados */}
+            <div className="flex flex-col gap-3">
+              {/* COMPORTAMIENTO 1: REGLAS DE MINADO Y HERRAMIENTAS */}
+              {enabledBehaviors.mining && (
+                <div className="bg-slate-950/70 rounded-2xl border border-slate-800 overflow-hidden">
+                  <div className="p-3.5 flex items-center justify-between bg-slate-900/60 border-b border-slate-800/80">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm">
+                        <i className="bx bx-pickaxe" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-slate-100 block">
+                          Reglas de Minado y Herramientas
+                        </span>
+                        <span className="text-[10px] font-mono text-emerald-400">
+                          minecraft:destructible_by_mining
+                        </span>
+                      </div>
                     </div>
-                    {/* 16px+ Mobile Touch Toggle */}
-                    <label className="relative inline-flex items-center cursor-pointer min-h-[44px] min-w-[44px] justify-center">
-                      <input
-                        type="checkbox"
-                        checked={stepParticlesEnabled}
-                        onChange={(e) => setStepParticlesEnabled(e.target.checked)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-12 h-7 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[11px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500 shadow-inner" />
-                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => toggleBehaviorPanel('mining')}
+                        className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[11px] font-semibold text-slate-300 hover:text-white"
+                      >
+                        {openBehaviorPanels.mining ? 'Ocultar' : 'Configurar'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm('¿Desactivar las reglas de minado específicas de este bloque?')) {
+                            setEnabledBehaviors((prev) => ({ ...prev, mining: false }));
+                            setPreferredTool('any');
+                            setMinToolTier('any');
+                          }
+                        }}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-rose-400 hover:bg-rose-500/10"
+                        title="Quitar comportamiento"
+                      >
+                        <i className="bx bx-trash text-sm" />
+                      </button>
+                    </div>
                   </div>
 
-                  {stepParticlesEnabled && (
-                    <div className="flex flex-col gap-2 pt-1 border-t border-slate-800/80">
-                      <div className="p-2.5 rounded-xl bg-purple-950/30 border border-purple-500/30 text-[11px] text-purple-300 flex items-start gap-2">
-                        <i className="bx bx-info-circle text-base shrink-0 mt-0.5" />
-                        <div>
-                          <strong>Nota de compatibilidad Bedrock:</strong> En versiones estables, la detección fiable de entidades caminando requiere un componente registrado vía Script API. Bedrock Studio incluirá automáticamente el módulo <code className="font-mono text-white">@minecraft/server v1.14.0</code> en el manifiesto.
+                  {openBehaviorPanels.mining && (
+                    <div className="p-3.5 flex flex-col gap-3">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-semibold text-slate-300">
+                          Herramienta adecuada para romper el bloque:
+                        </label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                          {[
+                            { id: 'any', label: 'Cualquiera (Mano)' },
+                            { id: 'pickaxe', label: 'Pico (Pickaxe)' },
+                            { id: 'axe', label: 'Hacha (Axe)' },
+                            { id: 'shovel', label: 'Pala (Shovel)' },
+                            { id: 'hoe', label: 'Azada (Hoe)' },
+                          ].map((tool) => (
+                            <button
+                              key={tool.id}
+                              type="button"
+                              onClick={() => setPreferredTool(tool.id as PreferredToolType)}
+                              className={`min-h-[40px] px-2.5 rounded-xl text-xs font-semibold border transition-all ${
+                                preferredTool === tool.id
+                                  ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-bold shadow-sm'
+                                  : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+                              }`}
+                            >
+                              {tool.label}
+                            </button>
+                          ))}
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between text-xs mt-1">
-                        <span className="text-slate-400">Intensidad del efecto:</span>
-                        <span className="font-mono font-bold text-purple-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                          {stepParticleIntensity} / 10
+                      {preferredTool !== 'any' && (
+                        <div className="flex flex-col gap-1.5 pt-2 border-t border-slate-800/80">
+                          <label className="text-xs font-semibold text-slate-300">
+                            Nivel mínimo de herramienta (Tier):
+                          </label>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {[
+                              { id: 'any', label: 'Cualquiera' },
+                              { id: 'wood', label: 'Madera' },
+                              { id: 'stone', label: 'Piedra' },
+                              { id: 'iron', label: 'Hierro' },
+                              { id: 'diamond', label: 'Diamante' },
+                              { id: 'netherite', label: 'Netherite' },
+                            ].map((tier) => (
+                              <button
+                                key={tier.id}
+                                type="button"
+                                onClick={() => setMinToolTier(tier.id as ToolTier)}
+                                className={`min-h-[38px] px-2 rounded-xl text-xs font-semibold border transition-all ${
+                                  minToolTier === tier.id
+                                    ? 'bg-purple-500 text-white border-purple-400 font-bold shadow-sm'
+                                    : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+                                }`}
+                              >
+                                {tier.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* COMPORTAMIENTO 2: BOTÍN Y DROPS AL ROMPER */}
+              {enabledBehaviors.loot && (
+                <div className="bg-slate-950/70 rounded-2xl border border-slate-800 overflow-hidden">
+                  <div className="p-3.5 flex items-center justify-between bg-slate-900/60 border-b border-slate-800/80">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm">
+                        <i className="bx bxs-gift" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-slate-100 block">
+                          Botín y Recompensas al Destruir
+                        </span>
+                        <span className="text-[10px] font-mono text-amber-400">
+                          minecraft:loot / loot_drops
                         </span>
                       </div>
-                      <input
-                        type="range"
-                        min={1}
-                        max={10}
-                        value={stepParticleIntensity}
-                        onChange={(e) => setStepParticleIntensity(parseInt(e.target.value, 10))}
-                        className="w-full accent-purple-400 min-h-[36px]"
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => toggleBehaviorPanel('loot')}
+                        className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[11px] font-semibold text-slate-300 hover:text-white"
+                      >
+                        {openBehaviorPanels.loot ? 'Ocultar' : 'Configurar'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm('¿Desactivar la configuración de botín personalizado?')) {
+                            setEnabledBehaviors((prev) => ({ ...prev, loot: false }));
+                            setLootDrop('self');
+                            setXpDropAmount(0);
+                          }
+                        }}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-rose-400 hover:bg-rose-500/10"
+                        title="Quitar comportamiento"
+                      >
+                        <i className="bx bx-trash text-sm" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {openBehaviorPanels.loot && (
+                    <div className="p-3.5 flex flex-col gap-3">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-semibold text-slate-300">
+                          ¿Qué ítem suelta al ser destruido?
+                        </label>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {[
+                            { id: 'self', label: 'El mismo bloque' },
+                            { id: 'custom_item', label: 'Ítem personalizado' },
+                            { id: 'nothing', label: 'Nada (Desaparece)' },
+                          ].map((opt) => (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => setLootDrop(opt.id as LootDropType)}
+                              className={`min-h-[40px] px-2 rounded-xl text-xs font-semibold border transition-all ${
+                                lootDrop === opt.id
+                                  ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-sm'
+                                  : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {lootDrop === 'custom_item' && (
+                        <div className="flex flex-col gap-2 pt-2 border-t border-slate-800/80">
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-300 mb-1">
+                              Identificador del ítem entregado:
+                            </label>
+                            <input
+                              type="text"
+                              value={customDropItem}
+                              onChange={(e) => setCustomDropItem(e.target.value)}
+                              placeholder="Ej: minecraft:diamond o custom:mi_item"
+                              className="w-full min-h-[42px] px-3 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-amber-500"
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between text-xs pt-1">
+                            <span className="text-slate-400">Cantidad soltada:</span>
+                            <span className="font-mono font-bold text-amber-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                              x{customDropCount}
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min={1}
+                            max={16}
+                            value={customDropCount}
+                            onChange={(e) => setCustomDropCount(parseInt(e.target.value, 10))}
+                            className="w-full accent-amber-500 min-h-[30px]"
+                          />
+                        </div>
+                      )}
+
+                      {/* XP Orbs */}
+                      <div className="flex flex-col gap-1.5 pt-2 border-t border-slate-800/80">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-400">Orbes de Experiencia (XP) al minar:</span>
+                          <span className="font-mono font-bold text-emerald-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                            {xpDropAmount} XP
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={15}
+                          value={xpDropAmount}
+                          onChange={(e) => setXpDropAmount(parseInt(e.target.value, 10))}
+                          className="w-full accent-emerald-500 min-h-[30px]"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* COMPORTAMIENTO 3: CONDUCCIÓN DE REDSTONE */}
+              {enabledBehaviors.redstone && (
+                <div className="bg-slate-950/70 rounded-2xl border border-slate-800 overflow-hidden">
+                  <div className="p-3.5 flex items-center justify-between bg-slate-900/60 border-b border-slate-800/80">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-sm">
+                        <i className="bx bxs-zap" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-slate-100 block">
+                          Conducción de Redstone
+                        </span>
+                        <span className="text-[10px] font-mono text-rose-400">
+                          minecraft:redstone_conductivity
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => toggleBehaviorPanel('redstone')}
+                        className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[11px] font-semibold text-slate-300 hover:text-white"
+                      >
+                        {openBehaviorPanels.redstone ? 'Ocultar' : 'Configurar'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEnabledBehaviors((prev) => ({ ...prev, redstone: false }));
+                          setConsumesRedstone(false);
+                        }}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-rose-400 hover:bg-rose-500/10"
+                        title="Quitar comportamiento"
+                      >
+                        <i className="bx bx-trash text-sm" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {openBehaviorPanels.redstone && (
+                    <div className="p-3.5 flex flex-col gap-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-xs text-slate-300 block">¿Conduce señal de Redstone?</span>
+                          <span className="text-[10px] text-slate-400">
+                            Permite la transmisión de energía a través de este bloque
+                          </span>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer min-h-[44px] min-w-[44px] justify-center">
+                          <input
+                            type="checkbox"
+                            checked={consumesRedstone}
+                            onChange={(e) => setConsumesRedstone(e.target.checked)}
+                            className="sr-only peer"
+                          />
+                          <div className="w-12 h-7 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[11px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500 shadow-inner" />
+                        </label>
+                      </div>
+
+                      {consumesRedstone && (
+                        <div className="flex items-center justify-between pt-1 border-t border-slate-800/80">
+                          <span className="text-xs text-slate-400">Permitir propagación descendente</span>
+                          <button
+                            type="button"
+                            onClick={() => setAllowsSignalPropagation(!allowsSignalPropagation)}
+                            className={`px-3 py-1 text-xs rounded-lg border transition-colors ${
+                              allowsSignalPropagation
+                                ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                                : 'bg-slate-900 text-slate-400 border-slate-800'
+                            }`}
+                          >
+                            {allowsSignalPropagation ? 'Sí' : 'No'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* COMPORTAMIENTO 4: EFECTOS VISUALES DE PARTÍCULAS */}
+              {enabledBehaviors.particles && (
+                <div className="bg-slate-950/70 rounded-2xl border border-slate-800 overflow-hidden">
+                  <div className="p-3.5 flex items-center justify-between bg-slate-900/60 border-b border-slate-800/80">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-sm">
+                        <i className="bx bxs-sparkles" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-slate-100 block">
+                          Partículas de Rotura y Pisado
+                        </span>
+                        <span className="text-[10px] font-mono text-purple-400">
+                          studio:particles / Script API
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => toggleBehaviorPanel('particles')}
+                        className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[11px] font-semibold text-slate-300 hover:text-white"
+                      >
+                        {openBehaviorPanels.particles ? 'Ocultar' : 'Configurar'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEnabledBehaviors((prev) => ({ ...prev, particles: false }));
+                          setDestructionParticlesEnabled(false);
+                          setStepParticlesEnabled(false);
+                        }}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-rose-400 hover:bg-rose-500/10"
+                        title="Quitar comportamiento"
+                      >
+                        <i className="bx bx-trash text-sm" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {openBehaviorPanels.particles && (
+                    <div className="p-3.5 flex flex-col gap-3">
+                      {/* Destruction Particles */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-xs text-slate-300 block">Partículas al romper el bloque</span>
+                          <span className="text-[10px] text-slate-400">Efecto visual al minar o destruir</span>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer min-h-[44px] min-w-[44px] justify-center">
+                          <input
+                            type="checkbox"
+                            checked={destructionParticlesEnabled}
+                            onChange={(e) => setDestructionParticlesEnabled(e.target.checked)}
+                            className="sr-only peer"
+                          />
+                          <div className="w-12 h-7 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[11px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500 shadow-inner" />
+                        </label>
+                      </div>
+
+                      {destructionParticlesEnabled && (
+                        <div className="flex flex-col gap-1.5 pt-1 border-t border-slate-800/80">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-400">Cantidad de partículas emitidas:</span>
+                            <span className="font-mono font-bold text-orange-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                              {destructionParticleCount}
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min={1}
+                            max={24}
+                            value={destructionParticleCount}
+                            onChange={(e) => setDestructionParticleCount(parseInt(e.target.value, 10))}
+                            className="w-full accent-orange-400 min-h-[30px]"
+                          />
+                        </div>
+                      )}
+
+                      {/* Step Particles */}
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
+                        <div>
+                          <span className="text-xs text-slate-300 block">Partículas al caminar (Walking)</span>
+                          <span className="text-[10px] text-slate-400">Detecta entidades mediante Script API</span>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer min-h-[44px] min-w-[44px] justify-center">
+                          <input
+                            type="checkbox"
+                            checked={stepParticlesEnabled}
+                            onChange={(e) => setStepParticlesEnabled(e.target.checked)}
+                            className="sr-only peer"
+                          />
+                          <div className="w-12 h-7 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[11px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500 shadow-inner" />
+                        </label>
+                      </div>
+
+                      {stepParticlesEnabled && (
+                        <div className="flex flex-col gap-1.5 pt-1 border-t border-slate-800/80">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-400">Intensidad del efecto:</span>
+                            <span className="font-mono font-bold text-purple-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                              {stepParticleIntensity} / 10
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min={1}
+                            max={10}
+                            value={stepParticleIntensity}
+                            onChange={(e) => setStepParticleIntensity(parseInt(e.target.value, 10))}
+                            className="w-full accent-purple-400 min-h-[30px]"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* COMPORTAMIENTO 5: COMPONENTES OFICIALES DE COLOCACIÓN BEDROCK */}
+              {enabledBehaviors.placement && (
+                <div className="bg-slate-950/70 rounded-2xl border border-slate-800 overflow-hidden">
+                  <div className="p-3.5 flex items-center justify-between bg-slate-900/60 border-b border-slate-800/80">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm">
+                        <i className="bx bxs-extension" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-slate-100 block">
+                          Traits Oficiales de Colocación
+                        </span>
+                        <span className="text-[10px] font-mono text-cyan-400">
+                          traits:placement_direction / placement_filter
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => toggleBehaviorPanel('placement')}
+                        className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[11px] font-semibold text-slate-300 hover:text-white"
+                      >
+                        {openBehaviorPanels.placement ? 'Ocultar' : 'Configurar'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm('¿Desactivar los componentes de colocación configurados?')) {
+                            setEnabledBehaviors((prev) => ({ ...prev, placement: false }));
+                            setComponentsList([]);
+                          }
+                        }}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-rose-400 hover:bg-rose-500/10"
+                        title="Quitar comportamiento"
+                      >
+                        <i className="bx bx-trash text-sm" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {openBehaviorPanels.placement && (
+                    <div className="p-3.5">
+                      <BlockComponentsManager
+                        componentsList={componentsList}
+                        onChangeComponents={setComponentsList}
                       />
                     </div>
                   )}
                 </div>
               )}
-            </div>
 
-            {/* Panel 5: Física y Minado */}
-            <div className="bg-slate-950/70 rounded-2xl border border-slate-800 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => toggleSection('physics')}
-                className="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-900/60 transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <i className="bx bxs-shield text-emerald-400 text-base" />
-                  <span className="text-xs font-bold text-slate-200">Dureza de Minado y Explosión</span>
-                </div>
-                <i className={`bx bx-chevron-down text-lg text-slate-400 transition-transform ${openSections.physics ? 'rotate-180' : ''}`} />
-              </button>
-
-              {openSections.physics && (
-                <div className="p-3.5 pt-0 border-t border-slate-800/80 flex flex-col gap-3">
-                  <div className="flex flex-col gap-1.5 pt-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-400">Tiempo de picado (segundos):</span>
-                      <span className="font-mono font-bold text-emerald-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                        {destroyTime.toFixed(1)}s
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0.1}
-                      max={30.0}
-                      step={0.1}
-                      value={destroyTime}
-                      onChange={(e) => setDestroyTime(parseFloat(e.target.value))}
-                      className="w-full accent-emerald-500 min-h-[36px]"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5 pt-1 border-t border-slate-800/80">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-400">Resistencia a explosiones (TNT):</span>
-                      <span className="font-mono font-bold text-rose-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                        {explosionResistance.toFixed(1)}
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      step={1}
-                      value={explosionResistance}
-                      onChange={(e) => setExplosionResistance(parseFloat(e.target.value))}
-                      className="w-full accent-rose-500 min-h-[36px]"
-                    />
-                  </div>
+              {/* Empty state si no hay ningún comportamiento habilitado */}
+              {activeBehaviorsCount === 0 && (
+                <div className="py-8 px-4 text-center rounded-2xl border border-dashed border-slate-800 bg-slate-950/40 flex flex-col items-center">
+                  <i className="bx bxs-cog text-3xl text-slate-600 mb-2" />
+                  <span className="text-xs font-bold text-slate-300">
+                    Sin comportamientos asignados
+                  </span>
+                  <p className="text-[11px] text-slate-500 max-w-xs mt-1 mb-4 leading-relaxed">
+                    Este bloque utilizará la lógica predeterminada de Minecraft. Pulsa el botón para añadir minado, botín, redstone o colocación.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddBehaviorModalOpen(true)}
+                    className="min-h-[44px] px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl flex items-center gap-2 shadow-md active:scale-95 transition-all"
+                  >
+                    <i className="bx bx-plus font-bold" />
+                    <span>+ Agregar comportamiento</span>
+                  </button>
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* Footer Save Button */}
-        <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-800 mt-3">
+        {/* ================================================================= */}
+        {/* MODAL / SELECTOR: «+ AGREGAR COMPORTAMIENTO»                       */}
+        {/* ================================================================= */}
+        {isAddBehaviorModalOpen && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-3 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
+            <div className="relative w-full max-w-md bg-[#0d1322] border border-slate-800 rounded-3xl p-5 shadow-2xl flex flex-col max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                    <i className="bx bx-plus text-xl font-bold" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-100">
+                      Incorporar Comportamiento
+                    </h3>
+                    <span className="text-[10px] text-slate-400">
+                      Selecciona una regla o función para el bloque
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAddBehaviorModalOpen(false)}
+                  className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white"
+                >
+                  <i className="bx bx-x text-xl" />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-2.5 my-3.5">
+                {/* 1. Reglas de Minado */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEnabledBehaviors((p) => ({ ...p, mining: true }));
+                    setOpenBehaviorPanels((p) => ({ ...p, mining: true }));
+                    setIsAddBehaviorModalOpen(false);
+                  }}
+                  className={`p-3 rounded-2xl border text-left flex items-start gap-3 transition-all ${
+                    enabledBehaviors.mining
+                      ? 'bg-slate-900/50 border-slate-800 opacity-60'
+                      : 'bg-slate-900 hover:bg-slate-850 border-slate-800 hover:border-emerald-500/50 active:scale-98'
+                  }`}
+                >
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <i className="bx bx-pickaxe text-lg" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-100">
+                        Reglas de Minado y Herramientas
+                      </span>
+                      {enabledBehaviors.mining && (
+                        <span className="text-[9px] bg-emerald-500/20 text-emerald-300 font-mono px-1.5 py-0.5 rounded">
+                          Añadido
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-mono text-emerald-400 block mt-0.5">
+                      minecraft:destructible_by_mining
+                    </span>
+                    <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                      Define qué herramienta (pico, pala, hacha) y qué nivel de material (hierro, diamante, etc.) se requiere para romperlo.
+                    </p>
+                  </div>
+                </button>
+
+                {/* 2. Botín y Drops */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEnabledBehaviors((p) => ({ ...p, loot: true }));
+                    setOpenBehaviorPanels((p) => ({ ...p, loot: true }));
+                    setIsAddBehaviorModalOpen(false);
+                  }}
+                  className={`p-3 rounded-2xl border text-left flex items-start gap-3 transition-all ${
+                    enabledBehaviors.loot
+                      ? 'bg-slate-900/50 border-slate-800 opacity-60'
+                      : 'bg-slate-900 hover:bg-slate-850 border-slate-800 hover:border-amber-500/50 active:scale-98'
+                  }`}
+                >
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <i className="bx bxs-gift text-lg" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-100">
+                        Botín y Drops al Romperse
+                      </span>
+                      {enabledBehaviors.loot && (
+                        <span className="text-[9px] bg-amber-500/20 text-amber-300 font-mono px-1.5 py-0.5 rounded">
+                          Añadido
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-mono text-amber-400 block mt-0.5">
+                      minecraft:loot / drop_table
+                    </span>
+                    <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                      Determina qué objeto entrega el bloque (el mismo, nada o un ítem específico) y orbes de experiencia XP.
+                    </p>
+                  </div>
+                </button>
+
+                {/* 3. Conducción de Redstone */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEnabledBehaviors((p) => ({ ...p, redstone: true }));
+                    setConsumesRedstone(true);
+                    setOpenBehaviorPanels((p) => ({ ...p, redstone: true }));
+                    setIsAddBehaviorModalOpen(false);
+                  }}
+                  className={`p-3 rounded-2xl border text-left flex items-start gap-3 transition-all ${
+                    enabledBehaviors.redstone
+                      ? 'bg-slate-900/50 border-slate-800 opacity-60'
+                      : 'bg-slate-900 hover:bg-slate-850 border-slate-800 hover:border-rose-500/50 active:scale-98'
+                  }`}
+                >
+                  <div className="w-9 h-9 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <i className="bx bxs-zap text-lg" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-100">
+                        Conectividad de Redstone
+                      </span>
+                      {enabledBehaviors.redstone && (
+                        <span className="text-[9px] bg-rose-500/20 text-rose-300 font-mono px-1.5 py-0.5 rounded">
+                          Añadido
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-mono text-rose-400 block mt-0.5">
+                      minecraft:redstone_conductivity
+                    </span>
+                    <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                      Configura el paso de corriente eléctrica y propagación de señales a través del bloque.
+                    </p>
+                  </div>
+                </button>
+
+                {/* 4. Efectos Visuales de Partículas */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEnabledBehaviors((p) => ({ ...p, particles: true }));
+                    setDestructionParticlesEnabled(true);
+                    setOpenBehaviorPanels((p) => ({ ...p, particles: true }));
+                    setIsAddBehaviorModalOpen(false);
+                  }}
+                  className={`p-3 rounded-2xl border text-left flex items-start gap-3 transition-all ${
+                    enabledBehaviors.particles
+                      ? 'bg-slate-900/50 border-slate-800 opacity-60'
+                      : 'bg-slate-900 hover:bg-slate-850 border-slate-800 hover:border-purple-500/50 active:scale-98'
+                  }`}
+                >
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <i className="bx bxs-sparkles text-lg" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-100">
+                        Efectos de Partículas (Rotura / Pisado)
+                      </span>
+                      {enabledBehaviors.particles && (
+                        <span className="text-[9px] bg-purple-500/20 text-purple-300 font-mono px-1.5 py-0.5 rounded">
+                          Añadido
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-mono text-purple-400 block mt-0.5">
+                      studio:particles / Script API
+                    </span>
+                    <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                      Emite partículas personalizadas al romperse o al ser pisado por jugadores y entidades.
+                    </p>
+                  </div>
+                </button>
+
+                {/* 5. Traits Oficiales de Colocación Bedrock */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEnabledBehaviors((p) => ({ ...p, placement: true }));
+                    setOpenBehaviorPanels((p) => ({ ...p, placement: true }));
+                    setIsAddBehaviorModalOpen(false);
+                  }}
+                  className={`p-3 rounded-2xl border text-left flex items-start gap-3 transition-all ${
+                    enabledBehaviors.placement
+                      ? 'bg-slate-900/50 border-slate-800 opacity-60'
+                      : 'bg-slate-900 hover:bg-slate-850 border-slate-800 hover:border-cyan-500/50 active:scale-98'
+                  }`}
+                >
+                  <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <i className="bx bxs-extension text-lg" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-100">
+                        Componentes de Colocación Bedrock
+                      </span>
+                      {enabledBehaviors.placement && (
+                        <span className="text-[9px] bg-cyan-500/20 text-cyan-300 font-mono px-1.5 py-0.5 rounded">
+                          Añadido
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-mono text-cyan-400 block mt-0.5">
+                      minecraft:placement_direction / position / filter
+                    </span>
+                    <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                      Controla la orientación automática según el jugador y restricciones de apoyo sobre bloques.
+                    </p>
+                  </div>
+                </button>
+              </div>
+
+              <div className="pt-2 border-t border-slate-800 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsAddBehaviorModalOpen(false)}
+                  className="min-h-[44px] px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-300"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* FOOTER: BOTONES DE ACCIÓN (Cancelar / Guardar Bloque)             */}
+        {/* ================================================================= */}
+        <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-800 mt-3 shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[46px] px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-semibold"
+            className="min-h-[46px] px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-semibold active:scale-95 transition-all"
           >
             Cancelar
           </button>

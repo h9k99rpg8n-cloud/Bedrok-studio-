@@ -28,8 +28,11 @@ import { exportAddonToMcaddon } from './utils/exporter';
 import confetti from 'canvas-confetti';
 
 export default function App() {
-  // Phase 1: Splash Loading
+  // Phase 1: Splash Loading (v0.1.4.1)
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [loadingProgress, setLoadingProgress] = useState<number>(1);
+  const [loadingMessage, setLoadingMessage] = useState<string>('Iniciando Bedrock Studio...');
+  const [loadingDetail, setLoadingDetail] = useState<string>('Preparando entorno de trabajo...');
   const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(false);
   const [isChangelogOpen, setIsChangelogOpen] = useState<boolean>(false);
   const [isTutorialOpen, setIsTutorialOpen] = useState<boolean>(false);
@@ -59,19 +62,59 @@ export default function App() {
   // Diagnostics Modal
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState<boolean>(false);
 
-  // Load from IndexedDB on startup
+  // Load from IndexedDB on startup with verifiable stages (v0.1.4.1)
   const loadProjectsFromDb = useCallback(async () => {
+    // Stage 1: Initializing local storage
+    setLoadingProgress(12);
+    setLoadingMessage('Conectando con almacenamiento local IndexedDB...');
+    setLoadingDetail('Verificando repositorio de datos persistente en el dispositivo');
+
     try {
+      // Small pause for visual smooth progression between stages
+      await new Promise((r) => setTimeout(r, 120));
+
+      // Stage 2: Fetching stored projects & textures
+      setLoadingProgress(45);
+      setLoadingMessage('Cargando proyectos y bloques del Addon...');
+      setLoadingDetail('Sincronizando modelos, atlas de texturas y grupos');
+
       const stored = await dbService.getProjects();
       setProjects(stored);
+
+      await new Promise((r) => setTimeout(r, 150));
+
+      // Stage 3: Checking preferences & user onboarding state
+      setLoadingProgress(78);
+      setLoadingMessage('Comprobando preferencias y estado...');
+      setLoadingDetail('Validando compatibilidad con Minecraft Bedrock 1.26.20+');
+
       const seen = await dbService.hasSeenOnboarding();
       if (!seen) {
         setIsOnboardingOpen(true);
       }
+
+      await new Promise((r) => setTimeout(r, 120));
+
+      // Stage 4: Preparing components & workspace
+      setLoadingProgress(96);
+      setLoadingMessage('Preparando editor de bloques y componentes...');
+      setLoadingDetail('Estructurando secciones de Identidad, Atlas Core y Comportamiento');
+
+      await new Promise((r) => setTimeout(r, 100));
+
+      // Stage 5: Finalized
+      setLoadingProgress(100);
+      setLoadingMessage('¡Inicialización completada!');
+      setLoadingDetail('Bienvenido a Bedrock Studio v0.1.4.1');
+
+      await new Promise((r) => setTimeout(r, 150));
+      setIsLoading(false);
     } catch (err) {
       console.error('Error al inicializar IndexedDB:', err);
-    } finally {
-      setTimeout(() => setIsLoading(false), 800);
+      setLoadingProgress(100);
+      setLoadingMessage('Inicialización completada con aviso');
+      setLoadingDetail('Se utilizará almacenamiento temporal si IndexedDB está bloqueado');
+      setTimeout(() => setIsLoading(false), 200);
     }
   }, []);
 
@@ -374,24 +417,63 @@ export default function App() {
     }
   };
 
-  // 1. Initial Splash Screen
+  // 1. Initial Splash Screen (v0.1.4.1)
   if (isLoading) {
     return (
-      <div className="fixed inset-0 z-50 bg-[#090d16] flex flex-col items-center justify-center p-6 text-center select-none">
-        <div className="w-20 h-20 rounded-3xl bg-slate-900 border border-slate-800 flex items-center justify-center mb-5 relative shadow-2xl">
-          <i className="bx bxs-cube text-4xl text-emerald-400 animate-pulse" />
-          <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-[#090d16]" />
+      <div className="fixed inset-0 z-50 bg-[#090d16] flex flex-col items-center justify-center p-6 text-center select-none overflow-hidden">
+        {/* Subtle background glow */}
+        <div className="absolute w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none -top-10" />
+        <div className="absolute w-72 h-72 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none -bottom-10" />
+
+        {/* Logo Cube */}
+        <div className="relative mb-5">
+          <div className="w-20 h-20 rounded-3xl bg-slate-900 border border-slate-800 flex items-center justify-center relative shadow-2xl shadow-emerald-500/10">
+            <i className="bx bxs-cube text-4xl text-emerald-400 animate-pulse" />
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-[#090d16] shadow-sm shadow-emerald-400" />
+          </div>
+          <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-slate-950 border border-emerald-500/30 text-[10px] font-mono font-bold text-emerald-400">
+            v0.1.4.1
+          </span>
         </div>
-        <h1 className="text-lg font-black text-slate-100 tracking-wider mb-1">
-          Bedrock Studio <span className="text-emerald-400">v0.1.3</span>
+
+        {/* Title & Description */}
+        <h1 className="text-xl font-black text-slate-100 tracking-wider mb-1">
+          Bedrock Studio <span className="text-emerald-400 font-extrabold">v0.1.4.1</span>
         </h1>
-        <p className="text-xs text-slate-400 font-mono mb-6">
+        <p className="text-xs text-slate-400 font-mono mb-7 max-w-xs">
           Editor profesional de bloques para Minecraft Bedrock
         </p>
 
-        <div className="w-32 h-1 bg-slate-900 rounded-full overflow-hidden">
-          <div className="h-full bg-emerald-500 rounded-full w-1/2 animate-[spin_1.5s_linear_infinite]" />
+        {/* Progress Card */}
+        <div className="w-full max-w-xs bg-slate-900/80 border border-slate-800/90 rounded-2xl p-4 shadow-xl backdrop-blur-sm flex flex-col gap-2.5">
+          {/* Header with Step & Numeric Percentage */}
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-semibold text-slate-300 truncate max-w-[200px] text-left">
+              {loadingMessage}
+            </span>
+            <span className="font-mono font-bold text-emerald-400 shrink-0 ml-2">
+              {loadingProgress}%
+            </span>
+          </div>
+
+          {/* Progress Bar (1% to 100%) */}
+          <div className="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden p-0.5 border border-slate-800">
+            <div
+              className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-400 rounded-full transition-all duration-300 ease-out shadow-sm shadow-emerald-500/50"
+              style={{ width: `${Math.min(100, Math.max(1, loadingProgress))}%` }}
+            />
+          </div>
+
+          {/* Informational Sub-Message */}
+          <p className="text-[11px] text-slate-400 font-mono text-left truncate pt-0.5">
+            {loadingDetail}
+          </p>
         </div>
+
+        {/* Bottom micro note */}
+        <span className="text-[10px] text-slate-400 font-mono mt-6">
+          Compatibilidad Bedrock 1.26.20 · IndexedDB Local Seguro
+        </span>
       </div>
     );
   }

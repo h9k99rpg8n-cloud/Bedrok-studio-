@@ -3,7 +3,7 @@ import { AddonProject, CustomBlock } from '../types/addon';
 import { generateBedrockUUID } from './uuid';
 
 /**
- * Converts a data URL / base64 string to a Blob
+ * Converts a data URL / base64 string to a Blob safely without throwing
  */
 export async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
   if (!dataUrl) {
@@ -12,8 +12,28 @@ export async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
     canvas.height = 16;
     return new Promise((res) => canvas.toBlob((b) => res(b!), 'image/png'));
   }
-  const res = await fetch(dataUrl);
-  return await res.blob();
+
+  try {
+    const res = await fetch(dataUrl);
+    return await res.blob();
+  } catch {
+    try {
+      const parts = dataUrl.split(',');
+      const mime = parts[0]?.match(/:(.*?);/)?.[1] || 'image/png';
+      const bstr = atob(parts[1] || '');
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      return new Blob([u8arr], { type: mime });
+    } catch {
+      const canvas = document.createElement('canvas');
+      canvas.width = 16;
+      canvas.height = 16;
+      return new Promise((res) => canvas.toBlob((b) => res(b!), 'image/png'));
+    }
+  }
 }
 
 /**
@@ -209,6 +229,24 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
       },
     };
 
+    // Friction (v0.1.4)
+    if (block.friction !== undefined && block.friction !== 0.4) {
+      components['minecraft:friction'] = Math.min(1.0, Math.max(0.1, Number(block.friction)));
+    }
+
+    // Light Dampening (v0.1.4)
+    if (block.lightDampening !== undefined) {
+      components['minecraft:light_dampening'] = Math.min(15, Math.max(0, Math.round(block.lightDampening)));
+    }
+
+    // Flammability (v0.1.4)
+    if (block.flammable) {
+      components['minecraft:flammable'] = {
+        burn_odds: block.burnOdds ?? 20,
+        flame_odds: block.flameOdds ?? 5,
+      };
+    }
+
     // Light emission
     if (block.emitsLight && block.lightLevel > 0) {
       components['minecraft:light_emission'] = Math.min(15, Math.max(0, block.lightLevel));
@@ -221,6 +259,24 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
         redstone_conductor: true,
         allows_wire_to_step_down: allowsWire,
       };
+    }
+
+    // Placement Filter Component (minecraft:placement_filter)
+    if (block.componentsList) {
+      const placementFilterComp = block.componentsList.find(
+        (c) => c.id === 'minecraft:placement_filter' && c.enabled
+      );
+      if (placementFilterComp && 'conditions' in placementFilterComp.config) {
+        const conditions = placementFilterComp.config.conditions;
+        if (conditions && conditions.length > 0) {
+          components['minecraft:placement_filter'] = {
+            conditions: conditions.map((cond) => ({
+              allowed_faces: cond.allowedFaces && cond.allowedFaces.length > 0 ? cond.allowedFaces : ['up'],
+              block_filter: cond.blockFilter && cond.blockFilter.length > 0 ? cond.blockFilter : ['minecraft:dirt'],
+            })),
+          };
+        }
+      }
     }
 
     // Custom Components (Step particles walking detector via Script API)
@@ -332,13 +388,43 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
       menuCategory.group = assignedGroup.bedrockGroup.trim();
     }
 
+    // Official Block Traits (v0.1.4: minecraft:placement_direction, minecraft:placement_position)
+    const traits: Record<string, unknown> = {};
+    if (block.componentsList) {
+      for (const comp of block.componentsList) {
+        if (!comp.enabled) continue;
+        if (comp.id === 'minecraft:placement_direction') {
+          const cfg = comp.config as { enabledStates?: string[]; yRotationOffset?: number };
+          if (cfg.enabledStates && cfg.enabledStates.length > 0) {
+            traits['minecraft:placement_direction'] = {
+              enabled_states: cfg.enabledStates,
+              y_rotation_offset: cfg.yRotationOffset ?? 0,
+            };
+          }
+        } else if (comp.id === 'minecraft:placement_position') {
+          const cfg = comp.config as { enabledStates?: string[] };
+          if (cfg.enabledStates && cfg.enabledStates.length > 0) {
+            traits['minecraft:placement_position'] = {
+              enabled_states: cfg.enabledStates,
+            };
+          }
+        }
+      }
+    }
+
+    const blockDescription: Record<string, unknown> = {
+      identifier: fullId,
+      menu_category: menuCategory,
+    };
+
+    if (Object.keys(traits).length > 0) {
+      blockDescription.traits = traits;
+    }
+
     const blockBpJson = {
       format_version: '1.21.50',
       'minecraft:block': {
-        description: {
-          identifier: fullId,
-          menu_category: menuCategory,
-        },
+        description: blockDescription,
         components,
       },
     };
@@ -421,19 +507,55 @@ world.beforeEvents?.worldInitialize?.subscribe((initEvent) => {
     textsFolder?.file(`${code}.lang`, fileContent);
   });
 
-  // Generate .mcaddon
-  const blob = await zip.generateAsync({ type: 'blob' });
+  // Generate .mcaddon with explicit octet-stream MIME
+  const blob = await zip.generateAsync({
+    type: 'blob',
+    mimeType: 'application/octet-stream',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 },
+  });
   const sanitized = (project.name || 'addon').replace(/[^a-zA-Z0-9_-]/g, '_');
   const fileName = `${sanitized}.mcaddon`;
 
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  // Robust client-side file download that prevents page reload or iframe navigation
+  try {
+    const nav = window.navigator as unknown as { msSaveOrOpenBlob?: (b: Blob, d: string) => boolean };
+    if (nav && typeof nav.msSaveOrOpenBlob === 'function') {
+      nav.msSaveOrOpenBlob(blob, fileName);
+    } else {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.style.position = 'absolute';
+      a.style.left = '-9999px';
+      a.setAttribute('href', url);
+      a.setAttribute('download', fileName);
+      a.setAttribute('target', '_self');
+      a.setAttribute('rel', 'noopener noreferrer');
+
+      // Stop propagation to avoid bubbling to any global event listener
+      a.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+
+      document.body.appendChild(a);
+      a.click();
+
+      setTimeout(() => {
+        try {
+          if (document.body.contains(a)) {
+            document.body.removeChild(a);
+          }
+          window.URL.revokeObjectURL(url);
+        } catch {
+          // Cleanup safe
+        }
+      }, 2000);
+    }
+  } catch (err) {
+    console.error('Error al generar enlace de descarga:', err);
+    throw new Error('No se pudo descargar el archivo .mcaddon automáticamente.');
+  }
 
   return {
     fileName,

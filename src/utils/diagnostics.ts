@@ -209,6 +209,121 @@ export function runProjectDiagnostics(project: AddonProject): DiagnosticIssue[] 
         blockId: block.id,
       });
     }
+
+    // 6. Componentes Técnicos de Colocación (v0.1.4)
+    if (block.componentsList && block.componentsList.length > 0) {
+      const compIdsSeen = new Set<string>();
+      block.componentsList.forEach((comp) => {
+        if (!comp.enabled) return;
+
+        // Duplicate component check
+        if (compIdsSeen.has(comp.id)) {
+          issues.push({
+            id: `block_duplicate_comp_${block.id}_${comp.id}`,
+            severity: 'error',
+            title: `Componente duplicado: ${comp.id}`,
+            description: `El bloque "${block.displayName}" contiene el componente ${comp.id} más de una vez.`,
+            affectedTarget: comp.id,
+            reason: 'Minecraft Bedrock solo permite una definición única de cada componente o trait por bloque.',
+            suggestion: 'Elimina la copia duplicada en la pestaña de Componentes.',
+            blockId: block.id,
+          });
+        }
+        compIdsSeen.add(comp.id);
+
+        // placement_direction check
+        if (comp.id === 'minecraft:placement_direction') {
+          const cfg = comp.config as { enabledStates?: string[]; yRotationOffset?: number };
+          if (!cfg.enabledStates || cfg.enabledStates.length === 0) {
+            issues.push({
+              id: `block_placement_dir_empty_${block.id}`,
+              severity: 'warning',
+              title: `minecraft:placement_direction sin estados activos en "${block.identifier}"`,
+              description: 'El componente está añadido pero no tiene ningún estado de dirección seleccionado.',
+              affectedTarget: 'minecraft:placement_direction',
+              reason: 'El rasgo no tendrá ningún efecto en el juego a menos que se active al menos un estado (ej. cardinal_direction).',
+              suggestion: 'Selecciona al menos una orientación en la configuración del componente.',
+              blockId: block.id,
+            });
+          } else if (
+            cfg.enabledStates.includes('minecraft:cardinal_direction') &&
+            cfg.enabledStates.includes('minecraft:facing_direction')
+          ) {
+            issues.push({
+              id: `block_placement_dir_conflict_${block.id}`,
+              severity: 'warning',
+              title: `Incompatibilidad en placement_direction en "${block.identifier}"`,
+              description: 'Se han seleccionado "cardinal_direction" y "facing_direction" a la vez.',
+              affectedTarget: 'minecraft:placement_direction',
+              reason: 'facing_direction ya incluye las 4 direcciones cardinales más arriba y abajo; combinarlas puede causar redundancia o anulación.',
+              suggestion: 'Selecciona únicamente cardinal_direction para orientación horizontal o facing_direction para 6 direcciones.',
+              blockId: block.id,
+            });
+          }
+        }
+
+        // placement_position check
+        if (comp.id === 'minecraft:placement_position') {
+          const cfg = comp.config as { enabledStates?: string[] };
+          if (!cfg.enabledStates || cfg.enabledStates.length === 0) {
+            issues.push({
+              id: `block_placement_pos_empty_${block.id}`,
+              severity: 'warning',
+              title: `minecraft:placement_position sin estados activos en "${block.identifier}"`,
+              description: 'No se ha seleccionado ningún estado para placement_position.',
+              affectedTarget: 'minecraft:placement_position',
+              reason: 'Debe activarse minecraft:block_face o minecraft:vertical_half para que el bloque responda a la posición de colocación.',
+              suggestion: 'Marca al menos una casilla en los parámetros del componente.',
+              blockId: block.id,
+            });
+          }
+        }
+
+        // placement_filter check
+        if (comp.id === 'minecraft:placement_filter') {
+          const cfg = comp.config as { conditions?: { allowedFaces?: string[]; blockFilter?: string[] }[] };
+          if (!cfg.conditions || cfg.conditions.length === 0) {
+            issues.push({
+              id: `block_placement_filter_no_cond_${block.id}`,
+              severity: 'error',
+              title: `Filtro de colocación sin condiciones en "${block.identifier}"`,
+              description: 'El componente placement_filter requiere al menos una condición con caras permitidas y bloques de apoyo.',
+              affectedTarget: 'minecraft:placement_filter',
+              reason: 'Una lista de condiciones vacía impedirá colocar el bloque por completo en el juego.',
+              suggestion: 'Añade una regla indicando las caras (ej. "up") y los bloques admitidos.',
+              blockId: block.id,
+            });
+          } else {
+            cfg.conditions.forEach((cond, cIdx) => {
+              if (!cond.allowedFaces || cond.allowedFaces.length === 0) {
+                issues.push({
+                  id: `block_placement_filter_empty_faces_${block.id}_${cIdx}`,
+                  severity: 'error',
+                  title: `Condición #${cIdx + 1} de filtro sin caras en "${block.identifier}"`,
+                  description: 'No se ha especificado ninguna cara permitida (ej. up, down).',
+                  affectedTarget: 'minecraft:placement_filter.conditions[].allowed_faces',
+                  reason: 'Minecraft necesita saber sobre qué caras del bloque adyacente se permite el soporte.',
+                  suggestion: 'Selecciona al menos una cara (ej. "up" para colocarlo en el suelo).',
+                  blockId: block.id,
+                });
+              }
+              if (!cond.blockFilter || cond.blockFilter.length === 0) {
+                issues.push({
+                  id: `block_placement_filter_empty_blocks_${block.id}_${cIdx}`,
+                  severity: 'error',
+                  title: `Condición #${cIdx + 1} de filtro sin bloques en "${block.identifier}"`,
+                  description: 'La lista de bloques de apoyo permitidos está vacía.',
+                  affectedTarget: 'minecraft:placement_filter.conditions[].block_filter',
+                  reason: 'Sin bloques en el filtro, la condición no coincidirá con ningún bloque en el juego.',
+                  suggestion: 'Añade al menos un identificador de bloque de soporte (ej. "minecraft:dirt", "minecraft:stone").',
+                  blockId: block.id,
+                });
+              }
+            });
+          }
+        }
+      });
+    }
   });
 
   // Check for duplicate block identifiers

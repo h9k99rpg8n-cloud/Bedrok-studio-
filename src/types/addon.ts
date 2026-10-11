@@ -47,6 +47,64 @@ export interface BlockGroup {
   createdAt: number;
 }
 
+// Block Behavior Rules (v0.1.4)
+export type PreferredToolType = 'any' | 'pickaxe' | 'axe' | 'shovel' | 'hoe';
+export type ToolTier = 'any' | 'wood' | 'stone' | 'iron' | 'diamond' | 'netherite';
+export type LootDropType = 'self' | 'nothing' | 'custom_item';
+
+export interface BlockBehaviorRules {
+  preferredTool: PreferredToolType;
+  minToolTier?: ToolTier;
+  lootDrop: LootDropType;
+  customDropItem?: string;
+  customDropCount?: number;
+  xpDropAmount?: number;
+}
+
+// Official Minecraft Bedrock Placement Components (v0.1.4)
+export type PlacementDirectionState =
+  | 'minecraft:cardinal_direction'
+  | 'minecraft:facing_direction'
+  | 'minecraft:corner_and_cardinal_direction';
+
+export interface PlacementDirectionConfig {
+  enabledStates: PlacementDirectionState[];
+  yRotationOffset: 0 | 90 | 180 | 270;
+}
+
+export type PlacementPositionState = 'minecraft:block_face' | 'minecraft:vertical_half';
+
+export interface PlacementPositionConfig {
+  enabledStates: PlacementPositionState[];
+}
+
+export interface PlacementFilterCondition {
+  id: string;
+  allowedFaces: BlockFaceKey[]; // 'up' | 'down' | 'north' | 'south' | 'east' | 'west'
+  blockFilter: string[]; // e.g. ['minecraft:dirt', 'minecraft:grass_block']
+}
+
+export interface PlacementFilterConfig {
+  conditions: PlacementFilterCondition[];
+}
+
+export type BlockComponentId =
+  | 'minecraft:placement_direction'
+  | 'minecraft:placement_position'
+  | 'minecraft:placement_filter';
+
+export type ComponentConfigMap = {
+  'minecraft:placement_direction': PlacementDirectionConfig;
+  'minecraft:placement_position': PlacementPositionConfig;
+  'minecraft:placement_filter': PlacementFilterConfig;
+};
+
+export interface BlockComponentItem<T extends BlockComponentId = BlockComponentId> {
+  id: T;
+  enabled: boolean;
+  config: ComponentConfigMap[T];
+}
+
 export interface CustomBlock {
   id: string;
   identifier: string;
@@ -59,12 +117,19 @@ export interface CustomBlock {
   textureDataUrl?: string; // legacy backwards compatibility
   emitsLight: boolean;
   lightLevel: number; // 0 to 15
+  lightDampening?: number; // 0 to 15 (v0.1.4)
+  friction?: number; // 0.1 to 1.0, default 0.4 (v0.1.4)
+  flammable?: boolean; // v0.1.4
+  burnOdds?: number; // v0.1.4 flame odds (burn_odds)
+  flameOdds?: number; // v0.1.4 catch odds (flame_odds)
   consumesRedstone: boolean;
   redstoneConfig?: RedstoneConfig;
   destroyTime: number; // mining hardness
   explosionResistance: number;
   destructionParticles?: DestructionParticlesConfig;
   stepParticles?: StepParticlesConfig;
+  behaviorRules?: BlockBehaviorRules; // v0.1.4 rules
+  componentsList?: BlockComponentItem[]; // v0.1.4 official placement components
   createdAt: number;
   updatedAt?: number;
 }

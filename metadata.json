@@ -1,6 +1,6 @@
 {
   "name": "Bedrock Studio - Creador de Add-ons",
-  "description": "Editor profesional de bloques personalizados para Minecraft Bedrock Edition con persistencia total en IndexedDB, gestión multilingüe y atlas táctil.",
+  "description": "Editor profesional de bloques personalizados para Minecraft Bedrock Edition con sistema oficial de componentes y traits, propiedades avanzadas y atlas táctil.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
