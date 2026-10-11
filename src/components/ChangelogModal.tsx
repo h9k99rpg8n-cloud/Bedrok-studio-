@@ -6,9 +6,40 @@ interface ChangelogModalProps {
 }
 
 export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose }) => {
-  const [selectedVersion, setSelectedVersion] = useState<'v0.1.4.1' | 'v0.1.4' | 'v0.1.3' | 'v0.1.2'>('v0.1.4.1');
+  const [selectedVersion, setSelectedVersion] = useState<'v0.1.5' | 'v0.1.4.1' | 'v0.1.4' | 'v0.1.3'>('v0.1.5');
 
   if (!isOpen) return null;
+
+  const features015 = [
+    {
+      title: 'Sistema de Cajas de Colisión (minecraft:collision_box)',
+      version: 'v0.1.5',
+      badge: 'Geometría 3D',
+      desc: 'Configuración completa de colisión física: plantillas predeterminadas (completa 16×16×16, losa 16×8×16, alfombra 16×1×16, sin colisión) y edición numérica personalizada por coordenadas de origen y tamaño.',
+      icon: 'bx bxs-shield',
+    },
+    {
+      title: 'Cajas de Selección e Interacción (minecraft:selection_box)',
+      version: 'v0.1.5',
+      badge: 'Interacción',
+      desc: 'Define el área exacta donde el cursor o la mirada del jugador detecta el bloque para seleccionarlo, minarlo o interactuar. Soporta plantillas oficiales y generación automática de la caja envolvente compuesta.',
+      icon: 'bx bx-target-lock',
+    },
+    {
+      title: 'Soporte para Múltiples Cajas por Bloque',
+      version: 'v0.1.5',
+      badge: 'Multicaja',
+      desc: 'Añade, duplica, renombra y ajusta múltiples cajas de colisión para crear formas complejas como escaleras, postes, decoraciones o muebles, plenamente compatible con Minecraft Bedrock.',
+      icon: 'bx bx-layer',
+    },
+    {
+      title: 'Visor 3D Orbital con Texturas y Capas',
+      version: 'v0.1.5',
+      badge: 'Visualizador',
+      desc: 'Lienzo 3D táctil con rotación orbital en 360°, zoom, accesos directos de ángulo (isométrico, frontal, superior, lateral) y alternador de capas de colisión (verde esmeralda) y selección (azul cian).',
+      icon: 'bx bx-cube',
+    },
+  ];
 
   const features0141 = [
     {
@@ -107,13 +138,13 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
   ];
 
   const currentList =
-    selectedVersion === 'v0.1.4.1'
+    selectedVersion === 'v0.1.5'
+      ? features015
+      : selectedVersion === 'v0.1.4.1'
       ? features0141
       : selectedVersion === 'v0.1.4'
       ? features014
-      : selectedVersion === 'v0.1.3'
-      ? features013
-      : features012;
+      : features013;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
@@ -126,7 +157,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
               <h2 className="text-sm font-black text-slate-100">Novedades de Bedrock Studio</h2>
             </div>
             <span className="text-[10px] font-mono text-emerald-400 block mt-0.5">
-              Versión 0.1.4.1 — Corrección de Exportación, Pantalla de Carga y Editor Reorganizado
+              Versión 0.1.5 — Cajas de Colisión, Selección, Múltiples Cajas y Visor 3D
             </span>
           </div>
           <button
@@ -142,14 +173,26 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
         <div className="grid grid-cols-4 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 my-3">
           <button
             type="button"
-            onClick={() => setSelectedVersion('v0.1.4.1')}
+            onClick={() => setSelectedVersion('v0.1.5')}
             className={`min-h-[38px] text-[11px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1 ${
-              selectedVersion === 'v0.1.4.1'
+              selectedVersion === 'v0.1.5'
                 ? 'bg-emerald-500 text-slate-950 shadow-sm font-extrabold'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
             <i className="bx bx-check-circle" />
+            <span>v0.1.5</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedVersion('v0.1.4.1')}
+            className={`min-h-[38px] text-[11px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1 ${
+              selectedVersion === 'v0.1.4.1'
+                ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
             <span>v0.1.4.1</span>
           </button>
 
@@ -175,18 +218,6 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
             }`}
           >
             <span>v0.1.3</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSelectedVersion('v0.1.2')}
-            className={`min-h-[38px] text-[11px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1 ${
-              selectedVersion === 'v0.1.2'
-                ? 'bg-emerald-500 text-slate-950 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <span>v0.1.2</span>
           </button>
         </div>
 
@@ -218,7 +249,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
         {/* Footer */}
         <div className="pt-3 border-t border-slate-800 mt-2 flex justify-between items-center">
           <span className="text-[10px] text-slate-500 font-mono">
-            Bedrock Studio · v0.1.4.1
+            Bedrock Studio · v0.1.5
           </span>
           <button
             type="button"

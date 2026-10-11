@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
+  BlockBoxItem,
+  BlockCollisionConfig,
   BlockComponentItem,
   BlockFaceKey,
   BlockGroup,
+  BlockSelectionConfig,
   BlockTranslation,
+  BoxPresetTemplate,
   CustomBlock,
   CustomTexture,
   FaceTextures,
@@ -15,6 +19,8 @@ import {
 } from '../types/addon';
 import { CubeAtlasEditor } from './CubeAtlasEditor';
 import { BlockComponentsManager } from './BlockComponentsManager';
+import { Box3DVisualizer } from './Box3DVisualizer';
+import { BoxGeometryEditor } from './BoxGeometryEditor';
 import { isValidBedrockIdentifier } from '../utils/diagnostics';
 
 interface FullBlockEditorModalProps {
@@ -30,8 +36,8 @@ interface FullBlockEditorModalProps {
   onOpenTutorial: () => void;
 }
 
-// v0.1.4.1: Reorganizado en cuatro secciones claras: Identidad, Atlas Core, Propiedades, Comportamiento
-type EditorTab = 'identity' | 'atlas' | 'properties' | 'behavior';
+// v0.1.5: Secciones del editor de bloques
+type EditorTab = 'identity' | 'atlas' | 'properties' | 'boxes' | 'behavior';
 
 export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
   isOpen,
@@ -45,7 +51,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
   onOpenTextureLibraryForFace,
   onOpenTutorial,
 }) => {
-  // Navigation Tabs: Identidad, Atlas Core, Propiedades, Comportamiento
+  // Navigation Tabs: Identidad, Atlas Core, Propiedades, Cajas (v0.1.5), Comportamiento
   const [activeTab, setActiveTab] = useState<EditorTab>('identity');
 
   // =========================================================================
@@ -86,7 +92,44 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
   const [burnOdds, setBurnOdds] = useState<number>(20);
 
   // =========================================================================
-  // SECCIÓN 4: COMPORTAMIENTO
+  // SECCIÓN D: CAJA DE COLISIÓN (v0.1.5)
+  // =========================================================================
+  const [collisionConfig, setCollisionConfig] = useState<BlockCollisionConfig>({
+    template: 'default',
+    enabled: true,
+    boxes: [
+      {
+        id: 'col_1',
+        name: 'Caja Completa',
+        origin: [-8, 0, -8],
+        size: [16, 16, 16],
+      },
+    ],
+  });
+  const [selectedCollisionBoxId, setSelectedCollisionBoxId] = useState<string>('col_1');
+
+  // =========================================================================
+  // SECCIÓN E: CAJA DE SELECCIÓN (v0.1.5)
+  // =========================================================================
+  const [selectionConfig, setSelectionConfig] = useState<BlockSelectionConfig>({
+    template: 'default',
+    enabled: true,
+    boxes: [
+      {
+        id: 'sel_1',
+        name: 'Caja Completa',
+        origin: [-8, 0, -8],
+        size: [16, 16, 16],
+      },
+    ],
+  });
+  const [selectedSelectionBoxId, setSelectedSelectionBoxId] = useState<string>('sel_1');
+
+  // Subpestaña activa en la sección de Cajas (Colisión vs Selección)
+  const [boxSubTab, setBoxSubTab] = useState<'collision' | 'selection'>('collision');
+
+  // =========================================================================
+  // SECCIÓN G: COMPORTAMIENTO
   // =========================================================================
   // Control modal de incorporar comportamiento
   const [isAddBehaviorModalOpen, setIsAddBehaviorModalOpen] = useState<boolean>(false);
@@ -235,6 +278,43 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         setComponentsList(
           block.componentsList ? JSON.parse(JSON.stringify(block.componentsList)) : []
         );
+
+        // Cajas de Colisión y Selección (v0.1.5)
+        if (block.collisionConfig) {
+          setCollisionConfig(JSON.parse(JSON.stringify(block.collisionConfig)));
+          setSelectedCollisionBoxId(block.collisionConfig.boxes[0]?.id || 'col_1');
+        } else {
+          const defColBox: BlockBoxItem = {
+            id: `col_${Date.now()}`,
+            name: 'Caja Completa',
+            origin: [-8, 0, -8],
+            size: [16, 16, 16],
+          };
+          setCollisionConfig({
+            template: 'default',
+            enabled: true,
+            boxes: [defColBox],
+          });
+          setSelectedCollisionBoxId(defColBox.id);
+        }
+
+        if (block.selectionConfig) {
+          setSelectionConfig(JSON.parse(JSON.stringify(block.selectionConfig)));
+          setSelectedSelectionBoxId(block.selectionConfig.boxes[0]?.id || 'sel_1');
+        } else {
+          const defSelBox: BlockBoxItem = {
+            id: `sel_${Date.now()}`,
+            name: 'Caja Completa',
+            origin: [-8, 0, -8],
+            size: [16, 16, 16],
+          };
+          setSelectionConfig({
+            template: 'default',
+            enabled: true,
+            boxes: [defSelBox],
+          });
+          setSelectedSelectionBoxId(defSelBox.id);
+        }
       } else {
         const randSuf = Math.floor(Math.random() * 899 + 100);
         const defaultName = `Bloque Personalizado ${randSuf}`;
@@ -296,6 +376,33 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         setStepParticleIntensity(5);
 
         setComponentsList([]);
+
+        // Defaults para nuevo bloque (v0.1.5)
+        const newColBox: BlockBoxItem = {
+          id: `col_${Date.now()}`,
+          name: 'Caja Completa',
+          origin: [-8, 0, -8],
+          size: [16, 16, 16],
+        };
+        setCollisionConfig({
+          template: 'default',
+          enabled: true,
+          boxes: [newColBox],
+        });
+        setSelectedCollisionBoxId(newColBox.id);
+
+        const newSelBox: BlockBoxItem = {
+          id: `sel_${Date.now()}`,
+          name: 'Caja Completa',
+          origin: [-8, 0, -8],
+          size: [16, 16, 16],
+        };
+        setSelectionConfig({
+          template: 'default',
+          enabled: true,
+          boxes: [newSelBox],
+        });
+        setSelectedSelectionBoxId(newSelBox.id);
       }
       setValidationError('');
     }
@@ -447,6 +554,10 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
       componentsList:
         enabledBehaviors.placement && componentsList.length > 0 ? componentsList : undefined,
 
+      // Cajas de Colisión y Selección (v0.1.5)
+      collisionConfig,
+      selectionConfig,
+
       createdAt: block?.createdAt || Date.now(),
       updatedAt: Date.now(),
     };
@@ -528,9 +639,9 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         )}
 
         {/* ================================================================= */}
-        {/* CUATRO SECCIONES ORGANIZADAS: IDENTIDAD, ATLAS CORE, PROPIEDADES, COMPORTAMIENTO */}
+        {/* CINCO SECCIONES ORGANIZADAS (v0.1.5): IDENTIDAD, ATLAS, PROPIEDADES, CAJAS, COMPORTAMIENTO */}
         {/* ================================================================= */}
-        <div className="grid grid-cols-4 gap-1 bg-slate-950 p-1 rounded-2xl border border-slate-800 my-3 shrink-0">
+        <div className="grid grid-cols-5 gap-1 bg-slate-950 p-1 rounded-2xl border border-slate-800 my-3 shrink-0">
           {/* SECCIÓN 1: IDENTIDAD */}
           <button
             type="button"
@@ -558,7 +669,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
             title="Atlas Core: Mapeo y Texturas 3D"
           >
             <i className="bx bxs-cube-alt text-base" />
-            <span className="truncate">Atlas Core</span>
+            <span className="truncate">Atlas</span>
           </button>
 
           {/* SECCIÓN 3: PROPIEDADES */}
@@ -573,10 +684,36 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
             title="Propiedades: Dureza, Explosión, Luz, Fricción e Inflamabilidad"
           >
             <i className="bx bx-slider-alt text-base" />
-            <span className="truncate">Propiedades</span>
+            <span className="truncate">Propiedad</span>
           </button>
 
-          {/* SECCIÓN 4: COMPORTAMIENTO */}
+          {/* SECCIÓN 4: CAJAS (v0.1.5) */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('boxes')}
+            className={`min-h-[44px] px-1 rounded-xl text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 transition-all relative ${
+              activeTab === 'boxes'
+                ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+            title="Cajas 3D: Cajas de Colisión y Selección personalizadas"
+          >
+            <i className="bx bx-cube text-base" />
+            <span className="truncate">Cajas</span>
+            {(collisionConfig.boxes.length > 1 || selectionConfig.boxes.length > 1) && (
+              <span
+                className={`ml-0.5 text-[9px] px-1 rounded-full font-mono font-bold ${
+                  activeTab === 'boxes'
+                    ? 'bg-slate-950 text-emerald-400'
+                    : 'bg-emerald-500/20 text-emerald-300'
+                }`}
+              >
+                {Math.max(collisionConfig.boxes.length, selectionConfig.boxes.length)}
+              </span>
+            )}
+          </button>
+
+          {/* SECCIÓN 5: COMPORTAMIENTO */}
           <button
             type="button"
             onClick={() => setActiveTab('behavior')}
@@ -1102,7 +1239,134 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         )}
 
         {/* ================================================================= */}
-        {/* TAB 4: COMPORTAMIENTO (Sección Nueva, Clara y Organizada)          */}
+        {/* SECCIÓN 4 (v0.1.5): CAJAS DE COLISIÓN Y SELECCIÓN 3D               */}
+        {/* ================================================================= */}
+        {activeTab === 'boxes' && (
+          <div className="flex flex-col gap-4 animate-in fade-in duration-150">
+            {/* Visualizador 3D Interactivo de Bloque y Cajas */}
+            <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm shrink-0">
+                    <i className="bx bx-cube" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-100">Visor 3D de Geometría</h4>
+                    <p className="text-[10px] text-slate-400">Arrastra para orbitar en 3D. Toca las cajas para editarlas.</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-slate-300">
+                    16×16×16 px
+                  </span>
+                </div>
+              </div>
+
+              {/* Contenedor del Visor 3D */}
+              <Box3DVisualizer
+                collisionBoxes={collisionConfig.boxes}
+                selectionBoxes={selectionConfig.boxes}
+                collisionEnabled={collisionConfig.enabled && collisionConfig.template !== 'none'}
+                selectionEnabled={selectionConfig.enabled && selectionConfig.template !== 'none'}
+                selectedBoxId={boxSubTab === 'collision' ? selectedCollisionBoxId : selectedSelectionBoxId}
+                selectedBoxType={boxSubTab}
+                onSelectBox={(id, type) => {
+                  setBoxSubTab(type);
+                  if (type === 'collision') {
+                    setSelectedCollisionBoxId(id);
+                  } else {
+                    setSelectedSelectionBoxId(id);
+                  }
+                }}
+                faceTextures={faceTextures}
+                className="w-full"
+              />
+            </div>
+
+            {/* Selector de Modo: Caja de Colisión vs Caja de Selección */}
+            <div className="grid grid-cols-2 gap-2 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
+              <button
+                type="button"
+                onClick={() => setBoxSubTab('collision')}
+                className={`min-h-[46px] p-2.5 rounded-xl flex items-center justify-between transition-all ${
+                  boxSubTab === 'collision'
+                    ? 'bg-emerald-500/20 border border-emerald-500/50 text-emerald-200 shadow-sm'
+                    : 'bg-slate-900/40 border border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <div className="flex items-center gap-2 text-left min-w-0">
+                  <i className="bx bxs-shield text-base text-emerald-400 shrink-0" />
+                  <div className="truncate">
+                    <div className="text-xs font-bold truncate">Colisión</div>
+                    <div className="text-[9px] font-mono text-emerald-400/80 truncate">minecraft:collision_box</div>
+                  </div>
+                </div>
+                <span
+                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                    collisionConfig.enabled && collisionConfig.template !== 'none'
+                      ? 'bg-emerald-500 text-slate-950'
+                      : 'bg-slate-800 text-slate-400'
+                  }`}
+                >
+                  {collisionConfig.enabled && collisionConfig.template !== 'none'
+                    ? `${collisionConfig.boxes.length}`
+                    : 'Off'}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setBoxSubTab('selection')}
+                className={`min-h-[46px] p-2.5 rounded-xl flex items-center justify-between transition-all ${
+                  boxSubTab === 'selection'
+                    ? 'bg-cyan-500/20 border border-cyan-500/50 text-cyan-200 shadow-sm'
+                    : 'bg-slate-900/40 border border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <div className="flex items-center gap-2 text-left min-w-0">
+                  <i className="bx bx-target-lock text-base text-cyan-400 shrink-0" />
+                  <div className="truncate">
+                    <div className="text-xs font-bold truncate">Selección</div>
+                    <div className="text-[9px] font-mono text-cyan-400/80 truncate">minecraft:selection_box</div>
+                  </div>
+                </div>
+                <span
+                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                    selectionConfig.enabled && selectionConfig.template !== 'none'
+                      ? 'bg-cyan-500 text-slate-950'
+                      : 'bg-slate-800 text-slate-400'
+                  }`}
+                >
+                  {selectionConfig.enabled && selectionConfig.template !== 'none'
+                    ? `${selectionConfig.boxes.length}`
+                    : 'Off'}
+                </span>
+              </button>
+            </div>
+
+            {/* Editor de Geometría de Caja correspondiente */}
+            {boxSubTab === 'collision' ? (
+              <BoxGeometryEditor
+                type="collision"
+                config={collisionConfig}
+                onChangeConfig={(c) => setCollisionConfig(c as BlockCollisionConfig)}
+                selectedBoxId={selectedCollisionBoxId}
+                onSelectBoxId={setSelectedCollisionBoxId}
+              />
+            ) : (
+              <BoxGeometryEditor
+                type="selection"
+                config={selectionConfig}
+                onChangeConfig={(c) => setSelectionConfig(c as BlockSelectionConfig)}
+                selectedBoxId={selectedSelectionBoxId}
+                onSelectBoxId={setSelectedSelectionBoxId}
+              />
+            )}
+          </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* TAB 5: COMPORTAMIENTO (Sección Nueva, Clara y Organizada)          */}
         {/* ================================================================= */}
         {activeTab === 'behavior' && (
           <div className="flex flex-col gap-3.5 animate-in fade-in duration-150">

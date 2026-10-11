@@ -105,7 +105,7 @@ export default function App() {
       // Stage 5: Finalized
       setLoadingProgress(100);
       setLoadingMessage('¡Inicialización completada!');
-      setLoadingDetail('Bienvenido a Bedrock Studio v0.1.4.1');
+      setLoadingDetail('Bienvenido a Bedrock Studio v0.1.5');
 
       await new Promise((r) => setTimeout(r, 150));
       setIsLoading(false);
@@ -432,13 +432,13 @@ export default function App() {
             <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-[#090d16] shadow-sm shadow-emerald-400" />
           </div>
           <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-slate-950 border border-emerald-500/30 text-[10px] font-mono font-bold text-emerald-400">
-            v0.1.4.1
+            v0.1.5
           </span>
         </div>
 
         {/* Title & Description */}
         <h1 className="text-xl font-black text-slate-100 tracking-wider mb-1">
-          Bedrock Studio <span className="text-emerald-400 font-extrabold">v0.1.4.1</span>
+          Bedrock Studio <span className="text-emerald-400 font-extrabold">v0.1.5</span>
         </h1>
         <p className="text-xs text-slate-400 font-mono mb-7 max-w-xs">
           Editor profesional de bloques para Minecraft Bedrock

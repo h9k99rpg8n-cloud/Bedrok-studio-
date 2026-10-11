@@ -324,6 +324,73 @@ export function runProjectDiagnostics(project: AddonProject): DiagnosticIssue[] 
         }
       });
     }
+
+    // 7. Cajas de Colisión y Selección (v0.1.5)
+    if (block.collisionConfig?.enabled && block.collisionConfig.boxes) {
+      block.collisionConfig.boxes.forEach((box, idx) => {
+        const [ox, oy, oz] = box.origin;
+        const [w, h, d] = box.size;
+
+        if (w <= 0 || h <= 0 || d <= 0) {
+          issues.push({
+            id: `block_col_box_zero_size_${block.id}_${idx}`,
+            severity: 'error',
+            title: `Caja de colisión con dimensiones inválidas en "${block.displayName}"`,
+            description: `La caja "${box.name || idx + 1}" tiene dimensiones menores o iguales a cero (${w}×${h}×${d}).`,
+            affectedTarget: 'minecraft:collision_box',
+            reason: 'Minecraft Bedrock requiere que el tamaño sea estrictamente positivo.',
+            suggestion: 'Ajusta el ancho, alto y profundidad a valores mayores que cero.',
+            blockId: block.id,
+          });
+        }
+
+        if (ox < -8 || ox > 8 || oy < 0 || oy > 24 || oz < -8 || oz > 8 || ox + w > 8 || oy + h > 24 || oz + d > 8) {
+          issues.push({
+            id: `block_col_box_bounds_${block.id}_${idx}`,
+            severity: 'warning',
+            title: `Caja de colisión fuera de límites estándar en "${block.displayName}"`,
+            description: `La caja "${box.name || idx + 1}" sobrepasa el límite del bloque [Origen: ${ox},${oy},${oz} - Fin: ${ox + w},${oy + h},${oz + d}].`,
+            affectedTarget: 'minecraft:collision_box',
+            reason: 'Bedrock admite hasta Y=24 para colisiones de cercas/muros y X,Z de -8 a 8.',
+            suggestion: 'Asegúrate de que la caja quede contenida dentro del rango permitido.',
+            blockId: block.id,
+          });
+        }
+      });
+    }
+
+    if (block.selectionConfig?.enabled && block.selectionConfig.boxes) {
+      if (block.selectionConfig.boxes.length > 1) {
+        issues.push({
+          id: `block_sel_box_multi_${block.id}`,
+          severity: 'info',
+          title: `Caja de selección múltiple en "${block.displayName}"`,
+          description: `Se han configurado ${block.selectionConfig.boxes.length} cajas de selección.`,
+          affectedTarget: 'minecraft:selection_box',
+          reason: 'Minecraft Bedrock estándar solo admite una única caja de selección continua en el JSON.',
+          suggestion: 'Bedrock Studio calculará automáticamente la caja envolvente que contiene todas las cajas para exportarla válidamente.',
+          blockId: block.id,
+        });
+      }
+
+      block.selectionConfig.boxes.forEach((box, idx) => {
+        const [ox, oy, oz] = box.origin;
+        const [w, h, d] = box.size;
+
+        if (w <= 0 || h <= 0 || d <= 0) {
+          issues.push({
+            id: `block_sel_box_zero_size_${block.id}_${idx}`,
+            severity: 'error',
+            title: `Caja de selección con dimensiones inválidas en "${block.displayName}"`,
+            description: `La caja "${box.name || idx + 1}" tiene dimensiones menores o iguales a cero.`,
+            affectedTarget: 'minecraft:selection_box',
+            reason: 'Minecraft Bedrock requiere tamaños positivos para interactuar con el bloque.',
+            suggestion: 'Ajusta las dimensiones de la caja de selección.',
+            blockId: block.id,
+          });
+        }
+      });
+    }
   });
 
   // Check for duplicate block identifiers

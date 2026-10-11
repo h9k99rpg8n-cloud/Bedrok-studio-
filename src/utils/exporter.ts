@@ -284,6 +284,105 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
       components['minecraft:custom_components'] = ['studio:step_particles'];
     }
 
+    // Collision Box Component (minecraft:collision_box) - v0.1.5
+    if (block.collisionConfig) {
+      if (!block.collisionConfig.enabled || block.collisionConfig.template === 'none') {
+        components['minecraft:collision_box'] = false;
+      } else if (block.collisionConfig.template === 'default') {
+        components['minecraft:collision_box'] = true;
+      } else {
+        const validBoxes = block.collisionConfig.boxes.filter(
+          (b) =>
+            Number.isFinite(b.origin[0]) &&
+            Number.isFinite(b.origin[1]) &&
+            Number.isFinite(b.origin[2]) &&
+            Number.isFinite(b.size[0]) &&
+            Number.isFinite(b.size[1]) &&
+            Number.isFinite(b.size[2]) &&
+            b.size[0] > 0 &&
+            b.size[1] > 0 &&
+            b.size[2] > 0
+        );
+
+        if (validBoxes.length === 0) {
+          components['minecraft:collision_box'] = true;
+        } else if (validBoxes.length === 1) {
+          components['minecraft:collision_box'] = {
+            origin: [validBoxes[0].origin[0], validBoxes[0].origin[1], validBoxes[0].origin[2]],
+            size: [validBoxes[0].size[0], validBoxes[0].size[1], validBoxes[0].size[2]],
+          };
+        } else {
+          // Multiple collision boxes supported in Minecraft Bedrock format_version 1.21.50
+          components['minecraft:collision_box'] = validBoxes.map((b) => ({
+            origin: [b.origin[0], b.origin[1], b.origin[2]],
+            size: [b.size[0], b.size[1], b.size[2]],
+          }));
+        }
+      }
+    }
+
+    // Selection Box Component (minecraft:selection_box) - v0.1.5
+    if (block.selectionConfig) {
+      if (!block.selectionConfig.enabled || block.selectionConfig.template === 'none') {
+        components['minecraft:selection_box'] = false;
+      } else if (block.selectionConfig.template === 'default') {
+        components['minecraft:selection_box'] = true;
+      } else {
+        const validBoxes = block.selectionConfig.boxes.filter(
+          (b) =>
+            Number.isFinite(b.origin[0]) &&
+            Number.isFinite(b.origin[1]) &&
+            Number.isFinite(b.origin[2]) &&
+            Number.isFinite(b.size[0]) &&
+            Number.isFinite(b.size[1]) &&
+            Number.isFinite(b.size[2]) &&
+            b.size[0] > 0 &&
+            b.size[1] > 0 &&
+            b.size[2] > 0
+        );
+
+        if (validBoxes.length === 0) {
+          components['minecraft:selection_box'] = true;
+        } else if (validBoxes.length === 1) {
+          components['minecraft:selection_box'] = {
+            origin: [validBoxes[0].origin[0], validBoxes[0].origin[1], validBoxes[0].origin[2]],
+            size: [validBoxes[0].size[0], validBoxes[0].size[1], validBoxes[0].size[2]],
+          };
+        } else {
+          // Bedrock standard only allows a single selection box object.
+          // Compute composite bounding box enclosing all defined selection boxes:
+          let minX = Infinity;
+          let minY = Infinity;
+          let minZ = Infinity;
+          let maxX = -Infinity;
+          let maxY = -Infinity;
+          let maxZ = -Infinity;
+
+          for (const b of validBoxes) {
+            minX = Math.min(minX, b.origin[0]);
+            minY = Math.min(minY, b.origin[1]);
+            minZ = Math.min(minZ, b.origin[2]);
+            maxX = Math.max(maxX, b.origin[0] + b.size[0]);
+            maxY = Math.max(maxY, b.origin[1] + b.size[1]);
+            maxZ = Math.max(maxZ, b.origin[2] + b.size[2]);
+          }
+
+          components['minecraft:selection_box'] = {
+            origin: [
+              Math.max(-8, Math.min(8, minX)),
+              Math.max(0, Math.min(16, minY)),
+              Math.max(-8, Math.min(8, minZ)),
+            ],
+            size: [
+              Math.max(0.1, Math.min(16, maxX - minX)),
+              Math.max(0.1, Math.min(16, maxY - minY)),
+              Math.max(0.1, Math.min(16, maxZ - minZ)),
+            ],
+          };
+        }
+      }
+    }
+
     // Material instances based on 1, 3 or 6 faces
     if (mode === 'one') {
       components['minecraft:material_instances'] = {

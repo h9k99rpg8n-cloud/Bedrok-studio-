@@ -105,6 +105,40 @@ export interface BlockComponentItem<T extends BlockComponentId = BlockComponentI
   config: ComponentConfigMap[T];
 }
 
+// ============================================================================
+// Block Box Geometry Types (v0.1.5: Collision and Selection Boxes)
+// ============================================================================
+
+export type BoxPresetTemplate =
+  | 'default' // Standard full block behavior
+  | 'none' // Passthrough / No collision or not selectable
+  | 'full' // Full 16x16x16 cube
+  | 'half' // Half block / Slab (16x8x16)
+  | 'carpet' // Carpet / Low layer (16x1x16)
+  | 'custom'; // Custom numerical coordinates
+
+export interface BlockBoxItem {
+  id: string;
+  name?: string;
+  // Origin: Minimum corner [x, y, z] in Bedrock 16-unit coordinates
+  // Standard range: x: [-8, 8], y: [0, 24], z: [-8, 8]
+  origin: [number, number, number];
+  // Size: Dimensions [w, h, d] in Bedrock 16-unit coordinates
+  size: [number, number, number];
+}
+
+export interface BlockCollisionConfig {
+  template: BoxPresetTemplate;
+  enabled: boolean; // false = no collision
+  boxes: BlockBoxItem[];
+}
+
+export interface BlockSelectionConfig {
+  template: BoxPresetTemplate;
+  enabled: boolean; // false = not selectable
+  boxes: BlockBoxItem[];
+}
+
 export interface CustomBlock {
   id: string;
   identifier: string;
@@ -130,6 +164,8 @@ export interface CustomBlock {
   stepParticles?: StepParticlesConfig;
   behaviorRules?: BlockBehaviorRules; // v0.1.4 rules
   componentsList?: BlockComponentItem[]; // v0.1.4 official placement components
+  collisionConfig?: BlockCollisionConfig; // v0.1.5 collision boxes
+  selectionConfig?: BlockSelectionConfig; // v0.1.5 selection boxes
   createdAt: number;
   updatedAt?: number;
 }
