@@ -338,90 +338,120 @@ export const Box3DVisualizer: React.FC<Box3DVisualizerProps> = ({
             >
               {/* Front (North) */}
               <div
-                className="absolute inset-0 border border-slate-700/60 bg-slate-800/20 backdrop-blur-[1px] flex items-center justify-center pixelated"
+                className="absolute inset-0 border border-slate-700/60 bg-slate-800/30 backdrop-blur-[1px] flex items-center justify-center pixelated"
                 style={{ transform: `translateZ(${fullBlockSize / 2}px)` }}
               >
-                {faceTextures?.north && (
+                {faceTextures?.north ? (
                   <img
                     src={faceTextures.north}
                     alt=""
-                    className="w-full h-full object-cover opacity-35 pixelated"
+                    className="w-full h-full object-cover opacity-80 pixelated"
                   />
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-slate-500 text-center select-none">
+                    <i className="bx bx-image-alt text-2xl text-slate-600 mb-0.5" />
+                    <span className="text-[8px] font-mono text-slate-400">Sin textura</span>
+                  </div>
                 )}
               </div>
               {/* Back (South) */}
               <div
-                className="absolute inset-0 border border-slate-700/60 bg-slate-800/20 flex items-center justify-center pixelated"
+                className="absolute inset-0 border border-slate-700/60 bg-slate-800/30 flex items-center justify-center pixelated"
                 style={{
                   transform: `rotateY(180deg) translateZ(${fullBlockSize / 2}px)`,
                 }}
               >
-                {faceTextures?.south && (
+                {faceTextures?.south ? (
                   <img
                     src={faceTextures.south}
                     alt=""
-                    className="w-full h-full object-cover opacity-35 pixelated"
+                    className="w-full h-full object-cover opacity-80 pixelated"
                   />
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-slate-500 text-center select-none">
+                    <i className="bx bx-image-alt text-2xl text-slate-600 mb-0.5" />
+                    <span className="text-[8px] font-mono text-slate-400">Sin textura</span>
+                  </div>
                 )}
               </div>
               {/* Right (East) */}
               <div
-                className="absolute inset-0 border border-slate-700/60 bg-slate-800/20 flex items-center justify-center pixelated"
+                className="absolute inset-0 border border-slate-700/60 bg-slate-800/30 flex items-center justify-center pixelated"
                 style={{
                   transform: `rotateY(90deg) translateZ(${fullBlockSize / 2}px)`,
                 }}
               >
-                {faceTextures?.east && (
+                {faceTextures?.east ? (
                   <img
                     src={faceTextures.east}
                     alt=""
-                    className="w-full h-full object-cover opacity-35 pixelated"
+                    className="w-full h-full object-cover opacity-80 pixelated"
                   />
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-slate-500 text-center select-none">
+                    <i className="bx bx-image-alt text-2xl text-slate-600 mb-0.5" />
+                    <span className="text-[8px] font-mono text-slate-400">Sin textura</span>
+                  </div>
                 )}
               </div>
               {/* Left (West) */}
               <div
-                className="absolute inset-0 border border-slate-700/60 bg-slate-800/20 flex items-center justify-center pixelated"
+                className="absolute inset-0 border border-slate-700/60 bg-slate-800/30 flex items-center justify-center pixelated"
                 style={{
                   transform: `rotateY(-90deg) translateZ(${fullBlockSize / 2}px)`,
                 }}
               >
-                {faceTextures?.west && (
+                {faceTextures?.west ? (
                   <img
                     src={faceTextures.west}
                     alt=""
-                    className="w-full h-full object-cover opacity-35 pixelated"
+                    className="w-full h-full object-cover opacity-80 pixelated"
                   />
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-slate-500 text-center select-none">
+                    <i className="bx bx-image-alt text-2xl text-slate-600 mb-0.5" />
+                    <span className="text-[8px] font-mono text-slate-400">Sin textura</span>
+                  </div>
                 )}
               </div>
               {/* Top (Up) */}
               <div
-                className="absolute inset-0 border border-slate-700/60 bg-slate-800/30 flex items-center justify-center pixelated"
+                className="absolute inset-0 border border-slate-700/60 bg-slate-800/40 flex items-center justify-center pixelated"
                 style={{
                   transform: `rotateX(90deg) translateZ(${fullBlockSize / 2}px)`,
                 }}
               >
-                {faceTextures?.up && (
+                {faceTextures?.up ? (
                   <img
                     src={faceTextures.up}
                     alt=""
-                    className="w-full h-full object-cover opacity-40 pixelated"
+                    className="w-full h-full object-cover opacity-85 pixelated"
                   />
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-slate-500 text-center select-none">
+                    <i className="bx bx-image-alt text-2xl text-slate-600 mb-0.5" />
+                    <span className="text-[8px] font-mono text-slate-400">Sin textura</span>
+                  </div>
                 )}
               </div>
               {/* Bottom (Down) */}
               <div
-                className="absolute inset-0 border border-slate-700/60 bg-slate-900/40 flex items-center justify-center pixelated"
+                className="absolute inset-0 border border-slate-700/60 bg-slate-900/50 flex items-center justify-center pixelated"
                 style={{
                   transform: `rotateX(-90deg) translateZ(${fullBlockSize / 2}px)`,
                 }}
               >
-                {faceTextures?.down && (
+                {faceTextures?.down ? (
                   <img
                     src={faceTextures.down}
                     alt=""
-                    className="w-full h-full object-cover opacity-30 pixelated"
+                    className="w-full h-full object-cover opacity-75 pixelated"
                   />
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-slate-500 text-center select-none">
+                    <i className="bx bx-image-alt text-2xl text-slate-600 mb-0.5" />
+                    <span className="text-[8px] font-mono text-slate-400">Sin textura</span>
+                  </div>
                 )}
               </div>
             </div>

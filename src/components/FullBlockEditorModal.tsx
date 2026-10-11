@@ -22,6 +22,15 @@ import { BlockComponentsManager } from './BlockComponentsManager';
 import { Box3DVisualizer } from './Box3DVisualizer';
 import { BoxGeometryEditor } from './BoxGeometryEditor';
 import { isValidBedrockIdentifier } from '../utils/diagnostics';
+import {
+  getNextBlockNameAndIdentifier,
+  getBlockNameSuggestions,
+  generateIdentifierFromName,
+} from '../utils/blockNaming';
+import {
+  checkInappropriateText,
+  censorInappropriateText,
+} from '../utils/textModeration';
 
 interface FullBlockEditorModalProps {
   isOpen: boolean;
@@ -316,27 +325,30 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
           setSelectedSelectionBoxId(defSelBox.id);
         }
       } else {
-        const randSuf = Math.floor(Math.random() * 899 + 100);
-        const defaultName = `Bloque Personalizado ${randSuf}`;
-        setIdentifier(`bloque_${randSuf}`);
+        // v1.6: Sistema de nombres inteligentes y predecibles («Bloque 1», «Bloque 2»...)
+        const nextSequential = getNextBlockNameAndIdentifier(existingBlocks);
+        const defaultName = nextSequential.displayName;
+        const defaultId = nextSequential.identifier;
+
+        setIdentifier(defaultId);
         setDisplayName(defaultName);
         setSelectedGroupId('');
         setGroupSearchQuery('');
         setIsGroupDropdownOpen(false);
         setTranslations([
           { langCode: 'es_ES', name: defaultName },
-          { langCode: 'en_US', name: `Custom Block ${randSuf}` },
+          { langCode: 'en_US', name: `Block ${defaultId.replace('bloque_', '')}` },
         ]);
         setTextureMode('one');
 
-        const initialTex = availableTextures[0]?.dataUrl || '';
+        // v1.6: Al crear un bloque, NO asignar automáticamente una textura de la biblioteca
         setFaceTextures({
-          up: initialTex,
-          down: initialTex,
-          north: initialTex,
-          south: initialTex,
-          east: initialTex,
-          west: initialTex,
+          up: '',
+          down: '',
+          north: '',
+          south: '',
+          east: '',
+          west: '',
         });
 
         setDestroyTime(1.5);
@@ -775,9 +787,22 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
 
               {/* 2. Nombre Visible */}
               <div className="pt-2 border-t border-slate-800/80">
-                <label className="block text-xs font-bold text-slate-200 mb-1">
-                  Nombre Visible en el Juego *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-slate-200">
+                    Nombre Visible en el Juego *
+                  </label>
+                  {checkInappropriateText(displayName).hasInappropriate && (
+                    <button
+                      type="button"
+                      onClick={() => setDisplayName(censorInappropriateText(displayName))}
+                      className="text-[10px] text-amber-400 hover:text-amber-300 flex items-center gap-1 font-mono transition-colors"
+                      title="Censurar palabras inapropiadas con asteriscos"
+                    >
+                      <i className="bx bx-shield-quarter text-xs" />
+                      <span>Censurar (***)</span>
+                    </button>
+                  )}
+                </div>
                 <input
                   type="text"
                   value={displayName}
@@ -785,12 +810,67 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                     setDisplayName(e.target.value);
                     setValidationError('');
                   }}
-                  placeholder="Ej: Mineral de Rubí Brillante"
-                  className="w-full min-h-[46px] px-3.5 bg-slate-900 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-emerald-500"
+                  placeholder="Ej: Lámpara de Redstone, Ladrillo Pulido..."
+                  className={`w-full min-h-[46px] px-3.5 bg-slate-900 border rounded-xl text-sm text-slate-100 focus:outline-none transition-colors ${
+                    checkInappropriateText(displayName).hasInappropriate
+                      ? 'border-amber-500/70 focus:border-amber-400'
+                      : 'border-slate-800 focus:border-emerald-500'
+                  }`}
                 />
+                {checkInappropriateText(displayName).hasInappropriate && (
+                  <span className="text-[10px] text-amber-400 mt-1 flex items-center gap-1">
+                    <i className="bx bx-error text-xs" />
+                    <span>Palabra no recomendada detectada. Puedes corregirla o tocar «Censurar».</span>
+                  </span>
+                )}
                 <span className="text-[11px] text-slate-400 mt-1 block">
                   El título que ve el jugador en el inventario creativo y al sostener el bloque en mano.
                 </span>
+
+                {/* Sugerencias inteligentes de nombres mientras escribe (v1.6) */}
+                <div className="mt-2.5 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                      <i className="bx bx-bulb text-amber-400 text-xs" />
+                      <span>Sugerencias para el nombre:</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const genId = generateIdentifierFromName(displayName);
+                        if (genId) {
+                          setIdentifier(genId);
+                          setValidationError('');
+                        }
+                      }}
+                      className="text-[10px] text-emerald-400 hover:text-emerald-300 font-mono flex items-center gap-1 transition-colors"
+                      title="Generar identificador técnico a partir del nombre actual"
+                    >
+                      <i className="bx bx-sync text-xs" />
+                      <span>Sincronizar ID técnico</span>
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {getBlockNameSuggestions(displayName).map((sug, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setDisplayName(sug);
+                          setValidationError('');
+                          // Actualizar también traducción al español si está disponible
+                          setTranslations((prev) =>
+                            prev.map((t) => (t.langCode === 'es_ES' ? { ...t, name: sug } : t))
+                          );
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-xs text-slate-300 hover:text-emerald-300 transition-colors flex items-center gap-1 active:scale-95"
+                      >
+                        <i className="bx bx-plus text-xs text-emerald-400" />
+                        <span>{sug}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* 3. Grupo al que Pertenece */}

@@ -1,6 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { AddonProject } from '../types/addon';
 import { generateBedrockUUID } from '../utils/uuid';
+import {
+  getManifestDescriptionSuggestions,
+  isValidSemVer,
+  isValidEngineVersion,
+} from '../utils/manifestSuggestions';
+import {
+  checkInappropriateText,
+  censorInappropriateText,
+} from '../utils/textModeration';
 
 interface ManifestModalProps {
   isOpen: boolean;
@@ -65,6 +74,15 @@ export const ManifestModal: React.FC<ManifestModalProps> = ({
     reader.readAsDataURL(file);
   };
 
+  // Smart suggestions based on name
+  const descriptionSuggestions = useMemo(() => {
+    return getManifestDescriptionSuggestions(name);
+  }, [name]);
+
+  // Moderation checks for name and description
+  const nameModeration = useMemo(() => checkInappropriateText(name), [name]);
+  const descModeration = useMemo(() => checkInappropriateText(description), [description]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
@@ -73,6 +91,18 @@ export const ManifestModal: React.FC<ManifestModalProps> = ({
     }
     if (!description.trim()) {
       setErrorMessage('La descripción del complemento es obligatoria.');
+      return;
+    }
+
+    // Validate version format
+    if (!isValidSemVer(version)) {
+      setErrorMessage('La versión debe tener formato x.y.z (ejemplo: 1.0.0).');
+      return;
+    }
+
+    // Validate engine version format
+    if (!isValidEngineVersion(minEngineVersion)) {
+      setErrorMessage('La versión mínima de Minecraft debe tener formato x.y.z (ejemplo: 1.26.20).');
       return;
     }
 
@@ -162,9 +192,22 @@ export const ManifestModal: React.FC<ManifestModalProps> = ({
 
           {/* Nombre del complemento */}
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">
-              Nombre del Complemento *
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-medium text-slate-300">
+                Nombre del Complemento *
+              </label>
+              {nameModeration.hasInappropriate && (
+                <button
+                  type="button"
+                  onClick={() => setName(censorInappropriateText(name))}
+                  className="text-[10px] text-amber-400 hover:text-amber-300 flex items-center gap-1 font-mono transition-colors"
+                  title="Censurar palabras inapropiadas con asteriscos"
+                >
+                  <i className="bx bx-shield-quarter text-xs" />
+                  <span>Censurar (***)</span>
+                </button>
+              )}
+            </div>
             <input
               type="text"
               required
@@ -174,15 +217,38 @@ export const ManifestModal: React.FC<ManifestModalProps> = ({
                 setErrorMessage('');
               }}
               placeholder="Ej: Poppicraft Addon"
-              className="w-full min-h-[46px] px-3.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-emerald-500"
+              className={`w-full min-h-[46px] px-3.5 bg-slate-950 border rounded-xl text-sm text-slate-100 focus:outline-none transition-colors ${
+                nameModeration.hasInappropriate
+                  ? 'border-amber-500/70 focus:border-amber-400'
+                  : 'border-slate-800 focus:border-emerald-500'
+              }`}
             />
+            {nameModeration.hasInappropriate && (
+              <span className="text-[10px] text-amber-400 mt-1 flex items-center gap-1">
+                <i className="bx bx-error text-xs" />
+                <span>Palabra no recomendada detectada. Puedes corregirla o tocar «Censurar».</span>
+              </span>
+            )}
           </div>
 
           {/* Descripción */}
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">
-              Descripción en el Juego *
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-medium text-slate-300">
+                Descripción en el Juego *
+              </label>
+              {descModeration.hasInappropriate && (
+                <button
+                  type="button"
+                  onClick={() => setDescription(censorInappropriateText(description))}
+                  className="text-[10px] text-amber-400 hover:text-amber-300 flex items-center gap-1 font-mono transition-colors"
+                  title="Censurar palabras inapropiadas con asteriscos"
+                >
+                  <i className="bx bx-shield-quarter text-xs" />
+                  <span>Censurar (***)</span>
+                </button>
+              )}
+            </div>
             <textarea
               required
               rows={2}
@@ -192,8 +258,42 @@ export const ManifestModal: React.FC<ManifestModalProps> = ({
                 setErrorMessage('');
               }}
               placeholder="Descripción visible en Ajustes de Mundo de Minecraft"
-              className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-emerald-500 resize-none"
+              className={`w-full px-3.5 py-2.5 bg-slate-950 border rounded-xl text-sm text-slate-100 focus:outline-none resize-none transition-colors ${
+                descModeration.hasInappropriate
+                  ? 'border-amber-500/70 focus:border-amber-400'
+                  : 'border-slate-800 focus:border-emerald-500'
+              }`}
             />
+            {descModeration.hasInappropriate && (
+              <span className="text-[10px] text-amber-400 mt-1 flex items-center gap-1">
+                <i className="bx bx-error text-xs" />
+                <span>Palabra no recomendada detectada en la descripción.</span>
+              </span>
+            )}
+
+            {/* Sugerencias inteligentes de descripción (v1.6) */}
+            <div className="mt-2 flex flex-col gap-1.5">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                <i className="bx bx-bulb text-amber-400 text-xs" />
+                <span>Sugerencias para la descripción:</span>
+              </span>
+              <div className="flex flex-col gap-1">
+                {descriptionSuggestions.map((sug, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => {
+                      setDescription(sug);
+                      setErrorMessage('');
+                    }}
+                    className="text-left text-[11px] p-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-slate-100 transition-colors flex items-center gap-1.5 leading-snug group"
+                  >
+                    <i className="bx bx-plus text-xs text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
+                    <span>{sug}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Versiones */}

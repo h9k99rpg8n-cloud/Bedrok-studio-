@@ -23,12 +23,17 @@ export const CubeAtlasEditor: React.FC<CubeAtlasEditorProps> = ({
   const [selectedFace, setSelectedFace] = useState<BlockFaceKey>('up');
   const [showModeConfirm, setShowModeConfirm] = useState<TextureMode | null>(null);
 
-  // Resolves a texture identifier or dataUrl
-  const getTexturePreview = (val: string): string => {
-    if (!val) return '';
-    if (val.startsWith('data:image')) return val;
+  // Resolves a texture identifier or dataUrl and detects if it is missing
+  const resolveTexture = (val: string): { url: string; isMissing: boolean; name?: string } => {
+    if (!val) return { url: '', isMissing: false };
+    if (val.startsWith('data:image')) return { url: val, isMissing: false };
     const found = availableTextures.find((t) => t.id === val || t.name === val);
-    return found?.dataUrl || '';
+    if (found) return { url: found.dataUrl, isMissing: false, name: found.name };
+    return { url: '', isMissing: true, name: val };
+  };
+
+  const getTexturePreview = (val: string): string => {
+    return resolveTexture(val).url;
   };
 
   const handleModeChangeRequest = (newMode: TextureMode) => {
@@ -167,55 +172,82 @@ export const CubeAtlasEditor: React.FC<CubeAtlasEditorProps> = ({
       {/* --- VISUAL PRESENTATION BY MODE --- */}
 
       {/* MODE 1: UNIFIED SINGLE TEXTURE CUBE */}
-      {mode === 'one' && (
-        <div className="flex flex-col items-center justify-center p-4 bg-slate-900/60 rounded-2xl border border-slate-800/80 gap-3">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-            Cubo Completo (Textura compartida en las 6 caras)
-          </span>
+      {mode === 'one' && (() => {
+        const texInfo = resolveTexture(faceTextures.up);
+        return (
+          <div className="flex flex-col items-center justify-center p-4 bg-slate-900/60 rounded-2xl border border-slate-800/80 gap-3">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              Cubo Completo (Textura compartida en las 6 caras)
+            </span>
 
-          <div
-            onClick={() => onOpenTextureLibraryForFace('up')}
-            className="w-24 h-24 rounded-2xl border-2 border-dashed border-emerald-500/60 bg-slate-950 flex flex-col items-center justify-center overflow-hidden cursor-pointer hover:border-emerald-400 hover:bg-slate-900/80 transition-all p-1 pixelated shadow-lg relative group"
-          >
-            {faceTextures.up ? (
-              <img
-                src={getTexturePreview(faceTextures.up)}
-                alt="Textura Cubo"
-                className="w-full h-full object-contain pixelated rounded-xl"
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center text-slate-500 gap-1">
-                <i className="bx bx-image-add text-3xl text-emerald-400" />
-                <span className="text-[10px] font-semibold text-slate-300">Toca para asignar</span>
+            {/* Missing Texture Warning (v1.6) */}
+            {texInfo.isMissing && (
+              <div className="w-full p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-center gap-2">
+                <i className="bx bx-error text-base text-amber-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="font-bold block">Textura no encontrada</span>
+                  <span className="text-[10px] text-amber-300/80 block truncate">
+                    La textura «{faceTextures.up}» no existe en la biblioteca.
+                  </span>
+                </div>
               </div>
             )}
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-bold">
-              Cambiar
-            </div>
-          </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
+            <div
               onClick={() => onOpenTextureLibraryForFace('up')}
-              className="min-h-[40px] px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-95 transition-all"
+              className={`w-28 h-28 rounded-2xl border-2 flex flex-col items-center justify-center overflow-hidden cursor-pointer transition-all p-1 pixelated shadow-lg relative group ${
+                faceTextures.up && !texInfo.isMissing
+                  ? 'border-emerald-500/50 bg-slate-950 hover:border-emerald-400'
+                  : 'border-dashed border-slate-700 bg-slate-950/80 hover:border-emerald-500/60 hover:bg-slate-900/60'
+              }`}
             >
-              <i className="bx bx-photo-album text-base" />
-              <span>{faceTextures.up ? 'Cambiar Textura' : 'Seleccionar Textura'}</span>
-            </button>
-            {faceTextures.up && (
+              {faceTextures.up && !texInfo.isMissing ? (
+                <img
+                  src={texInfo.url}
+                  alt="Textura Cubo"
+                  className="w-full h-full object-contain pixelated rounded-xl"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center text-slate-500 gap-1.5 p-2 text-center">
+                  <i className="bx bx-image-alt text-3xl text-slate-600 group-hover:text-emerald-400 transition-colors" />
+                  <span className="text-[11px] font-bold text-slate-300 leading-tight">
+                    Sin textura asignada
+                  </span>
+                  <span className="text-[9px] text-emerald-400/80 font-mono">
+                    Toca para asignar
+                  </span>
+                </div>
+              )}
+              {faceTextures.up && !texInfo.isMissing && (
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-bold">
+                  Cambiar
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => onClearFaceTexture('up')}
-                className="min-h-[40px] px-3 bg-slate-900 hover:bg-rose-500/20 hover:text-rose-400 text-slate-400 border border-slate-800 rounded-xl text-xs flex items-center gap-1"
-                title="Quitar textura"
+                onClick={() => onOpenTextureLibraryForFace('up')}
+                className="min-h-[44px] px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-95 transition-all"
               >
-                <i className="bx bx-trash text-base" />
+                <i className="bx bx-photo-album text-base" />
+                <span>{faceTextures.up ? 'Cambiar Textura' : 'Seleccionar Textura'}</span>
               </button>
-            )}
+              {faceTextures.up && (
+                <button
+                  type="button"
+                  onClick={() => onClearFaceTexture('up')}
+                  className="min-h-[44px] px-3 bg-slate-900 hover:bg-rose-500/20 hover:text-rose-400 text-slate-400 border border-slate-800 rounded-xl text-xs flex items-center gap-1 transition-colors"
+                  title="Quitar textura"
+                >
+                  <i className="bx bx-trash text-base" />
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* MODE 2: 3 TEXTURES (UP, SIDES, DOWN) */}
       {mode === 'three' && (
@@ -339,56 +371,70 @@ export const CubeAtlasEditor: React.FC<CubeAtlasEditorProps> = ({
       )}
 
       {/* Action Drawer for Selected Face in 3 or 6 Mode */}
-      {mode !== 'one' && (
-        <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-12 h-12 rounded-xl bg-slate-950 border border-slate-700 flex items-center justify-center overflow-hidden shrink-0 pixelated shadow-inner">
-              {activeTexData ? (
-                <img
-                  src={activeTexData}
-                  alt={selectedFace}
-                  className="w-full h-full object-contain pixelated"
-                />
-              ) : (
-                <i className="bx bx-image-alt text-2xl text-slate-600" />
-              )}
-            </div>
-
-            <div className="min-w-0">
-              <span className="text-xs font-bold text-slate-100 block truncate">
-                {mode === 'three' && selectedFace === 'north'
-                  ? '4 Caras Laterales'
-                  : faceLabels[selectedFace].label}
-              </span>
-              <span className="text-[10px] text-slate-400 block truncate">
-                {activeTexData ? 'Textura asignada' : 'Sin textura asignada'}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => onOpenTextureLibraryForFace(selectedFace)}
-              className="min-h-[40px] px-3 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors"
-            >
-              <i className="bx bx-folder-open text-sm" />
-              <span>Biblioteca</span>
-            </button>
-
-            {activeTexData && (
-              <button
-                type="button"
-                onClick={() => onClearFaceTexture(selectedFace)}
-                className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl bg-slate-800 hover:bg-rose-500/20 hover:text-rose-400 text-slate-400 transition-colors"
-                title="Quitar textura de esta cara"
-              >
-                <i className="bx bx-trash text-base" />
-              </button>
+      {mode !== 'one' && (() => {
+        const currentFaceVal = getEffectiveTexture(selectedFace);
+        const faceTexInfo = resolveTexture(currentFaceVal);
+        return (
+          <div className="flex flex-col gap-2">
+            {faceTexInfo.isMissing && (
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-center gap-2">
+                <i className="bx bx-error text-base text-amber-400 shrink-0" />
+                <span className="text-[11px] text-amber-300">
+                  La textura de esta cara no se encuentra en el proyecto. Puedes seleccionarla nuevamente.
+                </span>
+              </div>
             )}
+            <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-12 h-12 rounded-xl bg-slate-950 border border-slate-700 flex items-center justify-center overflow-hidden shrink-0 pixelated shadow-inner">
+                  {faceTexInfo.url ? (
+                    <img
+                      src={faceTexInfo.url}
+                      alt={selectedFace}
+                      className="w-full h-full object-contain pixelated"
+                    />
+                  ) : (
+                    <i className="bx bx-image-alt text-2xl text-slate-600" />
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  <span className="text-xs font-bold text-slate-100 block truncate">
+                    {mode === 'three' && selectedFace === 'north'
+                      ? '4 Caras Laterales'
+                      : faceLabels[selectedFace].label}
+                  </span>
+                  <span className="text-[10px] text-slate-400 block truncate">
+                    {faceTexInfo.url ? 'Textura asignada' : 'Sin textura asignada'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => onOpenTextureLibraryForFace(selectedFace)}
+                  className="min-h-[44px] px-3 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                >
+                  <i className="bx bx-folder-open text-sm" />
+                  <span>{faceTexInfo.url ? 'Cambiar' : 'Biblioteca'}</span>
+                </button>
+
+                {currentFaceVal && (
+                  <button
+                    type="button"
+                    onClick={() => onClearFaceTexture(selectedFace)}
+                    className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-800 hover:bg-rose-500/20 hover:text-rose-400 text-slate-400 transition-colors"
+                    title="Quitar textura de esta cara"
+                  >
+                    <i className="bx bx-trash text-base" />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

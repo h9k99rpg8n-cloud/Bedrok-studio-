@@ -72,6 +72,26 @@ export function createDefaultPackIconBlob(): Promise<Blob> {
 }
 
 /**
+ * Creates a clean 16x16 fallback texture blob if a block face texture was not assigned or lost
+ */
+async function createFallbackTextureBlob(): Promise<Blob> {
+  const canvas = document.createElement('canvas');
+  canvas.width = 16;
+  canvas.height = 16;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(0, 0, 16, 16);
+  ctx.fillStyle = '#334155';
+  ctx.fillRect(2, 2, 12, 12);
+  ctx.fillStyle = '#10b981';
+  ctx.fillRect(6, 6, 4, 4);
+
+  return new Promise((resolve) => {
+    canvas.toBlob((b) => resolve(b!), 'image/png');
+  });
+}
+
+/**
  * Finds texture DataUrl either from block's face or from project textures
  */
 function resolveTextureDataUrl(project: AddonProject, texKeyOrDataUrl: string): string {
@@ -400,10 +420,8 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
       };
 
       const texData = resolveTextureDataUrl(project, faces.up || block.textureDataUrl || '');
-      if (texData) {
-        const b = await dataUrlToBlob(texData);
-        rpBlocksTexturesFolder?.file(`${block.identifier}.png`, b);
-      }
+      const b = texData ? await dataUrlToBlob(texData) : await createFallbackTextureBlob();
+      rpBlocksTexturesFolder?.file(`${block.identifier}.png`, b);
     } else if (mode === 'three') {
       const upTexKey = `${block.identifier}_up`;
       const downTexKey = `${block.identifier}_down`;
@@ -433,9 +451,18 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
       const downData = resolveTextureDataUrl(project, faces.down || faces.up || block.textureDataUrl || '');
       const sideData = resolveTextureDataUrl(project, faces.north || faces.up || block.textureDataUrl || '');
 
-      if (upData) rpBlocksTexturesFolder?.file(`${upTexKey}.png`, await dataUrlToBlob(upData));
-      if (downData) rpBlocksTexturesFolder?.file(`${downTexKey}.png`, await dataUrlToBlob(downData));
-      if (sideData) rpBlocksTexturesFolder?.file(`${sideTexKey}.png`, await dataUrlToBlob(sideData));
+      rpBlocksTexturesFolder?.file(
+        `${upTexKey}.png`,
+        upData ? await dataUrlToBlob(upData) : await createFallbackTextureBlob()
+      );
+      rpBlocksTexturesFolder?.file(
+        `${downTexKey}.png`,
+        downData ? await dataUrlToBlob(downData) : await createFallbackTextureBlob()
+      );
+      rpBlocksTexturesFolder?.file(
+        `${sideTexKey}.png`,
+        sideData ? await dataUrlToBlob(sideData) : await createFallbackTextureBlob()
+      );
     } else {
       // mode === 'six'
       const faceKeys = ['up', 'down', 'north', 'south', 'east', 'west'] as const;
@@ -449,9 +476,10 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
         terrainTextureData[texKey] = { textures: `textures/blocks/${texKey}` };
 
         const fData = resolveTextureDataUrl(project, faces[f] || faces.up || block.textureDataUrl || '');
-        if (fData) {
-          rpBlocksTexturesFolder?.file(`${texKey}.png`, await dataUrlToBlob(fData));
-        }
+        rpBlocksTexturesFolder?.file(
+          `${texKey}.png`,
+          fData ? await dataUrlToBlob(fData) : await createFallbackTextureBlob()
+        );
       }
 
       components['minecraft:material_instances'] = matInstances;

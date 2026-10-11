@@ -6,9 +6,54 @@ interface ChangelogModalProps {
 }
 
 export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose }) => {
-  const [selectedVersion, setSelectedVersion] = useState<'v0.1.5' | 'v0.1.4.1' | 'v0.1.4' | 'v0.1.3'>('v0.1.5');
+  const [selectedVersion, setSelectedVersion] = useState<'v1.6' | 'v0.1.5' | 'v0.1.4.1' | 'v0.1.4'>('v1.6');
 
   if (!isOpen) return null;
+
+  const features16 = [
+    {
+      title: 'Nombres Inteligentes y Predecibles',
+      version: 'v1.6',
+      badge: 'Nombres',
+      desc: 'Los nuevos bloques reciben nombres secuenciales ordenados («Bloque 1», «Bloque 2», «Bloque 3»...) sin números aleatorios. Los nombres personalizados se conservan siempre al guardar y reabrir.',
+      icon: 'bx bx-rename',
+    },
+    {
+      title: 'Sugerencias Contextuales de Bloques',
+      version: 'v1.6',
+      badge: 'Escritura',
+      desc: 'Sugerencias mientras escribes (Lámpara, Linterna, Ladrillo, Cristal, Madera, Mineral, Obsidiana...) para facilitar la redacción sin sustituir tu texto de forma obligatoria.',
+      icon: 'bx bx-bulb',
+    },
+    {
+      title: 'Sugerencias para el Manifiesto',
+      version: 'v1.6',
+      badge: 'Manifiesto',
+      desc: 'Recomendaciones automáticas de descripción basadas en el nombre del addon (minerales, decoración, magia, etc.) con texto completamente editable y validación de versiones semánticas.',
+      icon: 'bx bxs-file-doc',
+    },
+    {
+      title: 'Filtro y Moderación de Palabras Inapropiadas',
+      version: 'v1.6',
+      badge: 'Moderación',
+      desc: 'Detección respetuosa de lenguaje no deseado en nombres visibles y descripciones con opción de censura por asteriscos (***). No afecta identificadores técnicos ni rutas internas.',
+      icon: 'bx bx-shield-quarter',
+    },
+    {
+      title: 'Sistema de Texturas Manuales',
+      version: 'v1.6',
+      badge: 'Atlas',
+      desc: 'Los bloques se crean limpios sin asignación automática de texturas de la biblioteca. Muestran estado visual «Sin textura asignada» y botones claros para seleccionar o importar.',
+      icon: 'bx bx-images',
+    },
+    {
+      title: 'Protección contra Texturas Faltantes',
+      version: 'v1.6',
+      badge: 'Exportación',
+      desc: 'Avisos preventivos en el visor 3D y en el atlas si una textura fue eliminada, con generación de respaldo seguro al exportar para garantizar que el archivo .mcaddon nunca falle.',
+      icon: 'bx bx-check-shield',
+    },
+  ];
 
   const features015 = [
     {
@@ -138,13 +183,13 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
   ];
 
   const currentList =
-    selectedVersion === 'v0.1.5'
+    selectedVersion === 'v1.6'
+      ? features16
+      : selectedVersion === 'v0.1.5'
       ? features015
       : selectedVersion === 'v0.1.4.1'
       ? features0141
-      : selectedVersion === 'v0.1.4'
-      ? features014
-      : features013;
+      : features014;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
@@ -157,7 +202,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
               <h2 className="text-sm font-black text-slate-100">Novedades de Bedrock Studio</h2>
             </div>
             <span className="text-[10px] font-mono text-emerald-400 block mt-0.5">
-              Versión 0.1.5 — Cajas de Colisión, Selección, Múltiples Cajas y Visor 3D
+              Versión 1.6 — Nombres Inteligentes, Moderación y Texturas Manuales
             </span>
           </div>
           <button
@@ -173,14 +218,26 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
         <div className="grid grid-cols-4 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 my-3">
           <button
             type="button"
-            onClick={() => setSelectedVersion('v0.1.5')}
+            onClick={() => setSelectedVersion('v1.6')}
             className={`min-h-[38px] text-[11px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1 ${
-              selectedVersion === 'v0.1.5'
+              selectedVersion === 'v1.6'
                 ? 'bg-emerald-500 text-slate-950 shadow-sm font-extrabold'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
             <i className="bx bx-check-circle" />
+            <span>v1.6</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedVersion('v0.1.5')}
+            className={`min-h-[38px] text-[11px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1 ${
+              selectedVersion === 'v0.1.5'
+                ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
             <span>v0.1.5</span>
           </button>
 
@@ -206,18 +263,6 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
             }`}
           >
             <span>v0.1.4</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSelectedVersion('v0.1.3')}
-            className={`min-h-[38px] text-[11px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1 ${
-              selectedVersion === 'v0.1.3'
-                ? 'bg-emerald-500 text-slate-950 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <span>v0.1.3</span>
           </button>
         </div>
 
@@ -249,7 +294,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
         {/* Footer */}
         <div className="pt-3 border-t border-slate-800 mt-2 flex justify-between items-center">
           <span className="text-[10px] text-slate-500 font-mono">
-            Bedrock Studio · v0.1.5
+            Bedrock Studio · v1.6
           </span>
           <button
             type="button"
