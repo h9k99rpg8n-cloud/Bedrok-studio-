@@ -53,7 +53,14 @@ export const ManifestModal: React.FC<ManifestModalProps> = ({
     }
   }, [isOpen, initialProject]);
 
-  if (!isOpen) return null;
+  // Smart suggestions based on name
+  const descriptionSuggestions = useMemo(() => {
+    return getManifestDescriptionSuggestions(name);
+  }, [name]);
+
+  // Moderation checks for name and description
+  const nameModeration = useMemo(() => checkInappropriateText(name), [name]);
+  const descModeration = useMemo(() => checkInappropriateText(description), [description]);
 
   // Handle image upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -73,15 +80,6 @@ export const ManifestModal: React.FC<ManifestModalProps> = ({
     };
     reader.readAsDataURL(file);
   };
-
-  // Smart suggestions based on name
-  const descriptionSuggestions = useMemo(() => {
-    return getManifestDescriptionSuggestions(name);
-  }, [name]);
-
-  // Moderation checks for name and description
-  const nameModeration = useMemo(() => checkInappropriateText(name), [name]);
-  const descModeration = useMemo(() => checkInappropriateText(description), [description]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,11 +118,15 @@ export const ManifestModal: React.FC<ManifestModalProps> = ({
       usedCount: initialProject?.usedCount || 0,
       blocks: initialProject?.blocks || [],
       textures: initialProject?.textures || [],
+      groups: initialProject?.groups || [],
+      recipes: initialProject?.recipes || [],
     };
 
     onSave(project);
     onClose();
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">

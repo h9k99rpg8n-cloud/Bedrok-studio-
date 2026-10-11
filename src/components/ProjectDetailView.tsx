@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
-import { AddonProject, BlockGroup, BedrockCreativeCategory, CustomBlock, CustomTexture } from '../types/addon';
+import {
+  AddonProject,
+  BlockGroup,
+  BedrockCreativeCategory,
+  CustomBlock,
+  CustomTexture,
+  CraftingRecipe,
+} from '../types/addon';
 import { WatermarkPickaxe } from './WatermarkPickaxe';
 import { exportAddonToMcaddon } from '../utils/exporter';
 import { runProjectDiagnostics } from '../utils/diagnostics';
@@ -21,9 +28,12 @@ interface ProjectDetailViewProps {
   onDeleteTexture: (textureId: string) => void;
   onSaveGroup: (group: BlockGroup) => void;
   onDeleteGroup: (groupId: string) => void;
+  onOpenCreateRecipe: () => void;
+  onOpenEditRecipe: (recipe: CraftingRecipe) => void;
+  onDeleteRecipe: (recipeId: string) => void;
 }
 
-type WorkspaceTab = 'blocks' | 'textures' | 'groups';
+type WorkspaceTab = 'blocks' | 'recipes' | 'textures' | 'groups';
 
 const GROUP_PALETTE = [
   { color: '#10b981', name: 'Esmeralda' },
@@ -52,6 +62,9 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   onDeleteTexture,
   onSaveGroup,
   onDeleteGroup,
+  onOpenCreateRecipe,
+  onOpenEditRecipe,
+  onDeleteRecipe,
 }) => {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('blocks');
   const [isAddMenuOpen, setIsAddMenuOpen] = useState<boolean>(false);
@@ -177,11 +190,12 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   };
 
   const projectGroups = project.groups || [];
+  const projectRecipes = project.recipes || [];
   const filteredBlocks = filterGroupId === 'all'
-    ? project.blocks
-    : project.blocks.filter((b) => b.groupId === filterGroupId);
+    ? (project.blocks || [])
+    : (project.blocks || []).filter((b) => b.groupId === filterGroupId);
 
-  const totalItems = project.blocks.length + project.textures.length + projectGroups.length;
+  const totalItems = (project.blocks?.length || 0) + (project.textures?.length || 0) + projectGroups.length + projectRecipes.length;
 
   return (
     <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col pb-24 select-none">
@@ -275,46 +289,59 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
         </div>
       )}
 
-      {/* Workspace Tabs: Bloques, Texturas, Grupos */}
-      <div className="px-4 pt-3 shrink-0">
-        <div className="grid grid-cols-3 gap-1 bg-[#0d1322] p-1 rounded-2xl border border-slate-800">
+      {/* Workspace Tabs: Bloques, Recetas, Texturas, Grupos */}
+      <div className="px-3 sm:px-4 pt-3 shrink-0">
+        <div className="grid grid-cols-4 gap-1 bg-[#0d1322] p-1 rounded-2xl border border-slate-800 text-[11px] sm:text-xs">
           <button
             type="button"
             onClick={() => setActiveTab('blocks')}
-            className={`min-h-[40px] px-2 text-xs font-semibold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+            className={`min-h-[40px] px-1 font-semibold rounded-xl transition-all flex items-center justify-center gap-1 ${
               activeTab === 'blocks'
                 ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <i className="bx bxs-cube text-sm" />
-            <span>Bloques ({project.blocks.length})</span>
+            <i className="bx bxs-cube text-xs sm:text-sm" />
+            <span className="truncate">Bloques ({project.blocks?.length || 0})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('recipes')}
+            className={`min-h-[40px] px-1 font-semibold rounded-xl transition-all flex items-center justify-center gap-1 ${
+              activeTab === 'recipes'
+                ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <i className="bx bxs-grid text-xs sm:text-sm" />
+            <span className="truncate">Recetas ({projectRecipes.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('textures')}
-            className={`min-h-[40px] px-2 text-xs font-semibold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+            className={`min-h-[40px] px-1 font-semibold rounded-xl transition-all flex items-center justify-center gap-1 ${
               activeTab === 'textures'
                 ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <i className="bx bxs-paint text-sm" />
-            <span>Texturas ({project.textures.length})</span>
+            <i className="bx bxs-paint text-xs sm:text-sm" />
+            <span className="truncate">Texturas ({project.textures?.length || 0})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('groups')}
-            className={`min-h-[40px] px-2 text-xs font-semibold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+            className={`min-h-[40px] px-1 font-semibold rounded-xl transition-all flex items-center justify-center gap-1 ${
               activeTab === 'groups'
                 ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <i className="bx bx-category text-sm" />
-            <span>Grupos ({projectGroups.length})</span>
+            <i className="bx bx-category text-xs sm:text-sm" />
+            <span className="truncate">Grupos ({projectGroups.length})</span>
           </button>
         </div>
       </div>
@@ -512,7 +539,171 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           </div>
         )}
 
-        {/* TAB 2: TEXTURAS DEL ADDON */}
+        {/* TAB 2: RECETAS DE FABRICACIÓN (v1.6: Mesa de Trabajo 3×3) */}
+        {activeTab === 'recipes' && (
+          <div className="flex flex-col gap-3 animate-in fade-in duration-150">
+            {/* Header with Add Recipe Button */}
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <i className="bx bxs-grid text-amber-400" />
+                Recetas de Fabricación (Crafting)
+              </span>
+              <button
+                type="button"
+                onClick={onOpenCreateRecipe}
+                className="text-xs font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 active:scale-95 transition-all"
+              >
+                <i className="bx bx-plus text-sm" />
+                <span>Crear Receta</span>
+              </button>
+            </div>
+
+            {projectRecipes.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center py-16 relative">
+                <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-amber-400 mb-3 shadow-lg">
+                  <i className="bx bxs-grid text-3xl" />
+                </div>
+                <h3 className="text-base font-bold text-slate-100 mb-1">
+                  Crea tu primera receta 3×3
+                </h3>
+                <p className="text-xs text-slate-400 mb-6 max-w-xs leading-relaxed">
+                  Diseña recetas con patrón o sin patrón para que los jugadores puedan craftear tus bloques personalizados en la mesa de trabajo de Minecraft Bedrock.
+                </p>
+                <button
+                  type="button"
+                  onClick={onOpenCreateRecipe}
+                  className="min-h-[46px] px-6 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl flex items-center justify-center gap-2 active:scale-95 shadow-md shadow-amber-500/20 transition-all"
+                >
+                  <i className="bx bx-plus text-lg" />
+                  <span>Crear Nueva Receta</span>
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {projectRecipes.map((recipe) => {
+                  const result = recipe.resultItem;
+                  const isShaped = recipe.type === 'shaped';
+
+                  return (
+                    <div
+                      key={recipe.id}
+                      className="p-3.5 rounded-2xl bg-[#0d1322] border border-slate-800 hover:border-slate-700 transition-all flex flex-col gap-3 shadow-sm group"
+                    >
+                      {/* Top Info Bar */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="text-sm font-bold text-slate-100 truncate group-hover:text-amber-300 transition-colors">
+                              {recipe.displayName}
+                            </h4>
+                            <span
+                              className={`text-[9px] px-2 py-0.5 rounded-full font-mono font-bold flex items-center gap-1 ${
+                                isShaped
+                                  ? 'bg-amber-500/15 border border-amber-500/30 text-amber-300'
+                                  : 'bg-cyan-500/15 border border-cyan-500/30 text-cyan-300'
+                              }`}
+                            >
+                              <i className={isShaped ? 'bx bx-grid-alt' : 'bx bx-shuffle'} />
+                              <span>{isShaped ? 'Con Patrón' : 'Sin Patrón'}</span>
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-mono text-slate-400 block mt-0.5 truncate">
+                            custom:{recipe.identifier}
+                          </span>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => onOpenEditRecipe(recipe)}
+                            className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-emerald-400 border border-slate-800 flex items-center justify-center transition-colors"
+                            title="Editar receta"
+                          >
+                            <i className="bx bx-edit text-sm" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm(`¿Eliminar la receta "${recipe.displayName}"?`)) {
+                                onDeleteRecipe(recipe.id);
+                              }
+                            }}
+                            className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 border border-slate-800 flex items-center justify-center transition-colors"
+                            title="Eliminar receta"
+                          >
+                            <i className="bx bx-trash text-sm" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Visual Crafting Table Miniature */}
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/80 gap-3">
+                        {/* Mini 3x3 Grid */}
+                        <div className="grid grid-cols-3 gap-1 bg-[#151c2e] p-1 rounded-lg border border-slate-700/60 shrink-0">
+                          {recipe.grid.map((slot, sIdx) => (
+                            <div
+                              key={sIdx}
+                              className={`w-7 h-7 rounded border flex items-center justify-center text-[10px] overflow-hidden select-none ${
+                                slot
+                                  ? 'border-slate-600 bg-slate-900 text-slate-200'
+                                  : 'border-slate-800/80 bg-slate-950/40'
+                              }`}
+                              title={slot?.name || 'Vacío'}
+                            >
+                              {slot ? (
+                                slot.icon && slot.icon.startsWith('data:') ? (
+                                  <img
+                                    src={slot.icon}
+                                    alt={slot.name}
+                                    className="w-full h-full object-contain pixelated"
+                                  />
+                                ) : (
+                                  <span className="text-xs">{slot.icon || '📦'}</span>
+                                )
+                              ) : null}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Arrow */}
+                        <i className="bx bx-right-arrow-alt text-xl text-amber-400 shrink-0" />
+
+                        {/* Result Output Preview */}
+                        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                          <div className="w-12 h-12 rounded-xl bg-slate-900 border border-emerald-500/40 p-1 flex items-center justify-center shrink-0 relative pixelated shadow-sm">
+                            {result?.icon && result.icon.startsWith('data:') ? (
+                              <img
+                                src={result.icon}
+                                alt={result.name}
+                                className="w-full h-full object-contain pixelated"
+                              />
+                            ) : (
+                              <span className="text-2xl">{result?.icon || '📦'}</span>
+                            )}
+                            <span className="absolute -bottom-1 -right-1 px-1 rounded-md bg-emerald-500 text-slate-950 font-mono font-black text-[10px]">
+                              ×{recipe.resultCount || 1}
+                            </span>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <span className="text-xs font-bold text-emerald-400 block truncate">
+                              {result?.name || 'Producto'}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono block truncate">
+                              {result?.id || 'custom:item'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 3: TEXTURAS DEL ADDON */}
         {activeTab === 'textures' && (
           <div className="flex flex-col gap-3 animate-in fade-in duration-150">
             <div className="flex items-center justify-between px-1">
@@ -922,6 +1113,24 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
               <div>
                 <span className="text-xs font-bold text-slate-100 block">Biblioteca de Texturas</span>
                 <span className="text-[10px] text-slate-400">Catálogo Bedrock e importación de PNGs</span>
+              </div>
+            </button>
+
+            {/* 5. Nueva Receta de Fabricación (v1.6) */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsAddMenuOpen(false);
+                onOpenCreateRecipe();
+              }}
+              className="min-h-[50px] px-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 flex items-center gap-3 text-left transition-colors active:scale-98"
+            >
+              <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                <i className="bx bxs-grid text-xl" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-slate-100 block">Nueva Receta de Fabricación</span>
+                <span className="text-[10px] text-slate-400">Mesa de trabajo 3×3 con o sin patrón</span>
               </div>
             </button>
           </div>

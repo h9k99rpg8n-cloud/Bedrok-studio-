@@ -426,5 +426,63 @@ export function runProjectDiagnostics(project: AddonProject): DiagnosticIssue[] 
     });
   }
 
+  // 7. Crafting Recipes Validation (v1.6)
+  if (Array.isArray(project.recipes) && project.recipes.length > 0) {
+    const seenRecipeIds = new Map<string, string[]>();
+
+    project.recipes.forEach((rcp) => {
+      // Duplicate recipe identifier check
+      const cleanId = (rcp.identifier || '').toLowerCase().trim();
+      if (cleanId) {
+        if (!seenRecipeIds.has(cleanId)) {
+          seenRecipeIds.set(cleanId, [rcp.id]);
+        } else {
+          seenRecipeIds.get(cleanId)!.push(rcp.id);
+        }
+      }
+
+      // Ingredients check
+      const hasIngredients = Array.isArray(rcp.grid) && rcp.grid.some((s) => s !== null);
+      if (!hasIngredients) {
+        issues.push({
+          id: `recipe_no_ingredients_${rcp.id}`,
+          severity: 'error',
+          title: `Receta "${rcp.displayName}" sin ingredientes`,
+          description: 'La cuadrícula 3×3 de la receta está vacía.',
+          affectedTarget: `custom:${rcp.identifier}`,
+          reason: 'Una receta en Minecraft debe tener al menos un ingrediente para fabricarse.',
+          suggestion: 'Abre el editor de recetas y coloca materiales en la mesa de trabajo.',
+        });
+      }
+
+      // Result item check
+      if (!rcp.resultItem) {
+        issues.push({
+          id: `recipe_no_result_${rcp.id}`,
+          severity: 'error',
+          title: `Receta "${rcp.displayName}" sin producto resultante`,
+          description: 'La receta no define qué objeto o bloque produce.',
+          affectedTarget: `custom:${rcp.identifier}`,
+          reason: 'Minecraft requiere una salida válida en el campo result.',
+          suggestion: 'Selecciona el bloque o material que se obtendrá al fabricar.',
+        });
+      }
+    });
+
+    seenRecipeIds.forEach((recipeIds, id) => {
+      if (recipeIds.length > 1) {
+        issues.push({
+          id: `duplicate_recipe_id_${id}`,
+          severity: 'error',
+          title: `Identificador de receta duplicado: "custom:${id}"`,
+          description: `Existen ${recipeIds.length} recetas con el mismo identificador.`,
+          affectedTarget: `custom:${id}`,
+          reason: 'Identificadores duplicados sobrescribirán recetas en Minecraft.',
+          suggestion: 'Renombra una de las recetas para que tenga un identificador único.',
+        });
+      }
+    });
+  }
+
   return issues;
 }

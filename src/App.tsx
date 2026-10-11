@@ -10,6 +10,7 @@ import {
   BlockGroup,
   CustomBlock,
   CustomTexture,
+  CraftingRecipe,
   DiagnosticIssue,
 } from './types/addon';
 import { dbService } from './services/db';
@@ -23,6 +24,8 @@ import { BlockTutorialModal } from './components/BlockTutorialModal';
 import { FullBlockEditorModal } from './components/FullBlockEditorModal';
 import { DiagnosticsModal } from './components/DiagnosticsModal';
 import { TextureLibraryModal } from './components/TextureLibraryModal';
+import { CraftingRecipeModal } from './components/CraftingRecipeModal';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { runProjectDiagnostics } from './utils/diagnostics';
 import { exportAddonToMcaddon } from './utils/exporter';
 import confetti from 'canvas-confetti';
@@ -61,6 +64,10 @@ export default function App() {
 
   // Diagnostics Modal
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState<boolean>(false);
+
+  // Crafting Recipes Modal (v1.6: Mesa de trabajo 3x3)
+  const [isRecipeModalOpen, setIsRecipeModalOpen] = useState<boolean>(false);
+  const [editingRecipe, setEditingRecipe] = useState<CraftingRecipe | null>(null);
 
   // Load from IndexedDB on startup with verifiable stages (v0.1.4.1)
   const loadProjectsFromDb = useCallback(async () => {
@@ -356,6 +363,59 @@ export default function App() {
     }
   };
 
+  // Create or Update Recipe in active project (v1.6)
+  const handleSaveRecipe = async (savedRecipe: CraftingRecipe) => {
+    if (!activeProject) return;
+    try {
+      setSaveStatus('saving');
+      const existingRecipes = activeProject.recipes || [];
+      const exists = existingRecipes.some((r) => r.id === savedRecipe.id);
+      let updatedRecipes: CraftingRecipe[];
+
+      if (exists) {
+        updatedRecipes = existingRecipes.map((r) => (r.id === savedRecipe.id ? savedRecipe : r));
+      } else {
+        updatedRecipes = [savedRecipe, ...existingRecipes];
+      }
+
+      const updatedProject: AddonProject = {
+        ...activeProject,
+        recipes: updatedRecipes,
+        updatedAt: Date.now(),
+      };
+
+      await dbService.saveProject(updatedProject);
+      setProjects((prev) => prev.map((p) => (p.id === updatedProject.id ? updatedProject : p)));
+      setEditingRecipe(null);
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2500);
+    } catch (err) {
+      console.error('Error al guardar receta:', err);
+      setSaveStatus('error');
+    }
+  };
+
+  // Delete Recipe from active project (v1.6)
+  const handleDeleteRecipe = async (recipeId: string) => {
+    if (!activeProject) return;
+    try {
+      setSaveStatus('saving');
+      const updatedProject: AddonProject = {
+        ...activeProject,
+        recipes: (activeProject.recipes || []).filter((r) => r.id !== recipeId),
+        updatedAt: Date.now(),
+      };
+
+      await dbService.saveProject(updatedProject);
+      setProjects((prev) => prev.map((p) => (p.id === updatedProject.id ? updatedProject : p)));
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2500);
+    } catch (err) {
+      console.error('Error al eliminar receta:', err);
+      setSaveStatus('error');
+    }
+  };
+
   // Auto-Fix Diagnostic issues
   const handleAutoFix = async (issue: DiagnosticIssue) => {
     if (!activeProject) return;
@@ -510,6 +570,15 @@ export default function App() {
           onDeleteTexture={handleDeleteTexture}
           onSaveGroup={handleSaveGroup}
           onDeleteGroup={handleDeleteGroup}
+          onOpenCreateRecipe={() => {
+            setEditingRecipe(null);
+            setIsRecipeModalOpen(true);
+          }}
+          onOpenEditRecipe={(rcp) => {
+            setEditingRecipe(rcp);
+            setIsRecipeModalOpen(true);
+          }}
+          onDeleteRecipe={handleDeleteRecipe}
         />
       ) : (
         <WorkView
@@ -639,6 +708,20 @@ export default function App() {
           });
         }}
       />
+
+      {/* Mesa de Trabajo 3×3 — Editor de Recetas de Fabricación (v1.6) */}
+      {activeProject && (
+        <CraftingRecipeModal
+          isOpen={isRecipeModalOpen}
+          project={activeProject}
+          recipeToEdit={editingRecipe}
+          onClose={() => {
+            setIsRecipeModalOpen(false);
+            setEditingRecipe(null);
+          }}
+          onSaveRecipe={handleSaveRecipe}
+        />
+      )}
     </div>
   );
 }

@@ -34,6 +34,7 @@ export const dbService = {
             blocks: Array.isArray(item.blocks) ? item.blocks : [],
             textures: Array.isArray(item.textures) ? item.textures : [],
             groups: Array.isArray(item.groups) ? item.groups : [],
+            recipes: Array.isArray(item.recipes) ? item.recipes : [],
           });
         }
       }
@@ -56,6 +57,7 @@ export const dbService = {
           blocks: Array.isArray(proj.blocks) ? proj.blocks : [],
           textures: Array.isArray(proj.textures) ? proj.textures : [],
           groups: Array.isArray(proj.groups) ? proj.groups : [],
+          recipes: Array.isArray(proj.recipes) ? proj.recipes : [],
         };
       }
       return null;
@@ -133,6 +135,18 @@ export const dbService = {
           displayName: `${blk.displayName} (Copia)`,
           groupId: blk.groupId ? (groupIdMap[blk.groupId] || blk.groupId) : undefined,
         }));
+      }
+
+      // Duplicate recipes safely
+      if (Array.isArray(cloned.recipes)) {
+        cloned.recipes = cloned.recipes.map((rcp) => ({
+          ...rcp,
+          id: `recipe_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          identifier: `${rcp.identifier}_copy`,
+          displayName: `${rcp.displayName} (Copia)`,
+        }));
+      } else {
+        cloned.recipes = [];
       }
 
       await localforage.setItem(newId, cloned);

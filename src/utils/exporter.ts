@@ -595,6 +595,89 @@ world.beforeEvents?.worldInitialize?.subscribe((initEvent) => {
     scriptsFolder?.file('main.js', mainScript);
   }
 
+  // 4b. Export Recipes to Behavior Pack (v1.6: Mesa de trabajo 3x3)
+  if (Array.isArray(project.recipes) && project.recipes.length > 0) {
+    const bpRecipesFolder = bpFolder.folder('recipes');
+    for (const recipe of project.recipes) {
+      if (!recipe.resultItem || !recipe.grid || !recipe.grid.some((s) => s !== null)) continue;
+
+      const recipeFullId = recipe.identifier.startsWith('custom:')
+        ? recipe.identifier
+        : `custom:${recipe.identifier}`;
+
+      if (recipe.type === 'shaped') {
+        const charPool = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
+        const itemToCharMap = new Map<string, string>();
+        const keyMap: Record<string, { item: string }> = {};
+
+        let charIdx = 0;
+        recipe.grid.forEach((slot) => {
+          if (slot && !itemToCharMap.has(slot.id)) {
+            const symbol = charPool[charIdx++] || 'A';
+            itemToCharMap.set(slot.id, symbol);
+            keyMap[symbol] = { item: slot.id };
+          }
+        });
+
+        const patternRows: string[] = [];
+        for (let row = 0; row < 3; row++) {
+          let rowStr = '';
+          for (let col = 0; col < 3; col++) {
+            const slot = recipe.grid[row * 3 + col];
+            if (slot && itemToCharMap.has(slot.id)) {
+              rowStr += itemToCharMap.get(slot.id);
+            } else {
+              rowStr += ' ';
+            }
+          }
+          patternRows.push(rowStr);
+        }
+
+        const recipeJson = {
+          format_version: '1.12.0',
+          'minecraft:recipe_shaped': {
+            description: {
+              identifier: recipeFullId,
+            },
+            tags: ['crafting_table'],
+            pattern: patternRows,
+            key: keyMap,
+            result: {
+              item: recipe.resultItem.id,
+              count: recipe.resultCount || 1,
+            },
+          },
+        };
+
+        bpRecipesFolder?.file(`${recipe.identifier}.json`, JSON.stringify(recipeJson, null, 2));
+      } else {
+        const ingredients = recipe.grid
+          .filter((slot) => slot !== null)
+          .map((slot) => ({
+            item: slot!.id,
+            count: 1,
+          }));
+
+        const recipeJson = {
+          format_version: '1.12.0',
+          'minecraft:recipe_shapeless': {
+            description: {
+              identifier: recipeFullId,
+            },
+            tags: ['crafting_table'],
+            ingredients,
+            result: {
+              item: recipe.resultItem.id,
+              count: recipe.resultCount || 1,
+            },
+          },
+        };
+
+        bpRecipesFolder?.file(`${recipe.identifier}.json`, JSON.stringify(recipeJson, null, 2));
+      }
+    }
+  }
+
   // 5. Resource Pack blocks.json
   rpFolder.file(
     'blocks.json',

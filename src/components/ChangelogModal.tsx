@@ -53,6 +53,20 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
       desc: 'Avisos preventivos en el visor 3D y en el atlas si una textura fue eliminada, con generación de respaldo seguro al exportar para garantizar que el archivo .mcaddon nunca falle.',
       icon: 'bx bx-check-shield',
     },
+    {
+      title: 'Mesa de Trabajo 3×3 (Editor de Recetas)',
+      version: 'v1.6',
+      badge: 'Recetas',
+      desc: 'Editor interactivo de recetas de fabricación con cuadrícula de 3×3, catálogo de bloques y materiales clásicos, cantidad de salida configurable (×1 a ×64) y soporte para recetas con patrón y sin patrón.',
+      icon: 'bx bxs-grid',
+    },
+    {
+      title: 'Protección Integral contra Pantallas Negras (v0.6.1)',
+      version: 'v1.6',
+      badge: 'Estabilidad',
+      desc: 'Límites de error (ErrorBoundary) y validación profunda de estado en React para eliminar pantallas negras al crear carpetas, editar manifiestos o navegar entre secciones.',
+      icon: 'bx bx-shield-quarter',
+    },
   ];
 
   const features015 = [

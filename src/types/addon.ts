@@ -177,6 +177,31 @@ export interface CustomTexture {
   createdAt: number;
 }
 
+// ============================================================================
+// Crafting Recipe Types (v1.6: Mesa de trabajo 3x3 de Minecraft Bedrock)
+// ============================================================================
+
+export type RecipeType = 'shaped' | 'shapeless';
+
+export interface RecipeSlotItem {
+  id: string; // Identifier: ej. "custom:bloque_1" o "minecraft:iron_ingot"
+  name: string; // Nombre visible: ej. "Bloque 1" o "Lingote de hierro"
+  icon?: string; // DataURL de textura o icono
+  isCustomBlock?: boolean;
+}
+
+export interface CraftingRecipe {
+  id: string;
+  identifier: string; // ID técnico oficial: ej. "receta_lampara"
+  displayName: string; // Nombre visible de la receta
+  type: RecipeType; // 'shaped' (con patrón) | 'shapeless' (sin patrón)
+  grid: (RecipeSlotItem | null)[]; // Cuadrícula 3x3 (9 casillas, índices 0-8)
+  resultItem: RecipeSlotItem | null; // Casilla de resultado
+  resultCount: number; // Cantidad producida (1 a 64)
+  createdAt: number;
+  updatedAt?: number;
+}
+
 export interface AddonProject {
   id: string;
   name: string;
@@ -192,6 +217,7 @@ export interface AddonProject {
   blocks: CustomBlock[];
   textures: CustomTexture[];
   groups?: BlockGroup[];
+  recipes?: CraftingRecipe[];
 }
 
 export type SortOption = 'letters' | 'dates' | 'most_used' | 'oldest' | 'size';
