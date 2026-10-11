@@ -1,0 +1,946 @@
+import React, { useState } from 'react';
+import { AddonProject, BlockGroup, BedrockCreativeCategory, CustomBlock, CustomTexture } from '../types/addon';
+import { WatermarkPickaxe } from './WatermarkPickaxe';
+import { exportAddonToMcaddon } from '../utils/exporter';
+import { runProjectDiagnostics } from '../utils/diagnostics';
+import confetti from 'canvas-confetti';
+
+interface ProjectDetailViewProps {
+  project: AddonProject;
+  saveStatus?: 'idle' | 'saving' | 'saved' | 'error';
+  onBack: () => void;
+  onOpenManifest: () => void;
+  onSaveProject: () => Promise<void>;
+  onOpenBlockWizard: () => void;
+  onOpenBlockEditor: (block: CustomBlock) => void;
+  onOpenTexturePainter: () => void;
+  onOpenTextureLibrary: () => void;
+  onOpenDiagnostics: () => void;
+  onOpenTutorial: () => void;
+  onDeleteBlock: (blockId: string) => void;
+  onDeleteTexture: (textureId: string) => void;
+  onSaveGroup: (group: BlockGroup) => void;
+  onDeleteGroup: (groupId: string) => void;
+}
+
+type WorkspaceTab = 'blocks' | 'textures' | 'groups';
+
+const GROUP_PALETTE = [
+  { color: '#10b981', name: 'Esmeralda' },
+  { color: '#3b82f6', name: 'Azul' },
+  { color: '#f59e0b', name: 'Ámbar' },
+  { color: '#f43f5e', name: 'Rosa' },
+  { color: '#a855f7', name: 'Púrpura' },
+  { color: '#06b6d4', name: 'Cian' },
+  { color: '#f97316', name: 'Naranja' },
+  { color: '#64748b', name: 'Piedra' },
+];
+
+export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
+  project,
+  saveStatus = 'idle',
+  onBack,
+  onOpenManifest,
+  onSaveProject,
+  onOpenBlockWizard,
+  onOpenBlockEditor,
+  onOpenTexturePainter,
+  onOpenTextureLibrary,
+  onOpenDiagnostics,
+  onOpenTutorial,
+  onDeleteBlock,
+  onDeleteTexture,
+  onSaveGroup,
+  onDeleteGroup,
+}) => {
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>('blocks');
+  const [isAddMenuOpen, setIsAddMenuOpen] = useState<boolean>(false);
+  const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [saveSuccessNotice, setSaveSuccessNotice] = useState<boolean>(false);
+  const [exportNotice, setExportNotice] = useState<{ fileName: string; size: number } | null>(null);
+
+  // Group Create/Edit Modal State
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
+  const [editingGroup, setEditingGroup] = useState<BlockGroup | null>(null);
+  const [groupNameInput, setGroupNameInput] = useState<string>('');
+  const [groupColorInput, setGroupColorInput] = useState<string>('#10b981');
+  const [groupCategoryInput, setGroupCategoryInput] = useState<BedrockCreativeCategory>('construction');
+  const [groupBedrockInput, setGroupBedrockInput] = useState<string>('');
+  const [groupModalError, setGroupModalError] = useState<string>('');
+
+  // Filter blocks by group in Blocks tab
+  const [filterGroupId, setFilterGroupId] = useState<string>('all');
+
+  // Manual save trigger from bottom bar
+  const handleSaveClick = async () => {
+    try {
+      await onSaveProject();
+      setSaveSuccessNotice(true);
+      setTimeout(() => setSaveSuccessNotice(false), 2500);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Run diagnostics before export
+  const handleExportClick = async () => {
+    const issues = runProjectDiagnostics(project);
+    const hasBlockingErrors = issues.some((i) => i.severity === 'error');
+
+    if (hasBlockingErrors) {
+      onOpenDiagnostics();
+      return;
+    }
+
+    try {
+      setIsExporting(true);
+      const res = await exportAddonToMcaddon(project);
+      setExportNotice(res);
+      confetti({
+        particleCount: 75,
+        spread: 60,
+        origin: { y: 0.6 },
+        colors: ['#10b981', '#06b6d4', '#f59e0b'],
+      });
+      setTimeout(() => setExportNotice(null), 5000);
+    } catch (err) {
+      console.error('Error al exportar:', err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Open Group Modal for Create
+  const handleOpenCreateGroup = () => {
+    setEditingGroup(null);
+    setGroupNameInput('');
+    setGroupColorInput('#10b981');
+    setGroupCategoryInput('construction');
+    setGroupBedrockInput('');
+    setGroupModalError('');
+    setIsGroupModalOpen(true);
+  };
+
+  // Open Group Modal for Edit
+  const handleOpenEditGroup = (grp: BlockGroup) => {
+    setEditingGroup(grp);
+    setGroupNameInput(grp.name);
+    setGroupColorInput(grp.color || '#10b981');
+    setGroupCategoryInput(grp.category || 'construction');
+    setGroupBedrockInput(grp.bedrockGroup || '');
+    setGroupModalError('');
+    setIsGroupModalOpen(true);
+  };
+
+  // Save Group Action
+  const handleSaveGroupModal = () => {
+    const cleanName = groupNameInput.trim();
+    if (!cleanName) {
+      setGroupModalError('El nombre del grupo no puede estar vacío.');
+      return;
+    }
+
+    const saved: BlockGroup = {
+      id: editingGroup?.id || `grp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      name: cleanName,
+      color: groupColorInput,
+      category: groupCategoryInput,
+      bedrockGroup: groupBedrockInput.trim() || undefined,
+      createdAt: editingGroup?.createdAt || Date.now(),
+    };
+
+    onSaveGroup(saved);
+    setIsGroupModalOpen(false);
+  };
+
+  // Delete Group with confirmation
+  const handleDeleteGroupClick = (grp: BlockGroup) => {
+    const count = (project.blocks || []).filter((b) => b.groupId === grp.id).length;
+    const confirmMessage = count > 0
+      ? `¿Eliminar el grupo "${grp.name}"? Los ${count} bloques asignados no se borrarán; únicamente quedarán sin grupo.`
+      : `¿Eliminar el grupo "${grp.name}"?`;
+
+    if (window.confirm(confirmMessage)) {
+      onDeleteGroup(grp.id);
+      if (filterGroupId === grp.id) setFilterGroupId('all');
+    }
+  };
+
+  const projectGroups = project.groups || [];
+  const filteredBlocks = filterGroupId === 'all'
+    ? project.blocks
+    : project.blocks.filter((b) => b.groupId === filterGroupId);
+
+  const totalItems = project.blocks.length + project.textures.length + projectGroups.length;
+
+  return (
+    <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col pb-24 select-none">
+      {/* Top Header */}
+      <header className="sticky top-0 z-30 bg-[#0d1322]/95 backdrop-blur-md border-b border-slate-800 px-3 py-2.5 flex items-center justify-between gap-2 shadow-sm">
+        {/* Back Button */}
+        <button
+          type="button"
+          onClick={onBack}
+          className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-850 active:scale-95 transition-colors"
+          title="Volver a la lista de proyectos"
+        >
+          <i className="bx bx-chevron-left text-2xl" />
+        </button>
+
+        {/* Project Name & Live Save Status */}
+        <div className="flex-1 min-w-0 text-center px-1">
+          <h2 className="text-sm font-bold text-slate-100 truncate">{project.name}</h2>
+          <div className="flex items-center justify-center gap-1.5 mt-0.5">
+            {saveStatus === 'saving' && (
+              <span className="text-[10px] font-mono text-amber-400 flex items-center gap-1">
+                <i className="bx bx-loader-alt bx-spin" /> Guardando...
+              </span>
+            )}
+            {saveStatus === 'saved' && (
+              <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1 animate-in fade-in">
+                <i className="bx bx-check" /> Guardado en IndexedDB
+              </span>
+            )}
+            {saveStatus === 'error' && (
+              <span className="text-[10px] font-mono text-rose-400 flex items-center gap-1">
+                <i className="bx bx-error" /> Error al guardar
+              </span>
+            )}
+            {saveStatus === 'idle' && (
+              <span className="text-[10px] font-mono text-slate-400">
+                v{project.version || '1.0.0'} • Bedrock {project.minEngineVersion || '1.26.20'}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Right Actions: Diagnostics & Manifest */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={onOpenDiagnostics}
+            className="min-h-[44px] px-2.5 flex items-center gap-1.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-xs font-semibold text-emerald-400 transition-colors"
+            title="Diagnóstico y Validación Previa"
+          >
+            <i className="bx bx-check-shield text-base" />
+            <span className="hidden sm:inline">Auditoría</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onOpenManifest}
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-400 hover:text-slate-100 transition-colors"
+            title="Ajustes de Manifiesto"
+          >
+            <i className="bx bx-cog text-xl" />
+          </button>
+        </div>
+      </header>
+
+      {/* Floating Notices */}
+      {saveSuccessNotice && (
+        <div className="mx-4 mt-3 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-150">
+          <i className="bx bx-check-circle text-base text-emerald-400" />
+          <span>Proyecto guardado con éxito en IndexedDB.</span>
+        </div>
+      )}
+
+      {exportNotice && (
+        <div className="mx-4 mt-3 p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-xs flex items-center gap-2 animate-in fade-in duration-200">
+          <i className="bx bxs-package text-lg text-emerald-400" />
+          <div>
+            <span className="font-bold">¡{exportNotice.fileName} exportado!</span>
+            <p className="text-[10px] text-emerald-400">Listo para abrir e instalar en Minecraft Bedrock.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Workspace Tabs: Bloques, Texturas, Grupos */}
+      <div className="px-4 pt-3 shrink-0">
+        <div className="grid grid-cols-3 gap-1 bg-[#0d1322] p-1 rounded-2xl border border-slate-800">
+          <button
+            type="button"
+            onClick={() => setActiveTab('blocks')}
+            className={`min-h-[40px] px-2 text-xs font-semibold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'blocks'
+                ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <i className="bx bxs-cube text-sm" />
+            <span>Bloques ({project.blocks.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('textures')}
+            className={`min-h-[40px] px-2 text-xs font-semibold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'textures'
+                ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <i className="bx bxs-paint text-sm" />
+            <span>Texturas ({project.textures.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('groups')}
+            className={`min-h-[40px] px-2 text-xs font-semibold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'groups'
+                ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <i className="bx bx-category text-sm" />
+            <span>Grupos ({projectGroups.length})</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <main className="flex-1 p-4 flex flex-col relative">
+        {/* TAB 1: BLOQUES DEL ADDON */}
+        {activeTab === 'blocks' && (
+          <div className="flex flex-col gap-3 animate-in fade-in duration-150">
+            {/* Header with Add Block Button */}
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <i className="bx bxs-cube text-emerald-400" />
+                Bloques Personalizados
+              </span>
+              <button
+                type="button"
+                onClick={onOpenBlockWizard}
+                className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+              >
+                <i className="bx bx-plus text-sm" />
+                <span>Crear Bloque</span>
+              </button>
+            </div>
+
+            {/* Filter by Group if groups exist */}
+            {projectGroups.length > 0 && (
+              <div className="flex gap-1.5 overflow-x-auto pb-1 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setFilterGroupId('all')}
+                  className={`px-2.5 py-1 rounded-lg border font-medium shrink-0 transition-colors ${
+                    filterGroupId === 'all'
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                      : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Todos ({project.blocks.length})
+                </button>
+                {projectGroups.map((grp) => {
+                  const count = project.blocks.filter((b) => b.groupId === grp.id).length;
+                  return (
+                    <button
+                      key={grp.id}
+                      type="button"
+                      onClick={() => setFilterGroupId(grp.id)}
+                      className={`px-2.5 py-1 rounded-lg border font-medium shrink-0 flex items-center gap-1.5 transition-colors ${
+                        filterGroupId === grp.id
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: grp.color || '#10b981' }} />
+                      <span>{grp.name}</span>
+                      <span className="text-[10px] opacity-70 font-mono">({count})</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Blocks List */}
+            {project.blocks.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center py-16 relative">
+                <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-emerald-400 mb-3 shadow-lg">
+                  <i className="bx bxs-cube text-3xl" />
+                </div>
+                <h3 className="text-base font-bold text-slate-100 mb-1">Crea tu primer bloque</h3>
+                <p className="text-xs text-slate-400 mb-6 max-w-xs leading-relaxed">
+                  Diseña bloques con texturas de 1, 3 o 6 caras, propiedades físicas de Bedrock, partículas y asignación a grupos.
+                </p>
+                <button
+                  type="button"
+                  onClick={onOpenBlockWizard}
+                  className="min-h-[46px] px-6 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl flex items-center justify-center gap-2 active:scale-95 shadow-md shadow-emerald-500/20"
+                >
+                  <i className="bx bx-plus text-lg" />
+                  <span>Crear Nuevo Bloque</span>
+                </button>
+              </div>
+            ) : filteredBlocks.length === 0 ? (
+              <div className="py-12 text-center text-xs text-slate-400">
+                No hay bloques asignados al grupo seleccionado.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-2.5">
+                {filteredBlocks.map((block) => {
+                  const topTex = block.faceTextures?.up || block.textureDataUrl || '';
+                  const mode = block.textureMode || 'one';
+                  const assignedGroup = projectGroups.find((g) => g.id === block.groupId);
+
+                  return (
+                    <div
+                      key={block.id}
+                      onClick={() => onOpenBlockEditor(block)}
+                      className="flex items-center justify-between p-3 rounded-2xl bg-[#0d1322] border border-slate-800 hover:border-slate-700 active:scale-[0.99] transition-all cursor-pointer shadow-sm group"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {/* Texture Icon */}
+                        <div className="w-12 h-12 rounded-xl bg-slate-950 border border-slate-800 p-0.5 flex items-center justify-center overflow-hidden shrink-0 pixelated shadow-inner">
+                          {topTex ? (
+                            <img
+                              src={topTex}
+                              alt={block.displayName}
+                              className="w-full h-full object-contain pixelated"
+                            />
+                          ) : (
+                            <i className="bx bxs-cube text-2xl text-slate-600" />
+                          )}
+                        </div>
+
+                        {/* Title & Technical ID */}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className="text-sm font-bold text-slate-100 group-hover:text-emerald-300 transition-colors truncate">
+                              {block.displayName}
+                            </h4>
+
+                            {/* Group Pill if assigned */}
+                            {assignedGroup && (
+                              <span
+                                className="text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-1 font-semibold"
+                                style={{
+                                  backgroundColor: `${assignedGroup.color || '#10b981'}15`,
+                                  borderColor: `${assignedGroup.color || '#10b981'}40`,
+                                  color: assignedGroup.color || '#10b981',
+                                }}
+                              >
+                                <span
+                                  className="w-1.5 h-1.5 rounded-full"
+                                  style={{ backgroundColor: assignedGroup.color || '#10b981' }}
+                                />
+                                <span>{assignedGroup.name}</span>
+                              </span>
+                            )}
+                          </div>
+
+                          <span className="text-xs font-mono text-emerald-400/90 block truncate">
+                            custom:{block.identifier}
+                          </span>
+
+                          {/* Quick Badges */}
+                          <div className="flex items-center gap-1.5 mt-1 text-[10px] flex-wrap">
+                            <span className="text-slate-400 bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded font-mono">
+                              {mode === 'one' ? '1 cara' : mode === 'three' ? '3 caras' : '6 caras'}
+                            </span>
+                            {block.emitsLight && (
+                              <span className="text-amber-300 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                <i className="bx bxs-sun text-[10px]" />
+                                Luz {block.lightLevel}
+                              </span>
+                            )}
+                            {block.consumesRedstone && (
+                              <span className="text-rose-300 bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                <i className="bx bxs-zap text-[10px]" />
+                                Redstone
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-1 shrink-0 ml-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenBlockEditor(block);
+                          }}
+                          className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-emerald-400 hover:bg-slate-900"
+                          title="Editar bloque"
+                        >
+                          <i className="bx bx-edit text-lg" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`¿Eliminar bloque "${block.displayName}"?`)) {
+                              onDeleteBlock(block.id);
+                            }
+                          }}
+                          className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 active:scale-95 transition-colors"
+                          title="Eliminar bloque"
+                        >
+                          <i className="bx bx-trash text-lg" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 2: TEXTURAS DEL ADDON */}
+        {activeTab === 'textures' && (
+          <div className="flex flex-col gap-3 animate-in fade-in duration-150">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <i className="bx bxs-photo-album text-emerald-400" />
+                Biblioteca de Texturas ({project.textures.length})
+              </span>
+              <button
+                type="button"
+                onClick={onOpenTexturePainter}
+                className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+              >
+                <i className="bx bxs-paint text-sm" />
+                <span>Pintar Píxeles</span>
+              </button>
+            </div>
+
+            {/* Quick Actions Row */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={onOpenTextureLibrary}
+                className="min-h-[44px] px-3 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-2xl text-xs font-semibold text-slate-200 flex items-center justify-center gap-2"
+              >
+                <i className="bx bx-folder-open text-base text-emerald-400" />
+                <span>Explorar Biblioteca</span>
+              </button>
+              <button
+                type="button"
+                onClick={onOpenTexturePainter}
+                className="min-h-[44px] px-3 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-2xl text-xs font-semibold text-emerald-300 flex items-center justify-center gap-2"
+              >
+                <i className="bx bxs-paint text-base" />
+                <span>Nuevo Pixel Art</span>
+              </button>
+            </div>
+
+            {/* Textures Grid */}
+            {project.textures.length === 0 ? (
+              <div className="py-16 text-center text-xs text-slate-400 flex flex-col items-center">
+                <i className="bx bx-images text-4xl text-slate-600 mb-2" />
+                <span>No hay texturas en el proyecto.</span>
+                <span className="text-[11px] text-slate-400 mt-1">
+                  Usa "Pintar Pixel Art" o importa imágenes PNG desde la biblioteca.
+                </span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                {project.textures.map((tex) => (
+                  <div
+                    key={tex.id}
+                    className="p-2.5 rounded-2xl bg-[#0d1322] border border-slate-800 shadow-sm flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-slate-950 border border-slate-800 p-0.5 shrink-0 overflow-hidden pixelated">
+                        <img src={tex.dataUrl} alt={tex.name} className="w-full h-full object-cover pixelated" />
+                      </div>
+                      <span className="text-xs font-mono text-slate-200 truncate">{tex.name}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onDeleteTexture(tex.id)}
+                      className="min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-500 hover:text-rose-400"
+                      title="Eliminar textura"
+                    >
+                      <i className="bx bx-trash text-sm" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 3: GRUPOS DEL ADDON */}
+        {activeTab === 'groups' && (
+          <div className="flex flex-col gap-3 animate-in fade-in duration-150">
+            {/* Header with New Group Button */}
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <i className="bx bx-category text-emerald-400" />
+                Grupos y Categorías del Addon
+              </span>
+              <button
+                type="button"
+                onClick={handleOpenCreateGroup}
+                className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+              >
+                <i className="bx bx-plus text-sm" />
+                <span>Nuevo Grupo</span>
+              </button>
+            </div>
+
+            {/* Informative Explanation Banner */}
+            <div className="p-3 bg-slate-900/80 rounded-2xl border border-slate-800 text-xs text-slate-300 leading-relaxed flex items-start gap-2.5">
+              <i className="bx bx-info-circle text-lg text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <strong className="text-slate-100 block mb-0.5">Sistema de Grupos Bedrock:</strong>
+                Los grupos organizan tus bloques en el espacio de trabajo y configuran la propiedad oficial{' '}
+                <code className="text-emerald-400 font-mono text-[11px]">menu_category</code> en el archivo de comportamiento del bloque de Minecraft Bedrock.
+              </div>
+            </div>
+
+            {/* Groups List */}
+            {projectGroups.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center py-16">
+                <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-emerald-400 mb-3 shadow-lg">
+                  <i className="bx bx-category text-3xl" />
+                </div>
+                <h3 className="text-base font-bold text-slate-100 mb-1">Sin grupos creados</h3>
+                <p className="text-xs text-slate-400 mb-6 max-w-xs leading-relaxed">
+                  Crea grupos como "Construcción", "Minerales" o "Naturaleza" para agrupar tus bloques y ubicarlos en el inventario creativo de Bedrock.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleOpenCreateGroup}
+                  className="min-h-[46px] px-6 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl flex items-center justify-center gap-2 active:scale-95 shadow-md shadow-emerald-500/20"
+                >
+                  <i className="bx bx-plus text-lg" />
+                  <span>Crear Primer Grupo</span>
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3">
+                {projectGroups.map((grp) => {
+                  const assignedBlocks = project.blocks.filter((b) => b.groupId === grp.id);
+
+                  return (
+                    <div
+                      key={grp.id}
+                      className="p-3.5 rounded-2xl bg-[#0d1322] border border-slate-800 flex flex-col gap-2.5 shadow-sm"
+                    >
+                      {/* Top Row: Color badge, Name, Category and Actions */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span
+                            className="w-3.5 h-3.5 rounded-full shrink-0 shadow-sm"
+                            style={{ backgroundColor: grp.color || '#10b981' }}
+                          />
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-bold text-slate-100 truncate">{grp.name}</h4>
+                            <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-400 flex-wrap">
+                              <span className="font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                                {grp.category || 'construction'}
+                              </span>
+                              {grp.bedrockGroup && (
+                                <span className="font-mono text-slate-400">
+                                  {grp.bedrockGroup}
+                                </span>
+                              )}
+                              <span>• {assignedBlocks.length} bloques asignados</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Edit & Delete Buttons */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditGroup(grp)}
+                            className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-emerald-400"
+                            title="Editar Grupo"
+                          >
+                            <i className="bx bx-edit text-base" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteGroupClick(grp)}
+                            className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
+                            title="Eliminar Grupo"
+                          >
+                            <i className="bx bx-trash text-base" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Blocks list within this group */}
+                      {assignedBlocks.length > 0 && (
+                        <div className="pt-2 border-t border-slate-800/80 flex flex-wrap gap-1.5">
+                          {assignedBlocks.map((blk) => (
+                            <button
+                              key={blk.id}
+                              type="button"
+                              onClick={() => onOpenBlockEditor(blk)}
+                              className="px-2.5 py-1 bg-slate-950 hover:bg-slate-900 border border-slate-800 rounded-lg text-[11px] font-medium text-slate-300 hover:text-emerald-300 flex items-center gap-1.5 transition-colors"
+                            >
+                              <div className="w-3.5 h-3.5 rounded bg-slate-900 overflow-hidden shrink-0 pixelated">
+                                {blk.faceTextures?.up && (
+                                  <img
+                                    src={blk.faceTextures.up}
+                                    alt={blk.displayName}
+                                    className="w-full h-full object-cover pixelated"
+                                  />
+                                )}
+                              </div>
+                              <span className="truncate max-w-[140px]">{blk.displayName}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+
+      {/* MODAL PARA CREAR O EDITAR GRUPO */}
+      {isGroupModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-sm bg-[#0d1322] border border-slate-800 rounded-3xl p-5 shadow-2xl flex flex-col gap-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <i className="bx bx-category text-xl text-emerald-400" />
+                <h3 className="text-sm font-bold text-slate-100">
+                  {editingGroup ? 'Editar Grupo' : 'Nuevo Grupo de Bloques'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsGroupModalOpen(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                <i className="bx bx-x text-xl" />
+              </button>
+            </div>
+
+            {groupModalError && (
+              <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
+                {groupModalError}
+              </div>
+            )}
+
+            {/* Name Input */}
+            <div>
+              <label className="block text-xs font-bold text-slate-200 mb-1">
+                Nombre del Grupo *
+              </label>
+              <input
+                type="text"
+                value={groupNameInput}
+                onChange={(e) => {
+                  setGroupNameInput(e.target.value);
+                  setGroupModalError('');
+                }}
+                placeholder="ej. Bloques de Piedra, Minerales Mágicos..."
+                className="w-full min-h-[42px] px-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            {/* Color Swatches */}
+            <div>
+              <label className="block text-xs font-bold text-slate-200 mb-1.5">
+                Color Identificador
+              </label>
+              <div className="flex items-center gap-2">
+                {GROUP_PALETTE.map((p) => (
+                  <button
+                    key={p.color}
+                    type="button"
+                    onClick={() => setGroupColorInput(p.color)}
+                    className={`w-7 h-7 rounded-full border transition-transform ${
+                      groupColorInput === p.color
+                        ? 'border-white ring-2 ring-emerald-500 scale-110'
+                        : 'border-slate-800 hover:scale-105'
+                    }`}
+                    style={{ backgroundColor: p.color }}
+                    title={p.name}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Minecraft Category */}
+            <div>
+              <label className="block text-xs font-bold text-slate-200 mb-1">
+                Categoría en Inventario Creativo de Bedrock
+              </label>
+              <select
+                value={groupCategoryInput}
+                onChange={(e) => setGroupCategoryInput(e.target.value as BedrockCreativeCategory)}
+                className="w-full min-h-[42px] px-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-emerald-400 font-mono focus:outline-none focus:border-emerald-500"
+              >
+                <option value="construction">construction (Construcción - bloques estructurales)</option>
+                <option value="nature">nature (Naturaleza - piedras, tierra, flora)</option>
+                <option value="equipment">equipment (Equipo y utilidades)</option>
+                <option value="items">items (Objetos y consumibles)</option>
+                <option value="none">none (Sin categoría / Oculto en comandos)</option>
+              </select>
+            </div>
+
+            {/* Minecraft Group string optional */}
+            <div>
+              <label className="block text-xs font-bold text-slate-200 mb-1">
+                Identificador Oficial de Grupo Bedrock (Opcional)
+              </label>
+              <input
+                type="text"
+                value={groupBedrockInput}
+                onChange={(e) => setGroupBedrockInput(e.target.value)}
+                placeholder="ej. itemGroup.name.stone, itemGroup.name.ore"
+                className="w-full min-h-[42px] px-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 font-mono placeholder:text-slate-600 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setIsGroupModalOpen(false)}
+                className="flex-1 min-h-[42px] rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-300"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveGroupModal}
+                className="flex-1 min-h-[42px] rounded-xl bg-emerald-500 hover:bg-emerald-400 text-xs font-bold text-slate-950 shadow-md shadow-emerald-500/20"
+              >
+                Guardar Grupo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* POPUP MENU FOR "AGREGAR OBJETO" */}
+      {isAddMenuOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+            onClick={() => setIsAddMenuOpen(false)}
+          />
+          <div className="fixed bottom-20 left-4 right-4 z-50 max-w-sm mx-auto bg-[#0d1322] border border-slate-800 rounded-3xl p-3 shadow-2xl flex flex-col gap-2 animate-in slide-in-from-bottom-3 duration-200">
+            <span className="px-3 pt-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              ¿Qué deseas agregar al Addon?
+            </span>
+
+            {/* 1. Nuevo Bloque */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsAddMenuOpen(false);
+                onOpenBlockWizard();
+              }}
+              className="min-h-[50px] px-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 flex items-center gap-3 text-left transition-colors active:scale-98"
+            >
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                <i className="bx bxs-cube text-xl" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-slate-100 block">Nuevo Bloque Personalizado</span>
+                <span className="text-[10px] text-slate-400">Editor con atlas de 1, 3 o 6 caras y grupos</span>
+              </div>
+            </button>
+
+            {/* 2. Nuevo Grupo */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsAddMenuOpen(false);
+                handleOpenCreateGroup();
+              }}
+              className="min-h-[50px] px-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 flex items-center gap-3 text-left transition-colors active:scale-98"
+            >
+              <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                <i className="bx bx-category text-xl" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-slate-100 block">Nuevo Grupo de Bloques</span>
+                <span className="text-[10px] text-slate-400">Organiza y clasifica en inventario creativo</span>
+              </div>
+            </button>
+
+            {/* 3. Pintar Pixel Art */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsAddMenuOpen(false);
+                onOpenTexturePainter();
+              }}
+              className="min-h-[50px] px-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 flex items-center gap-3 text-left transition-colors active:scale-98"
+            >
+              <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
+                <i className="bx bxs-paint text-xl" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-slate-100 block">Pintar Textura Pixel Art</span>
+                <span className="text-[10px] text-slate-400">Lienzo táctil móvil con paleta de colores y figuras</span>
+              </div>
+            </button>
+
+            {/* 4. Biblioteca de Texturas */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsAddMenuOpen(false);
+                onOpenTextureLibrary();
+              }}
+              className="min-h-[50px] px-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 flex items-center gap-3 text-left transition-colors active:scale-98"
+            >
+              <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                <i className="bx bxs-photo-album text-xl" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-slate-100 block">Biblioteca de Texturas</span>
+                <span className="text-[10px] text-slate-400">Catálogo Bedrock e importación de PNGs</span>
+              </div>
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Floating Bottom Action Bar */}
+      <nav className="fixed bottom-3 left-3 right-3 z-30 max-w-md mx-auto bg-[#0d1322]/95 backdrop-blur-md border border-slate-800 rounded-2xl p-1.5 shadow-2xl flex items-center justify-around gap-1">
+        {/* Guardar Manifiesto / Datos */}
+        <button
+          type="button"
+          onClick={handleSaveClick}
+          className="flex-1 min-h-[46px] flex flex-col items-center justify-center text-slate-400 hover:text-emerald-400 rounded-xl transition-colors active:scale-95"
+        >
+          <i className="bx bxs-save text-xl" />
+          <span className="text-[10px] font-semibold mt-0.5">Guardar</span>
+        </button>
+
+        {/* Botón Central: Agregar Objeto */}
+        <button
+          type="button"
+          onClick={() => setIsAddMenuOpen(true)}
+          className="w-12 h-12 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 flex items-center justify-center shadow-lg shadow-emerald-500/30 active:scale-95 transition-all -translate-y-2 border-2 border-[#090d16]"
+          title="Añadir bloque, textura o grupo"
+        >
+          <i className="bx bx-plus text-2xl font-bold" />
+        </button>
+
+        {/* Exportar .mcaddon */}
+        <button
+          type="button"
+          onClick={handleExportClick}
+          disabled={isExporting}
+          className="flex-1 min-h-[46px] flex flex-col items-center justify-center text-emerald-400 hover:text-emerald-300 rounded-xl transition-colors active:scale-95 disabled:opacity-50"
+        >
+          <i className={`bx ${isExporting ? 'bx-loader-alt bx-spin' : 'bxs-package'} text-xl`} />
+          <span className="text-[10px] font-bold mt-0.5">Exportar</span>
+        </button>
+      </nav>
+    </div>
+  );
+};
