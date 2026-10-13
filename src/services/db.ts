@@ -2,15 +2,15 @@ import localforage from 'localforage';
 import { AddonProject } from '../types/addon';
 import { generateBedrockUUID } from '../utils/uuid';
 
-// Configure localforage to strictly use IndexedDB
+// Prefer IndexedDB and fall back to localStorage when the browser blocks IndexedDB.
 localforage.config({
   name: 'BedrockStudioDB',
   storeName: 'bedrock_studio_projects',
-  driver: [localforage.INDEXEDDB],
+  driver: [localforage.INDEXEDDB, localforage.LOCALSTORAGE],
   description: 'Almacenamiento persistente IndexedDB para Bedrock Studio v0.1.3',
 });
 
-// App Settings store (also in IndexedDB)
+// App settings use the same fallback order as project storage.
 const settingsStore = localforage.createInstance({
   name: 'BedrockStudioDB',
   storeName: 'app_settings',
