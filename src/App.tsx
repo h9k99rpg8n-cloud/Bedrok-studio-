@@ -60,6 +60,7 @@ export default function App() {
   const [assignedTextureForEditor, setAssignedTextureForEditor] = useState<{
     face: BlockFaceKey | 'item';
     texDataUrl: string;
+    textureId?: string;
     timestamp: number;
   } | null>(null);
 
@@ -670,8 +671,8 @@ export default function App() {
             setTargetFaceForLibrary(null);
             setTargetItemTextureForLibrary(false);
           }}
-          onSelectTextureForItem={targetItemTextureForLibrary ? (texDataUrl) => {
-            setAssignedTextureForEditor({ face: 'item', texDataUrl, timestamp: Date.now() });
+          onSelectTextureForItem={targetItemTextureForLibrary ? (texDataUrl, textureId) => {
+            setAssignedTextureForEditor({ face: 'item', texDataUrl, textureId, timestamp: Date.now() });
             setTargetItemTextureForLibrary(false);
             setIsTextureLibraryOpen(false);
           } : undefined}
