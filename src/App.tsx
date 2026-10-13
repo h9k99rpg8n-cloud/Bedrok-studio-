@@ -56,8 +56,9 @@ export default function App() {
   const [isTexturePainterOpen, setIsTexturePainterOpen] = useState<boolean>(false);
   const [isTextureLibraryOpen, setIsTextureLibraryOpen] = useState<boolean>(false);
   const [targetFaceForLibrary, setTargetFaceForLibrary] = useState<BlockFaceKey | null>(null);
+  const [targetItemTextureForLibrary, setTargetItemTextureForLibrary] = useState<boolean>(false);
   const [assignedTextureForEditor, setAssignedTextureForEditor] = useState<{
-    face: BlockFaceKey;
+    face: BlockFaceKey | 'item';
     texDataUrl: string;
     timestamp: number;
   } | null>(null);
@@ -563,6 +564,7 @@ export default function App() {
           }}
           onOpenTexturePainter={() => setIsTexturePainterOpen(true)}
           onOpenTextureLibrary={() => {
+            setTargetItemTextureForLibrary(false);
             setTargetFaceForLibrary(null);
             setIsTextureLibraryOpen(true);
           }}
@@ -645,7 +647,13 @@ export default function App() {
           }}
           onSaveBlock={handleSaveBlock}
           onOpenTextureLibraryForFace={(face) => {
+            setTargetItemTextureForLibrary(false);
             setTargetFaceForLibrary(face);
+            setIsTextureLibraryOpen(true);
+          }}
+          onOpenTextureLibraryForItem={() => {
+            setTargetFaceForLibrary(null);
+            setTargetItemTextureForLibrary(true);
             setIsTextureLibraryOpen(true);
           }}
           onOpenTutorial={() => setIsTutorialOpen(true)}
@@ -660,7 +668,13 @@ export default function App() {
           onClose={() => {
             setIsTextureLibraryOpen(false);
             setTargetFaceForLibrary(null);
+            setTargetItemTextureForLibrary(false);
           }}
+          onSelectTextureForItem={targetItemTextureForLibrary ? (texDataUrl) => {
+            setAssignedTextureForEditor({ face: 'item', texDataUrl, timestamp: Date.now() });
+            setTargetItemTextureForLibrary(false);
+            setIsTextureLibraryOpen(false);
+          } : undefined}
           onSelectTextureForFace={
             targetFaceForLibrary
               ? (texDataUrl) => {
