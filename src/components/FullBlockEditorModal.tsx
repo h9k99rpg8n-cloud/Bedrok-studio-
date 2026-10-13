@@ -39,7 +39,7 @@ interface FullBlockEditorModalProps {
   existingBlocks: CustomBlock[];
   availableTextures: CustomTexture[];
   availableGroups?: BlockGroup[];
-  assignedTexture?: { face: BlockFaceKey | 'item'; texDataUrl: string; timestamp: number } | null;
+  assignedTexture?: { face: BlockFaceKey | 'item'; texDataUrl: string; textureId?: string; timestamp: number } | null;
   onClose: () => void;
   onSaveBlock: (block: CustomBlock) => void;
   onOpenTextureLibraryForFace: (face: BlockFaceKey) => void;
@@ -456,7 +456,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
     if (assignedTexture && isOpen) {
       if (assignedTexture.face === 'item') {
         const matchingTexture = availableTextures.find((texture) => texture.dataUrl === assignedTexture.texDataUrl);
-        setMineralDropTextureId(matchingTexture?.id || assignedTexture.texDataUrl);
+        setMineralDropTextureId(assignedTexture.textureId || matchingTexture?.id || assignedTexture.texDataUrl);
         return;
       }
       setFaceTextures((prev) => {
@@ -1180,6 +1180,8 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                       <select value={mineralDropItemId} onChange={(e) => setMineralDropItemId(e.target.value)} className="w-full min-h-[42px] px-3 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500">
                         <option value="minecraft:diamond">Diamante</option><option value="minecraft:emerald">Esmeralda</option><option value="minecraft:coal">Carbón</option><option value="minecraft:raw_iron">Hierro en bruto</option><option value="minecraft:raw_copper">Cobre en bruto</option><option value="minecraft:raw_gold">Oro en bruto</option><option value="minecraft:redstone">Polvo de redstone</option><option value="minecraft:lapis_lazuli">Lapislázuli</option><option value="minecraft:quartz">Cuarzo del Nether</option><option value="minecraft:amethyst_shard">Fragmento de amatista</option><option value="minecraft:flint">Pedernal</option><option value="minecraft:iron_ingot">Lingote de hierro</option><option value="minecraft:gold_ingot">Lingote de oro</option>
                       </select>
+                      <label className="text-[10px] text-slate-400 mt-1">También puedes escribir otro identificador existente:</label>
+                      <input value={mineralDropItemId} onChange={(e) => setMineralDropItemId(e.target.value.trim().toLowerCase())} placeholder="minecraft:raw_iron" className="w-full min-h-[40px] px-3 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono text-slate-100 focus:outline-none focus:border-emerald-500" />
                     </div>
                   ) : (
                     <>
