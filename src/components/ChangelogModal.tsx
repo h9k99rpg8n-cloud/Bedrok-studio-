@@ -6,9 +6,16 @@ interface ChangelogModalProps {
 }
 
 export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose }) => {
-  const [selectedVersion, setSelectedVersion] = useState<'v1.6' | 'v0.1.5' | 'v0.1.4.1' | 'v0.1.4'>('v1.6');
+  const [selectedVersion, setSelectedVersion] = useState<'v1.8' | 'v1.6' | 'v0.1.5' | 'v0.1.4.1' | 'v0.1.4'>('v1.8');
 
   if (!isOpen) return null;
+
+  const features18 = [
+    { title: 'Rediseño visual adaptable', version: '1.8 Beta Preview', badge: 'Interfaz', desc: 'Jerarquía visual renovada, tarjetas de funciones más claras y controles táctiles adaptados a pantallas verticales y horizontales.', icon: 'bx bx-palette' },
+    { title: 'Color de mapa del bloque', version: '1.8 Beta Preview', badge: 'Propiedad nueva', desc: 'Define minecraft:map_color con selector de color, código hexadecimal y una muestra ilustrativa. No cambia la textura del bloque.', icon: 'bx bx-map' },
+    { title: 'Zoom preciso del visor 3D', version: '1.8 Beta Preview', badge: 'Geometría', desc: 'Ajusta la escala con un control deslizante y abre el visor de cajas en pantalla completa cuando el navegador lo permite.', icon: 'bx bx-fullscreen' },
+    { title: 'Presentación de bienvenida', version: '1.8 Beta Preview', badge: 'Novedades', desc: 'La vista previa aparece una vez por navegador/dispositivo y se recuerda en el almacenamiento local de la aplicación.', icon: 'bx bx-rocket' },
+  ];
 
   const features16 = [
     {
@@ -197,7 +204,9 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
   ];
 
   const currentList =
-    selectedVersion === 'v1.6'
+    selectedVersion === 'v1.8'
+      ? features18
+      : selectedVersion === 'v1.6'
       ? features16
       : selectedVersion === 'v0.1.5'
       ? features015
@@ -216,7 +225,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
               <h2 className="text-sm font-black text-slate-100">Novedades de Bedrock Studio</h2>
             </div>
             <span className="text-[10px] font-mono text-emerald-400 block mt-0.5">
-              Versión 1.6 — Nombres Inteligentes, Moderación y Texturas Manuales
+              Versión 1.8 Beta Preview — Rediseño visual y color de mapa
             </span>
           </div>
           <button
@@ -229,7 +238,18 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
         </div>
 
         {/* Version Switch Tabs */}
-        <div className="grid grid-cols-4 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 my-3">
+        <div className="grid grid-cols-5 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 my-3">
+          <button
+            type="button"
+            onClick={() => setSelectedVersion('v1.8')}
+            className={`min-h-[38px] text-[10px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1 ${
+              selectedVersion === 'v1.8' ? 'bg-emerald-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <i className="bx bx-sparkles" />
+            <span>1.8 Beta</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setSelectedVersion('v1.6')}
