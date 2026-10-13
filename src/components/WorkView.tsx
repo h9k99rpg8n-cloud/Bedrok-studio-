@@ -62,7 +62,7 @@ export const WorkView: React.FC<WorkViewProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col w-full max-w-md mx-auto min-h-screen relative select-none">
+    <div className="flex-1 flex flex-col w-full max-w-6xl mx-auto min-h-screen relative select-none">
       {/* Top Navigation Bar: Search (Left), Brand (Center), Create & Sort (Right) */}
       <header className="sticky top-0 z-30 bg-[#090d16]/90 backdrop-blur-md border-b border-slate-800/80 px-4 h-14 flex items-center justify-between gap-2">
         {/* Left: Search Trigger */}
@@ -82,14 +82,14 @@ export const WorkView: React.FC<WorkViewProps> = ({
           type="button"
           onClick={onOpenChangelog}
           className="flex flex-col items-center hover:opacity-90 active:scale-98 transition-all px-2 py-1 rounded-xl"
-          title="Ver novedades de la versión 1.6"
+          title="Ver novedades de la versión 1.8 Beta Preview"
         >
           <span className="text-xs font-black tracking-wider text-slate-100 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
             <span>Bedrock Studio</span>
           </span>
           <span className="text-[10px] font-mono text-emerald-400 font-semibold tracking-tight flex items-center gap-1">
-            <span>v1.6</span>
+            <span>1.8 Beta Preview</span>
             <i className="bx bx-sparkles text-[10px] text-amber-400" />
             <span>Novedades</span>
           </span>
@@ -186,7 +186,7 @@ export const WorkView: React.FC<WorkViewProps> = ({
       )}
 
       {/* Work Canvas Area */}
-      <main className="flex-1 p-4 flex flex-col relative">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 flex flex-col relative">
         {/* Active sort info pill */}
         {projects.length > 0 && (
           <div className="flex items-center justify-between mb-3 text-[11px] text-slate-400 px-1">
@@ -242,7 +242,7 @@ export const WorkView: React.FC<WorkViewProps> = ({
 
         {/* FOLDERS GRID (Infinite folders system) */}
         {sortedProjects.length > 0 && (
-          <div className="grid grid-cols-1 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
             {sortedProjects.map((p) => (
               <div
                 key={p.id}
