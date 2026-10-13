@@ -52,6 +52,19 @@ export type PreferredToolType = 'any' | 'pickaxe' | 'axe' | 'shovel' | 'hoe';
 export type ToolTier = 'any' | 'wood' | 'stone' | 'iron' | 'diamond' | 'netherite';
 export type LootDropType = 'self' | 'nothing' | 'custom_item';
 
+export type MineralToolRequirement = 'none' | 'any_pickaxe' | 'wood' | 'stone' | 'iron' | 'diamond' | 'netherite';
+
+export interface MineralConfig {
+  enabled: boolean;
+  dropItemId: string;
+  dropItemName: string;
+  customItem: boolean;
+  dropTextureId?: string;
+  minDropCount: number;
+  maxDropCount: number;
+  requiredTool: MineralToolRequirement;
+}
+
 export interface BlockBehaviorRules {
   preferredTool: PreferredToolType;
   minToolTier?: ToolTier;
@@ -163,6 +176,7 @@ export interface CustomBlock {
   destructionParticles?: DestructionParticlesConfig;
   stepParticles?: StepParticlesConfig;
   behaviorRules?: BlockBehaviorRules; // v0.1.4 rules
+  mineral?: MineralConfig; // v0.1.7 mineral drop configuration
   componentsList?: BlockComponentItem[]; // v0.1.4 official placement components
   collisionConfig?: BlockCollisionConfig; // v0.1.5 collision boxes
   selectionConfig?: BlockSelectionConfig; // v0.1.5 selection boxes

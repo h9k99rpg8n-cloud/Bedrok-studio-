@@ -2,19 +2,19 @@ import localforage from 'localforage';
 import { AddonProject } from '../types/addon';
 import { generateBedrockUUID } from '../utils/uuid';
 
-// Configure localforage to strictly use IndexedDB
+// Prefer IndexedDB and fall back to localStorage when the browser blocks IndexedDB.
 localforage.config({
   name: 'BedrockStudioDB',
   storeName: 'bedrock_studio_projects',
-  driver: [localforage.INDEXEDDB],
+  driver: [localforage.INDEXEDDB, localforage.LOCALSTORAGE],
   description: 'Almacenamiento persistente IndexedDB para Bedrock Studio v0.1.3',
 });
 
-// App Settings store (also in IndexedDB)
+// App settings use the same fallback order as project storage.
 const settingsStore = localforage.createInstance({
   name: 'BedrockStudioDB',
   storeName: 'app_settings',
-  driver: [localforage.INDEXEDDB],
+  driver: [localforage.INDEXEDDB, localforage.LOCALSTORAGE],
 });
 
 export const dbService = {
@@ -126,15 +126,27 @@ export const dbService = {
         cloned.groups = [];
       }
 
-      // Assign new IDs to duplicated blocks to ensure total isolation
+      // Assign new IDs to duplicated blocks and remap custom mineral items consistently.
       if (Array.isArray(cloned.blocks)) {
-        cloned.blocks = cloned.blocks.map((blk) => ({
-          ...blk,
-          id: `block_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-          identifier: `${blk.identifier}_copy`,
-          displayName: `${blk.displayName} (Copia)`,
-          groupId: blk.groupId ? (groupIdMap[blk.groupId] || blk.groupId) : undefined,
-        }));
+        const mineralItemIdMap: Record<string, string> = {};
+        cloned.blocks = cloned.blocks.map((blk) => {
+          let mineral = blk.mineral;
+          if (mineral?.customItem && mineral.dropItemId?.startsWith('custom:')) {
+            if (!mineralItemIdMap[mineral.dropItemId]) {
+              const oldItemId = mineral.dropItemId.slice('custom:'.length);
+              mineralItemIdMap[mineral.dropItemId] = `custom:${oldItemId}_copy`;
+            }
+            mineral = { ...mineral, dropItemId: mineralItemIdMap[mineral.dropItemId] };
+          }
+          return {
+            ...blk,
+            id: `block_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            identifier: `${blk.identifier}_copy`,
+            displayName: `${blk.displayName} (Copia)`,
+            groupId: blk.groupId ? (groupIdMap[blk.groupId] || blk.groupId) : undefined,
+            mineral,
+          };
+        });
       }
 
       // Duplicate recipes safely

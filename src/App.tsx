@@ -56,9 +56,11 @@ export default function App() {
   const [isTexturePainterOpen, setIsTexturePainterOpen] = useState<boolean>(false);
   const [isTextureLibraryOpen, setIsTextureLibraryOpen] = useState<boolean>(false);
   const [targetFaceForLibrary, setTargetFaceForLibrary] = useState<BlockFaceKey | null>(null);
+  const [targetItemTextureForLibrary, setTargetItemTextureForLibrary] = useState<boolean>(false);
   const [assignedTextureForEditor, setAssignedTextureForEditor] = useState<{
-    face: BlockFaceKey;
+    face: BlockFaceKey | 'item';
     texDataUrl: string;
+    textureId?: string;
     timestamp: number;
   } | null>(null);
 
@@ -474,6 +476,8 @@ export default function App() {
       });
     } catch (err) {
       console.error('Error al exportar:', err);
+      const message = err instanceof Error ? err.message : 'Ocurrió un error desconocido al crear el archivo.';
+      window.alert(`No se pudo exportar el Add-On.\n\n${message}\n\nTus proyectos guardados no se han eliminado.`);
     }
   };
 
@@ -561,6 +565,7 @@ export default function App() {
           }}
           onOpenTexturePainter={() => setIsTexturePainterOpen(true)}
           onOpenTextureLibrary={() => {
+            setTargetItemTextureForLibrary(false);
             setTargetFaceForLibrary(null);
             setIsTextureLibraryOpen(true);
           }}
@@ -643,7 +648,13 @@ export default function App() {
           }}
           onSaveBlock={handleSaveBlock}
           onOpenTextureLibraryForFace={(face) => {
+            setTargetItemTextureForLibrary(false);
             setTargetFaceForLibrary(face);
+            setIsTextureLibraryOpen(true);
+          }}
+          onOpenTextureLibraryForItem={() => {
+            setTargetFaceForLibrary(null);
+            setTargetItemTextureForLibrary(true);
             setIsTextureLibraryOpen(true);
           }}
           onOpenTutorial={() => setIsTutorialOpen(true)}
@@ -658,7 +669,13 @@ export default function App() {
           onClose={() => {
             setIsTextureLibraryOpen(false);
             setTargetFaceForLibrary(null);
+            setTargetItemTextureForLibrary(false);
           }}
+          onSelectTextureForItem={targetItemTextureForLibrary ? (texDataUrl, textureId) => {
+            setAssignedTextureForEditor({ face: 'item', texDataUrl, textureId, timestamp: Date.now() });
+            setTargetItemTextureForLibrary(false);
+            setIsTextureLibraryOpen(false);
+          } : undefined}
           onSelectTextureForFace={
             targetFaceForLibrary
               ? (texDataUrl) => {

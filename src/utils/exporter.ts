@@ -37,6 +37,35 @@ export async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
 }
 
 /**
+ * Converts an assigned item texture to a real PNG and rejects unsupported dimensions.
+ * Minecraft texture dimensions must be powers of two; the texture is never replaced or invented.
+ */
+async function dataUrlToCompatiblePngBlob(dataUrl: string): Promise<Blob> {
+  if (!dataUrl) throw new Error('Falta la textura del objeto personalizado.');
+  const image = new Image();
+  const loaded = new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error('No se pudo leer la textura seleccionada.'));
+  });
+  image.src = dataUrl;
+  await loaded;
+  const isPowerOfTwo = (value: number) => value > 0 && (value & (value - 1)) === 0;
+  if (!isPowerOfTwo(image.naturalWidth) || !isPowerOfTwo(image.naturalHeight)) {
+    throw new Error('La textura del objeto debe tener ancho y alto compatibles con Minecraft (por ejemplo, 16×16, 32×32 o 64×64 píxeles).');
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('No se pudo preparar la textura PNG del objeto.');
+  context.imageSmoothingEnabled = false;
+  context.drawImage(image, 0, 0);
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('No se pudo convertir la textura a PNG.')), 'image/png');
+  });
+}
+
+/**
  * Creates a default pixelated Minecraft pickaxe pack icon if none uploaded
  */
 export function createDefaultPackIconBlob(): Promise<Blob> {
@@ -97,7 +126,7 @@ async function createFallbackTextureBlob(): Promise<Blob> {
 function resolveTextureDataUrl(project: AddonProject, texKeyOrDataUrl: string): string {
   if (!texKeyOrDataUrl) return '';
   if (texKeyOrDataUrl.startsWith('data:image')) return texKeyOrDataUrl;
-  const found = project.textures.find((t) => t.id === texKeyOrDataUrl || t.name === texKeyOrDataUrl);
+  const found = (Array.isArray(project.textures) ? project.textures : []).find((t) => t.id === texKeyOrDataUrl || t.name === texKeyOrDataUrl);
   return found?.dataUrl || '';
 }
 
@@ -106,10 +135,58 @@ function resolveTextureDataUrl(project: AddonProject, texKeyOrDataUrl: string): 
  * compatible with 1.26.20 - 1.26.52.
  */
 export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fileName: string; size: number }> {
+  if (!project || typeof project !== 'object') {
+    throw new Error('No se encontró un proyecto válido para exportar.');
+  }
+  if (!project.name || !project.name.trim()) {
+    throw new Error('Ponle un nombre al proyecto antes de exportarlo.');
+  }
+
+  const blocks = Array.isArray(project.blocks) ? project.blocks : [];
+  const invalidBlocks = blocks.filter((block) => !block?.identifier || !/^[a-z0-9_]+$/.test(block.identifier));
+  if (invalidBlocks.length > 0) {
+    throw new Error(`Hay ${invalidBlocks.length} bloque(s) con identificadores no válidos. Usa solo letras minúsculas, números y guion bajo; después vuelve a exportar.`);
+  }
+  const seenIdentifiers = new Set<string>();
+  const duplicateIdentifiers = blocks.filter((block) => {
+    if (seenIdentifiers.has(block.identifier)) return true;
+    seenIdentifiers.add(block.identifier);
+    return false;
+  });
+  if (duplicateIdentifiers.length > 0) {
+    throw new Error('Hay bloques con identificadores repetidos. Cambia los identificadores duplicados antes de exportar.');
+  }
+
+  const customMineralItems = new Map<string, { name: string; textureId: string }>();
+  for (const block of blocks) {
+    const mineral = block.mineral;
+    if (!mineral?.enabled) continue;
+    if (!Number.isInteger(mineral.minDropCount) || !Number.isInteger(mineral.maxDropCount) ||
+        mineral.minDropCount < 1 || mineral.maxDropCount > 64 || mineral.minDropCount > mineral.maxDropCount) {
+      throw new Error('El mineral "' + block.displayName + '" tiene cantidades de botín no válidas.');
+    }
+    if (!/^[a-z0-9_]+:[a-z0-9_]+$/.test(mineral.dropItemId || '')) {
+      throw new Error('El mineral "' + block.displayName + '" tiene un identificador de objeto no válido.');
+    }
+    if (mineral.customItem) {
+      if (!mineral.dropItemId.startsWith('custom:') || !mineral.dropTextureId) {
+        throw new Error('El objeto personalizado del mineral "' + block.displayName + '" necesita identificador y textura.');
+      }
+      const textureData = resolveTextureDataUrl(project, mineral.dropTextureId);
+      if (!textureData) throw new Error('No se encontró la textura del objeto "' + mineral.dropItemName + '".');
+      const previous = customMineralItems.get(mineral.dropItemId);
+      if (previous && (previous.name !== mineral.dropItemName || previous.textureId !== mineral.dropTextureId)) {
+        throw new Error('Dos minerales definen el mismo objeto personalizado "' + mineral.dropItemId + '" con configuraciones diferentes.');
+      }
+      customMineralItems.set(mineral.dropItemId, { name: mineral.dropItemName, textureId: mineral.dropTextureId });
+    }
+  }
+
+  const safeProjectName = project.name.trim().replace(/[^a-zA-Z0-9_-]/g, '_') || 'addon';
   const zip = new JSZip();
 
-  const bpFolder = zip.folder(`${project.name}_BP`);
-  const rpFolder = zip.folder(`${project.name}_RP`);
+  const bpFolder = zip.folder(`${safeProjectName}_BP`);
+  const rpFolder = zip.folder(`${safeProjectName}_RP`);
 
   if (!bpFolder || !rpFolder) {
     throw new Error('No se pudieron inicializar las carpetas BP/RP');
@@ -132,7 +209,7 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
   const minEngineVersion = [engineParts[0] || 1, engineParts[1] || 26, engineParts[2] || 20];
 
   // Check if any block has Step Particles enabled (requires Script API module)
-  const requiresScriptApi = project.blocks.some((b) => b.stepParticles?.enabled);
+  const requiresScriptApi = blocks.some((b) => b.stepParticles?.enabled);
 
   // 1. Behavior Pack Manifest
   const bpModules: Record<string, unknown>[] = [
@@ -205,13 +282,18 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
   const rpTexturesFolder = rpFolder.folder('textures');
   const rpBlocksTexturesFolder = rpTexturesFolder?.folder('blocks');
   const rpParticleTexturesFolder = rpTexturesFolder?.folder('particle');
+  const bpItemsFolder = customMineralItems.size > 0 ? bpFolder.folder('items') : null;
+  const rpItemsTexturesFolder = customMineralItems.size > 0 ? rpTexturesFolder?.folder('items') : null;
+  const itemTextureData: Record<string, { textures: string }> = {};
+  const generatedCustomItemIds = new Set<string>();
+  const lootTablesFolder = blocks.some((block) => block.mineral?.enabled) ? bpFolder.folder('loot_tables')?.folder('blocks') : null;
 
   const blocksResourceMap: Record<string, unknown> = {};
   const terrainTextureData: Record<string, { textures: string }> = {};
 
   // Multilingual lang dictionaries map: langCode -> array of lines
   const languageCodes = new Set<string>(['en_US', 'es_ES']);
-  project.blocks.forEach((b) => {
+  blocks.forEach((b) => {
     b.translations?.forEach((t) => {
       if (t.langCode) languageCodes.add(t.langCode);
     });
@@ -227,7 +309,7 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
     ];
   });
 
-  for (const block of project.blocks) {
+  for (const block of blocks) {
     const fullId = `custom:${block.identifier}`;
     const mode = block.textureMode || 'one';
     const faces = block.faceTextures || {
@@ -489,6 +571,68 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
       };
     }
 
+    // v0.1.7: Mineral loot uses the stable minecraft:loot component and a behavior-pack loot table.
+    const mineral = block.mineral;
+    if (mineral?.enabled) {
+      components['minecraft:loot'] = 'loot_tables/blocks/' + block.identifier + '.json';
+      const conditions: Record<string, unknown>[] = [];
+      const tierTags: Record<string, string[]> = {
+        wood: ['minecraft:wooden_tier', 'minecraft:stone_tier', 'minecraft:iron_tier', 'minecraft:golden_tier', 'minecraft:diamond_tier', 'minecraft:netherite_tier'],
+        stone: ['minecraft:stone_tier', 'minecraft:iron_tier', 'minecraft:golden_tier', 'minecraft:diamond_tier', 'minecraft:netherite_tier'],
+        iron: ['minecraft:iron_tier', 'minecraft:golden_tier', 'minecraft:diamond_tier', 'minecraft:netherite_tier'],
+        diamond: ['minecraft:diamond_tier', 'minecraft:netherite_tier'],
+        netherite: ['minecraft:netherite_tier'],
+      };
+      if (mineral.requiredTool === 'any_pickaxe') {
+        conditions.push({ condition: 'match_tool', 'minecraft:match_tool_filter_all': ['minecraft:is_pickaxe'] });
+      } else if (mineral.requiredTool !== 'none') {
+        conditions.push({
+          condition: 'match_tool',
+          'minecraft:match_tool_filter_all': ['minecraft:is_pickaxe'],
+          'minecraft:match_tool_filter_any': tierTags[mineral.requiredTool] || [],
+        });
+      }
+      const lootTable = {
+        pools: [{
+          rolls: 1,
+          ...(conditions.length ? { conditions } : {}),
+          entries: [{
+            type: 'item',
+            name: mineral.dropItemId,
+            functions: [{ function: 'set_count', count: { min: mineral.minDropCount, max: mineral.maxDropCount } }],
+          }],
+        }],
+      };
+      lootTablesFolder?.file(block.identifier + '.json', JSON.stringify(lootTable, null, 2));
+
+      if (mineral.customItem && !generatedCustomItemIds.has(mineral.dropItemId)) {
+        generatedCustomItemIds.add(mineral.dropItemId);
+        const customItemId = mineral.dropItemId.split(':')[1];
+        const textureKey = 'mineral_' + customItemId;
+        const textureData = resolveTextureDataUrl(project, mineral.dropTextureId || '');
+        const textureFileName = textureKey + '.png';
+        itemTextureData[textureKey] = { textures: 'textures/items/' + textureFileName.replace(/\.png$/, '') };
+        bpItemsFolder?.file(customItemId + '.json', JSON.stringify({
+          format_version: '1.20.20',
+          'minecraft:item': {
+            description: {
+              identifier: mineral.dropItemId,
+              menu_category: { category: 'items' },
+            },
+            components: {
+              'minecraft:max_stack_size': 64,
+              'minecraft:icon': { texture: textureKey },
+              'minecraft:display_name': { value: mineral.dropItemName },
+            },
+          },
+        }, null, 2));
+        rpItemsTexturesFolder?.file(textureFileName, await dataUrlToCompatiblePngBlob(textureData));
+        languageCodes.forEach((code) => {
+          langFilesMap[code].push('item.' + mineral.dropItemId + '.name=' + mineral.dropItemName);
+        });
+      }
+    }
+
     // Destruction particle texture
     if (block.destructionParticles?.enabled && block.destructionParticles.particleTextureId) {
       const partData = resolveTextureDataUrl(project, block.destructionParticles.particleTextureId);
@@ -707,6 +851,15 @@ world.beforeEvents?.worldInitialize?.subscribe((initEvent) => {
     )
   );
 
+  // Item texture atlas is generated only when at least one mineral defines a custom item.
+  if (Object.keys(itemTextureData).length > 0) {
+    rpTexturesFolder?.file('item_texture.json', JSON.stringify({
+      resource_pack_name: project.name,
+      texture_name: 'atlas.items',
+      texture_data: itemTextureData,
+    }, null, 2));
+  }
+
   // 7. Texts (Multilingual .lang files and languages.json)
   const textsFolder = rpFolder.folder('texts');
   const langCodesArray = Array.from(languageCodes);
@@ -724,8 +877,7 @@ world.beforeEvents?.worldInitialize?.subscribe((initEvent) => {
     compression: 'DEFLATE',
     compressionOptions: { level: 6 },
   });
-  const sanitized = (project.name || 'addon').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const fileName = `${sanitized}.mcaddon`;
+  const fileName = `${safeProjectName}.mcaddon`;
 
   // Robust client-side file download that prevents page reload or iframe navigation
   try {
@@ -760,11 +912,12 @@ world.beforeEvents?.worldInitialize?.subscribe((initEvent) => {
         } catch {
           // Cleanup safe
         }
-      }, 2000);
+      }, 15000);
     }
   } catch (err) {
     console.error('Error al generar enlace de descarga:', err);
-    throw new Error('No se pudo descargar el archivo .mcaddon automáticamente.');
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(`No se pudo iniciar la descarga del archivo .mcaddon: ${detail}`);
   }
 
   return {

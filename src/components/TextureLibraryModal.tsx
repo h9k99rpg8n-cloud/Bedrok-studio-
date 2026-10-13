@@ -7,6 +7,7 @@ interface TextureLibraryModalProps {
   project: AddonProject;
   onClose: () => void;
   onSelectTextureForFace?: (textureDataUrl: string) => void;
+  onSelectTextureForItem?: (textureDataUrl: string, textureId?: string) => void;
   onSaveNewTexture: (texture: CustomTexture) => void;
   onDeleteTexture: (textureId: string) => void;
   onOpenPainter: () => void;
@@ -17,6 +18,7 @@ export const TextureLibraryModal: React.FC<TextureLibraryModalProps> = ({
   project,
   onClose,
   onSelectTextureForFace,
+  onSelectTextureForItem,
   onSaveNewTexture,
   onDeleteTexture,
   onOpenPainter,
@@ -102,7 +104,7 @@ export const TextureLibraryModal: React.FC<TextureLibraryModalProps> = ({
     reader.readAsDataURL(file);
   };
 
-  const handleImportMinecraftTexture = (mcItem: MinecraftReferenceTexture) => {
+  const handleImportMinecraftTexture = (mcItem: MinecraftReferenceTexture): CustomTexture => {
     const newTex: CustomTexture = {
       id: `tex_mc_${mcItem.id}_${Date.now()}`,
       name: mcItem.englishName.toLowerCase().replace(/[^a-z0-9_]/g, '_'),
@@ -112,6 +114,7 @@ export const TextureLibraryModal: React.FC<TextureLibraryModalProps> = ({
     onSaveNewTexture(newTex);
     setImportedNotice(`"${mcItem.name}" importada al proyecto`);
     setTimeout(() => setImportedNotice(null), 3000);
+    return newTex;
   };
 
   const handleDeleteClick = (tex: CustomTexture) => {
@@ -346,17 +349,18 @@ export const TextureLibraryModal: React.FC<TextureLibraryModalProps> = ({
                       </div>
 
                       <div className="flex items-center gap-1.5 pt-1 border-t border-slate-800/80">
-                        {onSelectTextureForFace && (
+                        {(onSelectTextureForFace || onSelectTextureForItem) && (
                           <button
                             type="button"
                             onClick={() => {
-                              onSelectTextureForFace(tex.dataUrl);
+                              if (onSelectTextureForItem) onSelectTextureForItem(tex.dataUrl, tex.id);
+                              else onSelectTextureForFace?.(tex.dataUrl);
                               onClose();
                             }}
                             className="flex-1 min-h-[34px] bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-lg flex items-center justify-center gap-1"
                           >
                             <i className="bx bx-check" />
-                            <span>Asignar</span>
+                            <span>{onSelectTextureForItem ? 'Usar para objeto' : 'Asignar'}</span>
                           </button>
                         )}
 
@@ -408,17 +412,22 @@ export const TextureLibraryModal: React.FC<TextureLibraryModalProps> = ({
                   </div>
 
                   <div className="flex items-center gap-1.5 pt-1.5 border-t border-slate-800/80">
-                    {onSelectTextureForFace ? (
+                    {(onSelectTextureForFace || onSelectTextureForItem) ? (
                       <button
                         type="button"
                         onClick={() => {
-                          onSelectTextureForFace(mcItem.dataUrl);
+                          if (onSelectTextureForItem) {
+                            const importedTexture = handleImportMinecraftTexture(mcItem);
+                            onSelectTextureForItem(mcItem.dataUrl, importedTexture.id);
+                          } else {
+                            onSelectTextureForFace?.(mcItem.dataUrl);
+                          }
                           onClose();
                         }}
                         className="flex-1 min-h-[34px] bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-lg flex items-center justify-center gap-1"
                       >
                         <i className="bx bx-check" />
-                        <span>Asignar</span>
+                        <span>{onSelectTextureForItem ? 'Importar y usar' : 'Asignar'}</span>
                       </button>
                     ) : (
                       <button
