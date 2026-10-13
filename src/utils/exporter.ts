@@ -106,10 +106,33 @@ function resolveTextureDataUrl(project: AddonProject, texKeyOrDataUrl: string): 
  * compatible with 1.26.20 - 1.26.52.
  */
 export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fileName: string; size: number }> {
+  if (!project || typeof project !== 'object') {
+    throw new Error('No se encontró un proyecto válido para exportar.');
+  }
+  if (!project.name || !project.name.trim()) {
+    throw new Error('Ponle un nombre al proyecto antes de exportarlo.');
+  }
+
+  const blocks = Array.isArray(project.blocks) ? project.blocks : [];
+  const invalidBlocks = blocks.filter((block) => !block?.identifier || !/^[a-z0-9_]+$/.test(block.identifier));
+  if (invalidBlocks.length > 0) {
+    throw new Error(`Hay ${invalidBlocks.length} bloque(s) con identificadores no válidos. Usa solo letras minúsculas, números y guion bajo; después vuelve a exportar.`);
+  }
+  const seenIdentifiers = new Set<string>();
+  const duplicateIdentifiers = blocks.filter((block) => {
+    if (seenIdentifiers.has(block.identifier)) return true;
+    seenIdentifiers.add(block.identifier);
+    return false;
+  });
+  if (duplicateIdentifiers.length > 0) {
+    throw new Error('Hay bloques con identificadores repetidos. Cambia los identificadores duplicados antes de exportar.');
+  }
+
+  const safeProjectName = project.name.trim().replace(/[^a-zA-Z0-9_-]/g, '_') || 'addon';
   const zip = new JSZip();
 
-  const bpFolder = zip.folder(`${project.name}_BP`);
-  const rpFolder = zip.folder(`${project.name}_RP`);
+  const bpFolder = zip.folder(`${safeProjectName}_BP`);
+  const rpFolder = zip.folder(`${safeProjectName}_RP`);
 
   if (!bpFolder || !rpFolder) {
     throw new Error('No se pudieron inicializar las carpetas BP/RP');
@@ -227,7 +250,7 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
     ];
   });
 
-  for (const block of project.blocks) {
+  for (const block of blocks) {
     const fullId = `custom:${block.identifier}`;
     const mode = block.textureMode || 'one';
     const faces = block.faceTextures || {
@@ -724,8 +747,7 @@ world.beforeEvents?.worldInitialize?.subscribe((initEvent) => {
     compression: 'DEFLATE',
     compressionOptions: { level: 6 },
   });
-  const sanitized = (project.name || 'addon').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const fileName = `${sanitized}.mcaddon`;
+  const fileName = `${safeProjectName}.mcaddon`;
 
   // Robust client-side file download that prevents page reload or iframe navigation
   try {
@@ -760,11 +782,12 @@ world.beforeEvents?.worldInitialize?.subscribe((initEvent) => {
         } catch {
           // Cleanup safe
         }
-      }, 2000);
+      }, 15000);
     }
   } catch (err) {
     console.error('Error al generar enlace de descarga:', err);
-    throw new Error('No se pudo descargar el archivo .mcaddon automáticamente.');
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(`No se pudo iniciar la descarga del archivo .mcaddon: ${detail}`);
   }
 
   return {
