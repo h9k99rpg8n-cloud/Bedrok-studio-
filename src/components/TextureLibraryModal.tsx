@@ -7,6 +7,7 @@ interface TextureLibraryModalProps {
   project: AddonProject;
   onClose: () => void;
   onSelectTextureForFace?: (textureDataUrl: string) => void;
+  onSelectTextureForItem?: (textureDataUrl: string) => void;
   onSaveNewTexture: (texture: CustomTexture) => void;
   onDeleteTexture: (textureId: string) => void;
   onOpenPainter: () => void;
@@ -17,6 +18,7 @@ export const TextureLibraryModal: React.FC<TextureLibraryModalProps> = ({
   project,
   onClose,
   onSelectTextureForFace,
+  onSelectTextureForItem,
   onSaveNewTexture,
   onDeleteTexture,
   onOpenPainter,
@@ -346,17 +348,18 @@ export const TextureLibraryModal: React.FC<TextureLibraryModalProps> = ({
                       </div>
 
                       <div className="flex items-center gap-1.5 pt-1 border-t border-slate-800/80">
-                        {onSelectTextureForFace && (
+                        {(onSelectTextureForFace || onSelectTextureForItem) && (
                           <button
                             type="button"
                             onClick={() => {
-                              onSelectTextureForFace(tex.dataUrl);
+                              if (onSelectTextureForItem) onSelectTextureForItem(tex.dataUrl);
+                              else onSelectTextureForFace?.(tex.dataUrl);
                               onClose();
                             }}
                             className="flex-1 min-h-[34px] bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-lg flex items-center justify-center gap-1"
                           >
                             <i className="bx bx-check" />
-                            <span>Asignar</span>
+                            <span>{onSelectTextureForItem ? 'Usar para objeto' : 'Asignar'}</span>
                           </button>
                         )}
 
@@ -408,17 +411,22 @@ export const TextureLibraryModal: React.FC<TextureLibraryModalProps> = ({
                   </div>
 
                   <div className="flex items-center gap-1.5 pt-1.5 border-t border-slate-800/80">
-                    {onSelectTextureForFace ? (
+                    {(onSelectTextureForFace || onSelectTextureForItem) ? (
                       <button
                         type="button"
                         onClick={() => {
-                          onSelectTextureForFace(mcItem.dataUrl);
+                          if (onSelectTextureForItem) {
+                            handleImportMinecraftTexture(mcItem);
+                            onSelectTextureForItem(mcItem.dataUrl);
+                          } else {
+                            onSelectTextureForFace?.(mcItem.dataUrl);
+                          }
                           onClose();
                         }}
                         className="flex-1 min-h-[34px] bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-lg flex items-center justify-center gap-1"
                       >
                         <i className="bx bx-check" />
-                        <span>Asignar</span>
+                        <span>{onSelectTextureForItem ? 'Importar y usar' : 'Asignar'}</span>
                       </button>
                     ) : (
                       <button
