@@ -97,7 +97,7 @@ async function createFallbackTextureBlob(): Promise<Blob> {
 function resolveTextureDataUrl(project: AddonProject, texKeyOrDataUrl: string): string {
   if (!texKeyOrDataUrl) return '';
   if (texKeyOrDataUrl.startsWith('data:image')) return texKeyOrDataUrl;
-  const found = project.textures.find((t) => t.id === texKeyOrDataUrl || t.name === texKeyOrDataUrl);
+  const found = (Array.isArray(project.textures) ? project.textures : []).find((t) => t.id === texKeyOrDataUrl || t.name === texKeyOrDataUrl);
   return found?.dataUrl || '';
 }
 
@@ -155,7 +155,7 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
   const minEngineVersion = [engineParts[0] || 1, engineParts[1] || 26, engineParts[2] || 20];
 
   // Check if any block has Step Particles enabled (requires Script API module)
-  const requiresScriptApi = project.blocks.some((b) => b.stepParticles?.enabled);
+  const requiresScriptApi = blocks.some((b) => b.stepParticles?.enabled);
 
   // 1. Behavior Pack Manifest
   const bpModules: Record<string, unknown>[] = [
@@ -234,7 +234,7 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
 
   // Multilingual lang dictionaries map: langCode -> array of lines
   const languageCodes = new Set<string>(['en_US', 'es_ES']);
-  project.blocks.forEach((b) => {
+  blocks.forEach((b) => {
     b.translations?.forEach((t) => {
       if (t.langCode) languageCodes.add(t.langCode);
     });
