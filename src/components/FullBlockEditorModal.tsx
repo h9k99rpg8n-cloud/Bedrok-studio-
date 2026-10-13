@@ -102,6 +102,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
   const [flammable, setFlammable] = useState<boolean>(false);
   const [flameOdds, setFlameOdds] = useState<number>(5);
   const [burnOdds, setBurnOdds] = useState<number>(20);
+  const [mapColor, setMapColor] = useState<string>('#7FB238');
 
   // Propiedad mineral (v0.1.7); los datos se conservan aunque se desactive.
   const [isMineral, setIsMineral] = useState<boolean>(false);
@@ -253,6 +254,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         setFlammable(block.flammable || false);
         setFlameOdds(block.flameOdds ?? 5);
         setBurnOdds(block.burnOdds ?? 20);
+        setMapColor(/^#[0-9a-fA-F]{6}$/.test(block.mapColor || '') ? block.mapColor! : '#7FB238');
 
         setIsMineral(block.mineral?.enabled ?? false);
         setMineralCustomItem(block.mineral?.customItem ?? false);
@@ -382,6 +384,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         setFlammable(false);
         setFlameOdds(5);
         setBurnOdds(20);
+        setMapColor('#7FB238');
 
         setIsMineral(false);
         setMineralCustomItem(false);
@@ -564,6 +567,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
       // Propiedades Físicas y Visuales
       destroyTime: Math.max(0.1, destroyTime),
       explosionResistance: Math.max(0, explosionResistance),
+      mapColor: /^#[0-9a-fA-F]{6}$/.test(mapColor) ? mapColor.toUpperCase() : '#7FB238',
       emitsLight,
       lightLevel: emitsLight ? Math.min(15, Math.max(0, lightLevel)) : 0,
       lightDampening: Math.min(15, Math.max(0, Math.round(lightDampening))),
@@ -1161,6 +1165,25 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         {/* ================================================================= */}
         {activeTab === 'properties' && (
           <div className="flex flex-col gap-3.5 animate-in fade-in duration-150">
+            {/* Color del bloque en mapas (v1.8 Beta Preview) */}
+            <div className="bg-slate-950/70 p-4 rounded-2xl border border-cyan-500/25 flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <i className="bx bx-map text-cyan-300 text-lg" />
+                <div className="flex-1 min-w-0"><label htmlFor="block-map-color" className="text-xs font-bold text-slate-100">Color en el mapa</label><p className="text-[10px] text-slate-400">Cambia el color con el que se representa el bloque en mapas; no modifica su textura.</p></div>
+                <span className="w-8 h-8 rounded-lg border border-white/20 shadow-inner shrink-0" style={{ backgroundColor: mapColor }} aria-label={`Vista previa ${mapColor}`} />
+              </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_52px] gap-2 items-center">
+                <div className="flex flex-col gap-1"><label htmlFor="block-map-color" className="text-[10px] text-slate-400">Código hexadecimal</label><input id="block-map-color" type="text" value={mapColor} maxLength={7} onChange={(e) => { const next = e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`; if (/^#[0-9a-fA-F]{0,6}$/.test(next)) setMapColor(next); }} className="w-full min-h-[42px] px-3 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono text-slate-100 focus:outline-none focus:border-cyan-400" placeholder="#7FB238" /></div>
+                <label className="relative block w-[52px] h-[42px] rounded-xl overflow-hidden border border-slate-700 cursor-pointer" title="Elegir color"><input aria-label="Elegir color del mapa" type="color" value={/^#[0-9a-fA-F]{6}$/.test(mapColor) ? mapColor : '#7FB238'} onChange={(e) => setMapColor(e.target.value.toUpperCase())} className="absolute inset-0 w-full h-full scale-150 cursor-pointer" /></label>
+              </div>
+              <div className="rounded-xl border border-slate-800 bg-[#101827] p-3 flex items-center gap-3">
+                <div className="w-16 h-16 rounded-lg p-1 bg-[#202b3b] grid grid-cols-4 grid-rows-4 gap-0.5 shrink-0" aria-label="Vista previa de color en un mapa">
+                  {Array.from({ length: 16 }, (_, i) => <span key={i} className="rounded-[2px]" style={{ backgroundColor: i % 5 === 0 ? '#b7b7b7' : i % 7 === 0 ? '#d8c68a' : mapColor, opacity: i % 4 === 0 ? 0.72 : 1 }} />)}
+                </div>
+                <div className="min-w-0"><p className="text-xs font-bold text-slate-200">Vista previa del mapa</p><p className="text-[10px] text-slate-400 mt-1">El tono elegido se muestra como una muestra ilustrativa. El resultado final depende de cómo Minecraft procese el color.</p><p className="text-[10px] font-mono text-cyan-300 mt-1">{mapColor.toUpperCase()}</p></div>
+              </div>
+            </div>
+
             {/* Propiedad mineral (v0.1.7) */}
             <div className="bg-slate-950/70 p-4 rounded-2xl border border-emerald-500/25 flex flex-col gap-3">
               <div className="flex items-center gap-2">

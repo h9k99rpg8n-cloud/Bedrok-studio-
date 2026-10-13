@@ -243,7 +243,7 @@ export const Box3DVisualizer: React.FC<Box3DVisualizerProps> = ({
 
   return (
     <div
-      className={`relative w-full bg-[#060911] border border-slate-800 rounded-2xl overflow-hidden flex flex-col select-none ${className}`}
+      className={`box3d-visualizer relative w-full bg-[#060911] border border-slate-800 rounded-2xl overflow-hidden flex flex-col select-none ${className}`}
     >
       {/* 3D Canvas Stage */}
       <div
@@ -525,11 +525,15 @@ export const Box3DVisualizer: React.FC<Box3DVisualizerProps> = ({
             </span>
             <button
               type="button"
-              onClick={() => setZoom((z) => Math.min(1.8, z + 0.15))}
+              onClick={() => setZoom((z) => Math.min(2.2, z + 0.15))}
               className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
               title="Acercar"
             >
               <i className="bx bx-plus text-xs" />
+            </button>
+            <input aria-label="Nivel de zoom del visor 3D" type="range" min="0.6" max="2.2" step="0.05" value={zoom} onChange={(e) => setZoom(Number(e.target.value))} className="w-20 sm:w-28 accent-emerald-400" />
+            <button type="button" onClick={() => { const node = containerRef.current?.closest('.box3d-visualizer') as HTMLElement | null; if (node?.requestFullscreen) void node.requestFullscreen().catch(() => undefined); }} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-300 hover:text-white hover:bg-slate-800" title="Abrir visor en pantalla completa" aria-label="Pantalla completa">
+              <i className="bx bx-fullscreen text-sm" />
             </button>
           </div>
         </div>

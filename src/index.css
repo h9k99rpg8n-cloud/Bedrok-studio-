@@ -32,3 +32,29 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(71, 85, 105, 1);
 }
+
+
+/* Bedrock Studio 1.8 Beta Preview — responsive visual system */
+:root { color-scheme: dark; }
+html { min-height: 100%; background: #090d16; }
+body { min-width: 320px; min-height: 100dvh; overscroll-behavior-y: contain; }
+button, input, select, textarea { font: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid rgba(52, 211, 153, .9); outline-offset: 2px; }
+::selection { background: rgba(16, 185, 129, .32); color: #ecfdf5; }
+.box3d-visualizer:fullscreen { width: 100vw !important; height: 100dvh !important; max-height: 100dvh !important; border-radius: 0 !important; background: #060911; }
+.box3d-visualizer:fullscreen > div:first-child { flex: 1; height: auto !important; min-height: 0; }
+@media (orientation: landscape) and (max-height: 600px) {
+  .box3d-visualizer:not(:fullscreen) > div:first-child { height: 52vh; min-height: 190px; }
+}
+@media (max-width: 420px) {
+  input, select, textarea { max-width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+}
+
+@media (orientation: landscape) and (max-height: 600px) {
+  .fixed.inset-0 > div.relative { max-height: calc(100dvh - 1rem) !important; }
+  .fixed.inset-0 > section { max-height: calc(100dvh - 1rem) !important; }
+}
