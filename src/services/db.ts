@@ -197,6 +197,28 @@ export const dbService = {
   },
 
   /**
+   * Checks whether the 1.8 Beta Preview has been shown on this browser/device.
+   */
+  async hasSeenReleasePreview(): Promise<boolean> {
+    try {
+      return !!(await settingsStore.getItem<boolean>('release_preview_1_8_beta_seen'));
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * Stores the one-time 1.8 Beta Preview acknowledgement.
+   */
+  async setSeenReleasePreview(seen: boolean): Promise<void> {
+    try {
+      await settingsStore.setItem('release_preview_1_8_beta_seen', seen);
+    } catch (err) {
+      console.error('Error al guardar el estado de la vista previa:', err);
+    }
+  },
+
+  /**
    * Sets onboarding completed flag in IndexedDB
    */
   async setSeenOnboarding(seen: boolean): Promise<void> {
