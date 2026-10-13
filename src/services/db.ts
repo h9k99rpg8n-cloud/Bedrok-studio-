@@ -126,15 +126,27 @@ export const dbService = {
         cloned.groups = [];
       }
 
-      // Assign new IDs to duplicated blocks to ensure total isolation
+      // Assign new IDs to duplicated blocks and remap custom mineral items consistently.
       if (Array.isArray(cloned.blocks)) {
-        cloned.blocks = cloned.blocks.map((blk) => ({
-          ...blk,
-          id: `block_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-          identifier: `${blk.identifier}_copy`,
-          displayName: `${blk.displayName} (Copia)`,
-          groupId: blk.groupId ? (groupIdMap[blk.groupId] || blk.groupId) : undefined,
-        }));
+        const mineralItemIdMap: Record<string, string> = {};
+        cloned.blocks = cloned.blocks.map((blk) => {
+          let mineral = blk.mineral;
+          if (mineral?.customItem && mineral.dropItemId?.startsWith('custom:')) {
+            if (!mineralItemIdMap[mineral.dropItemId]) {
+              const oldItemId = mineral.dropItemId.slice('custom:'.length);
+              mineralItemIdMap[mineral.dropItemId] = `custom:${oldItemId}_copy`;
+            }
+            mineral = { ...mineral, dropItemId: mineralItemIdMap[mineral.dropItemId] };
+          }
+          return {
+            ...blk,
+            id: `block_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            identifier: `${blk.identifier}_copy`,
+            displayName: `${blk.displayName} (Copia)`,
+            groupId: blk.groupId ? (groupIdMap[blk.groupId] || blk.groupId) : undefined,
+            mineral,
+          };
+        });
       }
 
       // Duplicate recipes safely
