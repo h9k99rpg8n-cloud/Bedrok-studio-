@@ -43,6 +43,7 @@ interface FullBlockEditorModalProps {
   onClose: () => void;
   onSaveBlock: (block: CustomBlock) => void;
   onOpenTextureLibraryForFace: (face: BlockFaceKey) => void;
+  onOpenTextureLibraryForItem: () => void;
   onOpenTutorial: () => void;
 }
 
@@ -59,6 +60,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
   onClose,
   onSaveBlock,
   onOpenTextureLibraryForFace,
+  onOpenTextureLibraryForItem,
   onOpenTutorial,
 }) => {
   // Navigation Tabs: Identidad, Atlas Core, Propiedades, Cajas (v0.1.5), Comportamiento
@@ -1180,7 +1182,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                     <select value={mineralDropTextureId} onChange={(e) => setMineralDropTextureId(e.target.value)} className="w-full min-h-[42px] px-3 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500">
                       <option value="">Elegir textura de la biblioteca…</option>{availableTextures.map((texture) => <option key={texture.id} value={texture.id}>{texture.name}</option>)}
                     </select>
-                    <button type="button" onClick={() => onOpenTextureLibraryForFace('up')} className="min-h-[40px] rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-xs font-semibold">Abrir biblioteca / importar textura</button>
+                    <button type="button" onClick={onOpenTextureLibraryForItem} className="min-h-[40px] rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-xs font-semibold">Abrir biblioteca / importar textura</button>
                     {mineralCustomItem && <span className="text-[10px] text-slate-500">El objeto nuevo necesita una textura propia; no se copiará la textura del bloque.</span>}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
