@@ -573,15 +573,14 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
       burnOdds: flammable ? Math.max(1, burnOdds) : undefined,
 
       // Reglas de Comportamiento
-      mineral: (isMineral || block?.mineral)
-        ? {
-            enabled: isMineral,
-            dropItemId: mineralCustomItem ? 'custom:' + mineralDropItemId.trim().toLowerCase().replace(/^custom:/, '') : mineralDropItemId.trim(),
-            dropItemName: mineralDropItemName.trim(), customItem: mineralCustomItem,
-            dropTextureId: mineralDropTextureId || undefined,
-            minDropCount: Math.min(64, Math.max(1, Math.round(mineralMinCount))),
-            maxDropCount: Math.min(64, Math.max(1, Math.round(mineralMaxCount))), requiredTool: mineralRequiredTool,
-          } : undefined,
+      mineral: {
+        enabled: isMineral,
+        dropItemId: mineralCustomItem ? 'custom:' + mineralDropItemId.trim().toLowerCase().replace(/^custom:/, '') : mineralDropItemId.trim(),
+        dropItemName: mineralDropItemName.trim(), customItem: mineralCustomItem,
+        dropTextureId: mineralDropTextureId || undefined,
+        minDropCount: Math.min(64, Math.max(1, Math.round(mineralMinCount))),
+        maxDropCount: Math.min(64, Math.max(1, Math.round(mineralMaxCount))), requiredTool: mineralRequiredTool,
+      },
 
       behaviorRules: {
         preferredTool: enabledBehaviors.mining ? preferredTool : 'any',
