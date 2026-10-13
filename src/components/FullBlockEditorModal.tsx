@@ -1195,6 +1195,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                     </select>
                     <button type="button" onClick={onOpenTextureLibraryForItem} className="min-h-[40px] rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-xs font-semibold">Abrir biblioteca / importar textura</button>
                     {mineralCustomItem && <span className="text-[10px] text-slate-500">El objeto nuevo necesita una textura propia; no se copiará la textura del bloque.</span>}
+                    {!mineralCustomItem && <span className="text-[10px] text-slate-500">En objetos vanilla se conserva el icono original; la textura elegida se usa al crear un objeto personalizado.</span>}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="flex flex-col gap-1"><label className="text-xs text-slate-300">Cantidad mínima</label><input type="number" min={1} max={64} step={1} value={mineralMinCount} onChange={(e) => setMineralMinCount(Number(e.target.value))} className="w-full min-h-[42px] px-3 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-100" /></div>
