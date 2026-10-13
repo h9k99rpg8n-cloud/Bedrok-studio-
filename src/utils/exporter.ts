@@ -37,6 +37,35 @@ export async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
 }
 
 /**
+ * Converts an assigned item texture to a real PNG and rejects unsupported dimensions.
+ * Minecraft texture dimensions must be powers of two; the texture is never replaced or invented.
+ */
+async function dataUrlToCompatiblePngBlob(dataUrl: string): Promise<Blob> {
+  if (!dataUrl) throw new Error('Falta la textura del objeto personalizado.');
+  const image = new Image();
+  const loaded = new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error('No se pudo leer la textura seleccionada.'));
+  });
+  image.src = dataUrl;
+  await loaded;
+  const isPowerOfTwo = (value: number) => value > 0 && (value & (value - 1)) === 0;
+  if (!isPowerOfTwo(image.naturalWidth) || !isPowerOfTwo(image.naturalHeight)) {
+    throw new Error('La textura del objeto debe tener ancho y alto compatibles con Minecraft (por ejemplo, 16×16, 32×32 o 64×64 píxeles).');
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('No se pudo preparar la textura PNG del objeto.');
+  context.imageSmoothingEnabled = false;
+  context.drawImage(image, 0, 0);
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('No se pudo convertir la textura a PNG.')), 'image/png');
+  });
+}
+
+/**
  * Creates a default pixelated Minecraft pickaxe pack icon if none uploaded
  */
 export function createDefaultPackIconBlob(): Promise<Blob> {
@@ -597,7 +626,7 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
             },
           },
         }, null, 2));
-        rpItemsTexturesFolder?.file(textureFileName, await dataUrlToBlob(textureData));
+        rpItemsTexturesFolder?.file(textureFileName, await dataUrlToCompatiblePngBlob(textureData));
         languageCodes.forEach((code) => {
           langFilesMap[code].push('item.' + mineral.dropItemId + '.name=' + mineral.dropItemName);
         });
