@@ -449,7 +449,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
       }
       setValidationError('');
     }
-  }, [isOpen, block, availableTextures]);
+  }, [isOpen, block]);
 
   // Recibir textura asignada desde la biblioteca de texturas
   useEffect(() => {
@@ -483,7 +483,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         return next;
       });
     }
-  }, [assignedTexture, isOpen, textureMode, availableTextures]);
+  }, [assignedTexture, isOpen, textureMode]);
 
   if (!isOpen) return null;
 
