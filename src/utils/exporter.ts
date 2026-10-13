@@ -331,6 +331,11 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
       },
     };
 
+    // Map color (v1.8 Beta Preview). Hex string validated before export.
+    if (typeof block.mapColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(block.mapColor)) {
+      components['minecraft:map_color'] = block.mapColor.toUpperCase();
+    }
+
     // Friction (v0.1.4)
     if (block.friction !== undefined && block.friction !== 0.4) {
       components['minecraft:friction'] = Math.min(1.0, Math.max(0.1, Number(block.friction)));
