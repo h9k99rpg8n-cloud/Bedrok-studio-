@@ -256,6 +256,7 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
   const bpItemsFolder = customMineralItems.size > 0 ? bpFolder.folder('items') : null;
   const rpItemsTexturesFolder = customMineralItems.size > 0 ? rpTexturesFolder?.folder('items') : null;
   const itemTextureData: Record<string, { textures: string }> = {};
+  const generatedCustomItemIds = new Set<string>();
   const lootTablesFolder = blocks.some((block) => block.mineral?.enabled) ? bpFolder.folder('loot_tables')?.folder('blocks') : null;
 
   const blocksResourceMap: Record<string, unknown> = {};
@@ -575,7 +576,8 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
       };
       lootTablesFolder?.file(block.identifier + '.json', JSON.stringify(lootTable, null, 2));
 
-      if (mineral.customItem) {
+      if (mineral.customItem && !generatedCustomItemIds.has(mineral.dropItemId)) {
+        generatedCustomItemIds.add(mineral.dropItemId);
         const customItemId = mineral.dropItemId.split(':')[1];
         const textureKey = 'mineral_' + customItemId;
         const textureData = resolveTextureDataUrl(project, mineral.dropTextureId || '');
