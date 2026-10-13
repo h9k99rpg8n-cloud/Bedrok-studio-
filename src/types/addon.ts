@@ -173,6 +173,7 @@ export interface CustomBlock {
   redstoneConfig?: RedstoneConfig;
   destroyTime: number; // mining hardness
   explosionResistance: number;
+  mapColor?: string; // v1.8 Beta Preview: color del bloque en mapas (hex #RRGGBB)
   destructionParticles?: DestructionParticlesConfig;
   stepParticles?: StepParticlesConfig;
   behaviorRules?: BlockBehaviorRules; // v0.1.4 rules
