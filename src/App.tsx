@@ -20,6 +20,7 @@ import { TexturePainterModal } from './components/TexturePainterModal';
 import { WorkView } from './components/WorkView';
 import { ProjectDetailView } from './components/ProjectDetailView';
 import { ChangelogModal } from './components/ChangelogModal';
+import { ReleasePreviewModal } from './components/ReleasePreviewModal';
 import { BlockTutorialModal } from './components/BlockTutorialModal';
 import { FullBlockEditorModal } from './components/FullBlockEditorModal';
 import { DiagnosticsModal } from './components/DiagnosticsModal';
@@ -39,6 +40,8 @@ export default function App() {
   const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(false);
   const [isChangelogOpen, setIsChangelogOpen] = useState<boolean>(false);
   const [isTutorialOpen, setIsTutorialOpen] = useState<boolean>(false);
+  const [isReleasePreviewOpen, setIsReleasePreviewOpen] = useState<boolean>(false);
+  const [showOnboardingAfterRelease, setShowOnboardingAfterRelease] = useState<boolean>(false);
 
   // Phase 2: Work Data & Active Project
   const [projects, setProjects] = useState<AddonProject[]>([]);
@@ -67,7 +70,7 @@ export default function App() {
   // Diagnostics Modal
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState<boolean>(false);
 
-  // Crafting Recipes Modal (v1.6: Mesa de trabajo 3x3)
+  // Crafting Recipes Modal (1.8 Beta Preview: Mesa de trabajo 3x3)
   const [isRecipeModalOpen, setIsRecipeModalOpen] = useState<boolean>(false);
   const [editingRecipe, setEditingRecipe] = useState<CraftingRecipe | null>(null);
 
@@ -98,7 +101,11 @@ export default function App() {
       setLoadingDetail('Validando compatibilidad con Minecraft Bedrock 1.26.20+');
 
       const seen = await dbService.hasSeenOnboarding();
-      if (!seen) {
+      const seenReleasePreview = await dbService.hasSeenReleasePreview();
+      if (!seenReleasePreview) {
+        setIsReleasePreviewOpen(true);
+        setShowOnboardingAfterRelease(!seen);
+      } else if (!seen) {
         setIsOnboardingOpen(true);
       }
 
@@ -114,7 +121,7 @@ export default function App() {
       // Stage 5: Finalized
       setLoadingProgress(100);
       setLoadingMessage('¡Inicialización completada!');
-      setLoadingDetail('Bienvenido a Bedrock Studio v1.6');
+      setLoadingDetail('Bienvenido a Bedrock Studio 1.8 Beta Preview');
 
       await new Promise((r) => setTimeout(r, 150));
       setIsLoading(false);
@@ -365,7 +372,7 @@ export default function App() {
     }
   };
 
-  // Create or Update Recipe in active project (v1.6)
+  // Create or Update Recipe in active project (1.8 Beta Preview)
   const handleSaveRecipe = async (savedRecipe: CraftingRecipe) => {
     if (!activeProject) return;
     try {
@@ -397,7 +404,7 @@ export default function App() {
     }
   };
 
-  // Delete Recipe from active project (v1.6)
+  // Delete Recipe from active project (1.8 Beta Preview)
   const handleDeleteRecipe = async (recipeId: string) => {
     if (!activeProject) return;
     try {
@@ -496,13 +503,13 @@ export default function App() {
             <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-[#090d16] shadow-sm shadow-emerald-400" />
           </div>
           <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-slate-950 border border-emerald-500/30 text-[10px] font-mono font-bold text-emerald-400">
-            v1.6
+            1.8 Beta Preview
           </span>
         </div>
 
         {/* Title & Description */}
         <h1 className="text-xl font-black text-slate-100 tracking-wider mb-1">
-          Bedrock Studio <span className="text-emerald-400 font-extrabold">v1.6</span>
+          Bedrock Studio <span className="text-emerald-400 font-extrabold">1.8 Beta Preview</span>
         </h1>
         <p className="text-xs text-slate-400 font-mono mb-7 max-w-xs">
           Editor profesional de bloques para Minecraft Bedrock
@@ -600,6 +607,18 @@ export default function App() {
       )}
 
       {/* Onboarding Carousel */}
+      <ReleasePreviewModal
+        isOpen={isReleasePreviewOpen}
+        onClose={async () => {
+          setIsReleasePreviewOpen(false);
+          await dbService.setSeenReleasePreview(true);
+          if (showOnboardingAfterRelease) {
+            setIsOnboardingOpen(true);
+            setShowOnboardingAfterRelease(false);
+          }
+        }}
+      />
+
       <OnboardingModal
         isOpen={isOnboardingOpen}
         onClose={handleCloseOnboarding}
@@ -726,7 +745,7 @@ export default function App() {
         }}
       />
 
-      {/* Mesa de Trabajo 3×3 — Editor de Recetas de Fabricación (v1.6) */}
+      {/* Mesa de Trabajo 3×3 — Editor de Recetas de Fabricación (1.8 Beta Preview) */}
       {activeProject && (
         <CraftingRecipeModal
           isOpen={isRecipeModalOpen}
