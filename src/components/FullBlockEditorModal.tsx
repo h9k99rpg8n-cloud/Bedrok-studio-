@@ -383,6 +383,15 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         setFlameOdds(5);
         setBurnOdds(20);
 
+        setIsMineral(false);
+        setMineralCustomItem(false);
+        setMineralDropItemId('minecraft:diamond');
+        setMineralDropItemName('Fragmento mineral');
+        setMineralDropTextureId('');
+        setMineralMinCount(1);
+        setMineralMaxCount(1);
+        setMineralRequiredTool('none');
+
         setEnabledBehaviors({
           mining: true,
           loot: true,
@@ -1163,8 +1172,8 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
               {isMineral && (
                 <div className="flex flex-col gap-3 pt-3 border-t border-slate-800">
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => setMineralCustomItem(false)} className={'flex-1 min-h-[40px] rounded-xl border text-xs font-semibold ' + (!mineralCustomItem ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-900 text-slate-300 border-slate-800')}>Objeto existente</button>
-                    <button type="button" onClick={() => setMineralCustomItem(true)} className={'flex-1 min-h-[40px] rounded-xl border text-xs font-semibold ' + (mineralCustomItem ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-900 text-slate-300 border-slate-800')}>Crear objeto</button>
+                    <button type="button" onClick={() => { setMineralCustomItem(false); if (mineralDropItemId.startsWith('custom:') || !mineralDropItemId.includes(':')) setMineralDropItemId('minecraft:diamond'); }} className={'flex-1 min-h-[40px] rounded-xl border text-xs font-semibold ' + (!mineralCustomItem ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-900 text-slate-300 border-slate-800')}>Objeto existente</button>
+                    <button type="button" onClick={() => { setMineralCustomItem(true); if (!mineralDropItemId.startsWith('custom:')) setMineralDropItemId('fragmento_mineral'); if (!mineralDropItemName.trim()) setMineralDropItemName('Fragmento mineral'); }} className={'flex-1 min-h-[40px] rounded-xl border text-xs font-semibold ' + (mineralCustomItem ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-900 text-slate-300 border-slate-800')}>Crear objeto</button>
                   </div>
                   {!mineralCustomItem ? (
                     <div className="flex flex-col gap-1"><label className="text-xs text-slate-300">Objeto que suelta</label>
