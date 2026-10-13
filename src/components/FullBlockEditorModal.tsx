@@ -12,6 +12,7 @@ import {
   CustomTexture,
   FaceTextures,
   LootDropType,
+  MineralToolRequirement,
   PreferredToolType,
   SUPPORTED_LANGUAGES,
   TextureMode,
@@ -38,7 +39,7 @@ interface FullBlockEditorModalProps {
   existingBlocks: CustomBlock[];
   availableTextures: CustomTexture[];
   availableGroups?: BlockGroup[];
-  assignedTexture?: { face: BlockFaceKey; texDataUrl: string; timestamp: number } | null;
+  assignedTexture?: { face: BlockFaceKey | 'item'; texDataUrl: string; timestamp: number } | null;
   onClose: () => void;
   onSaveBlock: (block: CustomBlock) => void;
   onOpenTextureLibraryForFace: (face: BlockFaceKey) => void;
@@ -99,6 +100,16 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
   const [flammable, setFlammable] = useState<boolean>(false);
   const [flameOdds, setFlameOdds] = useState<number>(5);
   const [burnOdds, setBurnOdds] = useState<number>(20);
+
+  // Propiedad mineral (v0.1.7); los datos se conservan aunque se desactive.
+  const [isMineral, setIsMineral] = useState<boolean>(false);
+  const [mineralCustomItem, setMineralCustomItem] = useState<boolean>(false);
+  const [mineralDropItemId, setMineralDropItemId] = useState<string>('minecraft:diamond');
+  const [mineralDropItemName, setMineralDropItemName] = useState<string>('Fragmento mineral');
+  const [mineralDropTextureId, setMineralDropTextureId] = useState<string>('');
+  const [mineralMinCount, setMineralMinCount] = useState<number>(1);
+  const [mineralMaxCount, setMineralMaxCount] = useState<number>(1);
+  const [mineralRequiredTool, setMineralRequiredTool] = useState<MineralToolRequirement>('none');
 
   // =========================================================================
   // SECCIÓN D: CAJA DE COLISIÓN (v0.1.5)
@@ -240,6 +251,15 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         setFlammable(block.flammable || false);
         setFlameOdds(block.flameOdds ?? 5);
         setBurnOdds(block.burnOdds ?? 20);
+
+        setIsMineral(block.mineral?.enabled ?? false);
+        setMineralCustomItem(block.mineral?.customItem ?? false);
+        setMineralDropItemId(block.mineral?.dropItemId || 'minecraft:diamond');
+        setMineralDropItemName(block.mineral?.dropItemName || 'Fragmento mineral');
+        setMineralDropTextureId(block.mineral?.dropTextureId || '');
+        setMineralMinCount(block.mineral?.minDropCount ?? 1);
+        setMineralMaxCount(block.mineral?.maxDropCount ?? 1);
+        setMineralRequiredTool(block.mineral?.requiredTool || 'none');
 
         // Comportamientos
         const hasCustomMining =
@@ -423,6 +443,11 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
   // Recibir textura asignada desde la biblioteca de texturas
   useEffect(() => {
     if (assignedTexture && isOpen) {
+      if (assignedTexture.face === 'item') {
+        const matchingTexture = availableTextures.find((texture) => texture.dataUrl === assignedTexture.texDataUrl);
+        setMineralDropTextureId(matchingTexture?.id || assignedTexture.texDataUrl);
+        return;
+      }
       setFaceTextures((prev) => {
         const next = { ...prev, [assignedTexture.face]: assignedTexture.texDataUrl };
         if (textureMode === 'one') {
@@ -447,7 +472,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         return next;
       });
     }
-  }, [assignedTexture, isOpen, textureMode]);
+  }, [assignedTexture, isOpen, textureMode, availableTextures]);
 
   if (!isOpen) return null;
 
@@ -481,6 +506,19 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
       setValidationError('El nombre visible del bloque no puede estar vacío.');
       setActiveTab('identity');
       return;
+    }
+
+    if (isMineral) {
+      if (!Number.isInteger(mineralMinCount) || !Number.isInteger(mineralMaxCount) || mineralMinCount < 1 || mineralMaxCount < 1 || mineralMinCount > 64 || mineralMaxCount > 64) {
+        setValidationError('Las cantidades del mineral deben ser números enteros entre 1 y 64.'); setActiveTab('properties'); return;
+      }
+      if (mineralMinCount > mineralMaxCount) { setValidationError('La cantidad mínima no puede ser mayor que la cantidad máxima.'); setActiveTab('properties'); return; }
+      if (mineralCustomItem) {
+        const customId = mineralDropItemId.trim().toLowerCase().replace(/^custom:/, '');
+        if (!/^[a-z0-9_]+$/.test(customId)) { setValidationError('El identificador del objeto nuevo solo puede contener letras minúsculas, números y guiones bajos.'); setActiveTab('properties'); return; }
+        if (!mineralDropItemName.trim()) { setValidationError('Escribe un nombre para el objeto personalizado.'); setActiveTab('properties'); return; }
+        if (!mineralDropTextureId) { setValidationError('Selecciona o importa una textura para el objeto personalizado.'); setActiveTab('properties'); return; }
+      } else if (!/^[a-z0-9_]+:[a-z0-9_]+$/.test(mineralDropItemId.trim())) { setValidationError('Selecciona un objeto existente válido.'); setActiveTab('properties'); return; }
     }
 
     const finalFaces: FaceTextures = { ...faceTextures };
@@ -524,6 +562,16 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
       burnOdds: flammable ? Math.max(1, burnOdds) : undefined,
 
       // Reglas de Comportamiento
+      mineral: (isMineral || block?.mineral)
+        ? {
+            enabled: isMineral,
+            dropItemId: mineralCustomItem ? 'custom:' + mineralDropItemId.trim().toLowerCase().replace(/^custom:/, '') : mineralDropItemId.trim(),
+            dropItemName: mineralDropItemName.trim(), customItem: mineralCustomItem,
+            dropTextureId: mineralDropTextureId || undefined,
+            minDropCount: Math.min(64, Math.max(1, Math.round(mineralMinCount))),
+            maxDropCount: Math.min(64, Math.max(1, Math.round(mineralMaxCount))), requiredTool: mineralRequiredTool,
+          } : undefined,
+
       behaviorRules: {
         preferredTool: enabledBehaviors.mining ? preferredTool : 'any',
         minToolTier: enabledBehaviors.mining && preferredTool !== 'any' ? minToolTier : undefined,
@@ -1103,6 +1151,48 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         {/* ================================================================= */}
         {activeTab === 'properties' && (
           <div className="flex flex-col gap-3.5 animate-in fade-in duration-150">
+            {/* Propiedad mineral (v0.1.7) */}
+            <div className="bg-slate-950/70 p-4 rounded-2xl border border-emerald-500/25 flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <i className="bx bxs-diamond text-emerald-400 text-base" />
+                <div className="flex-1 min-w-0"><label htmlFor="mineral-toggle" className="text-xs font-bold text-slate-100">Es un mineral</label><p className="text-[10px] text-slate-400">Configura el objeto que suelta al romperse.</p></div>
+                <input id="mineral-toggle" type="checkbox" checked={isMineral} onChange={(e) => setIsMineral(e.target.checked)} className="h-5 w-5 accent-emerald-500 shrink-0" />
+              </div>
+              {isMineral && (
+                <div className="flex flex-col gap-3 pt-3 border-t border-slate-800">
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setMineralCustomItem(false)} className={'flex-1 min-h-[40px] rounded-xl border text-xs font-semibold ' + (!mineralCustomItem ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-900 text-slate-300 border-slate-800')}>Objeto existente</button>
+                    <button type="button" onClick={() => setMineralCustomItem(true)} className={'flex-1 min-h-[40px] rounded-xl border text-xs font-semibold ' + (mineralCustomItem ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-900 text-slate-300 border-slate-800')}>Crear objeto</button>
+                  </div>
+                  {!mineralCustomItem ? (
+                    <div className="flex flex-col gap-1"><label className="text-xs text-slate-300">Objeto que suelta</label>
+                      <select value={mineralDropItemId} onChange={(e) => setMineralDropItemId(e.target.value)} className="w-full min-h-[42px] px-3 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500">
+                        <option value="minecraft:diamond">Diamante</option><option value="minecraft:emerald">Esmeralda</option><option value="minecraft:coal">Carbón</option><option value="minecraft:raw_iron">Hierro en bruto</option><option value="minecraft:raw_copper">Cobre en bruto</option><option value="minecraft:raw_gold">Oro en bruto</option><option value="minecraft:redstone">Polvo de redstone</option><option value="minecraft:lapis_lazuli">Lapislázuli</option><option value="minecraft:quartz">Cuarzo del Nether</option><option value="minecraft:amethyst_shard">Fragmento de amatista</option><option value="minecraft:flint">Pedernal</option><option value="minecraft:iron_ingot">Lingote de hierro</option><option value="minecraft:gold_ingot">Lingote de oro</option>
+                      </select>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex flex-col gap-1"><label className="text-xs text-slate-300">Nombre del objeto nuevo</label><input value={mineralDropItemName} onChange={(e) => setMineralDropItemName(e.target.value)} maxLength={64} placeholder="Ej. Fragmento de zafiro" className="w-full min-h-[42px] px-3 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500" /></div>
+                      <div className="flex flex-col gap-1"><label className="text-xs text-slate-300">Identificador (sin custom:)</label><input value={mineralDropItemId.replace(/^custom:/, '')} onChange={(e) => setMineralDropItemId(e.target.value.toLowerCase())} maxLength={64} placeholder="fragmento_zafiro" className="w-full min-h-[42px] px-3 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono text-slate-100 focus:outline-none focus:border-emerald-500" /><span className="text-[10px] text-slate-500">ID exportado: custom:{mineralDropItemId.replace(/^custom:/, '') || 'objeto'}</span></div>
+                    </>
+                  )}
+                  <div className="flex flex-col gap-1"><label className="text-xs text-slate-300">Textura del objeto</label>
+                    <select value={mineralDropTextureId} onChange={(e) => setMineralDropTextureId(e.target.value)} className="w-full min-h-[42px] px-3 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500">
+                      <option value="">Elegir textura de la biblioteca…</option>{availableTextures.map((texture) => <option key={texture.id} value={texture.id}>{texture.name}</option>)}
+                    </select>
+                    <button type="button" onClick={() => onOpenTextureLibraryForFace('up')} className="min-h-[40px] rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-xs font-semibold">Abrir biblioteca / importar textura</button>
+                    {mineralCustomItem && <span className="text-[10px] text-slate-500">El objeto nuevo necesita una textura propia; no se copiará la textura del bloque.</span>}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex flex-col gap-1"><label className="text-xs text-slate-300">Cantidad mínima</label><input type="number" min={1} max={64} step={1} value={mineralMinCount} onChange={(e) => setMineralMinCount(Number(e.target.value))} className="w-full min-h-[42px] px-3 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-100" /></div>
+                    <div className="flex flex-col gap-1"><label className="text-xs text-slate-300">Cantidad máxima</label><input type="number" min={1} max={64} step={1} value={mineralMaxCount} onChange={(e) => setMineralMaxCount(Number(e.target.value))} className="w-full min-h-[42px] px-3 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-100" /></div>
+                  </div>
+                  {mineralMinCount > mineralMaxCount && <p className="text-[11px] text-rose-300">La cantidad mínima no puede superar la máxima.</p>}
+                  <div className="flex flex-col gap-1"><label className="text-xs text-slate-300">Herramienta necesaria</label><select value={mineralRequiredTool} onChange={(e) => setMineralRequiredTool(e.target.value as MineralToolRequirement)} className="w-full min-h-[42px] px-3 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500"><option value="none">No exigir herramienta</option><option value="any_pickaxe">Cualquier pico</option><option value="wood">Pico de madera o superior</option><option value="stone">Pico de piedra o superior</option><option value="iron">Pico de hierro o superior</option><option value="diamond">Pico de diamante o netherita</option><option value="netherite">Solo pico de netherita</option></select><span className="text-[10px] text-slate-500">Se aplica mediante condiciones match_tool de la tabla de botín.</span></div>
+                </div>
+              )}
+            </div>
+
             {/* Panel 1: Dureza de Minado y Resistencia a Explosión */}
             <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 flex flex-col gap-3">
               <div className="flex items-center gap-2">
