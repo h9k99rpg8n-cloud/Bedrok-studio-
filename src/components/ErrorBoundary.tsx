@@ -54,7 +54,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 {this.props.fallbackTitle || 'Se recuperó de un problema visual'}
               </h2>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Bedrock Studio ha evitado que la aplicación se quede en pantalla negra. Tus datos guardados en IndexedDB están seguros.
+                Una pantalla se detuvo por un error. Este mensaje no elimina tus proyectos. Si vuelve a aparecer, reinicia la aplicación; no borres los datos del navegador.
               </p>
             </div>
 
