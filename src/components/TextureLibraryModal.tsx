@@ -7,7 +7,7 @@ interface TextureLibraryModalProps {
   project: AddonProject;
   onClose: () => void;
   onSelectTextureForFace?: (textureDataUrl: string) => void;
-  onSelectTextureForItem?: (textureDataUrl: string) => void;
+  onSelectTextureForItem?: (textureDataUrl: string, textureId?: string) => void;
   onSaveNewTexture: (texture: CustomTexture) => void;
   onDeleteTexture: (textureId: string) => void;
   onOpenPainter: () => void;
@@ -104,7 +104,7 @@ export const TextureLibraryModal: React.FC<TextureLibraryModalProps> = ({
     reader.readAsDataURL(file);
   };
 
-  const handleImportMinecraftTexture = (mcItem: MinecraftReferenceTexture) => {
+  const handleImportMinecraftTexture = (mcItem: MinecraftReferenceTexture): CustomTexture => {
     const newTex: CustomTexture = {
       id: `tex_mc_${mcItem.id}_${Date.now()}`,
       name: mcItem.englishName.toLowerCase().replace(/[^a-z0-9_]/g, '_'),
@@ -114,6 +114,7 @@ export const TextureLibraryModal: React.FC<TextureLibraryModalProps> = ({
     onSaveNewTexture(newTex);
     setImportedNotice(`"${mcItem.name}" importada al proyecto`);
     setTimeout(() => setImportedNotice(null), 3000);
+    return newTex;
   };
 
   const handleDeleteClick = (tex: CustomTexture) => {
@@ -352,7 +353,7 @@ export const TextureLibraryModal: React.FC<TextureLibraryModalProps> = ({
                           <button
                             type="button"
                             onClick={() => {
-                              if (onSelectTextureForItem) onSelectTextureForItem(tex.dataUrl);
+                              if (onSelectTextureForItem) onSelectTextureForItem(tex.dataUrl, tex.id);
                               else onSelectTextureForFace?.(tex.dataUrl);
                               onClose();
                             }}
@@ -416,8 +417,8 @@ export const TextureLibraryModal: React.FC<TextureLibraryModalProps> = ({
                         type="button"
                         onClick={() => {
                           if (onSelectTextureForItem) {
-                            handleImportMinecraftTexture(mcItem);
-                            onSelectTextureForItem(mcItem.dataUrl);
+                            const importedTexture = handleImportMinecraftTexture(mcItem);
+                            onSelectTextureForItem(mcItem.dataUrl, importedTexture.id);
                           } else {
                             onSelectTextureForFace?.(mcItem.dataUrl);
                           }
