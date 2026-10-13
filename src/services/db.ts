@@ -14,7 +14,7 @@ localforage.config({
 const settingsStore = localforage.createInstance({
   name: 'BedrockStudioDB',
   storeName: 'app_settings',
-  driver: [localforage.INDEXEDDB],
+  driver: [localforage.INDEXEDDB, localforage.LOCALSTORAGE],
 });
 
 export const dbService = {
