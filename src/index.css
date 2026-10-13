@@ -53,3 +53,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
+
+@media (orientation: landscape) and (max-height: 600px) {
+  .fixed.inset-0 > div { max-height: calc(100dvh - 1rem) !important; }
+  .fixed.inset-0 > section { max-height: calc(100dvh - 1rem) !important; }
+}
