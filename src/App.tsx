@@ -475,7 +475,7 @@ export default function App() {
     } catch (err) {
       console.error('Error al exportar:', err);
       const message = err instanceof Error ? err.message : 'Ocurrió un error desconocido al crear el archivo.';
-      window.alert(`No se pudo exportar el Add-On.\\n\\n${message}\\n\\nTus proyectos guardados no se han eliminado.`);
+      window.alert(`No se pudo exportar el Add-On.\n\n${message}\n\nTus proyectos guardados no se han eliminado.`);
     }
   };
 
