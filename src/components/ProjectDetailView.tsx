@@ -67,6 +67,9 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   onDeleteRecipe,
 }) => {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('blocks');
+  const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [sortOrder, setSortOrder] = useState<'recent' | 'alphabetical'>('recent');
   const [isAddMenuOpen, setIsAddMenuOpen] = useState<boolean>(false);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [saveSuccessNotice, setSaveSuccessNotice] = useState<boolean>(false);
@@ -191,11 +194,42 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
 
   const projectGroups = project.groups || [];
   const projectRecipes = project.recipes || [];
-  const filteredBlocks = filterGroupId === 'all'
-    ? (project.blocks || [])
-    : (project.blocks || []).filter((b) => b.groupId === filterGroupId);
-
-  const totalItems = (project.blocks?.length || 0) + (project.textures?.length || 0) + projectGroups.length + projectRecipes.length;
+  const normalizedQuery = searchQuery.trim().toLocaleLowerCase('es');
+  const matchesSearch = (value: string | undefined) =>
+    !normalizedQuery || (value || '').toLocaleLowerCase('es').includes(normalizedQuery);
+  const sortByNameOrDate = <T extends { createdAt?: number; updatedAt?: number }>(
+    items: T[],
+    getName: (item: T) => string,
+  ): T[] => [...items].sort((a, b) => {
+    if (sortOrder === 'alphabetical') return getName(a).localeCompare(getName(b), 'es', { sensitivity: 'base' });
+    return ((b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
+  });
+  // Default view groups blocks together; within each group, newest blocks appear first.
+  const filteredBlocks = sortOrder === 'alphabetical'
+    ? sortByNameOrDate((project.blocks || []).filter((b) =>
+        (filterGroupId === 'all' || b.groupId === filterGroupId) &&
+        (matchesSearch(b.displayName) || matchesSearch(b.identifier) || matchesSearch(b.groupName))
+      ), (b) => b.displayName)
+    : (project.blocks || []).filter((b) =>
+        (filterGroupId === 'all' || b.groupId === filterGroupId) &&
+        (matchesSearch(b.displayName) || matchesSearch(b.identifier) || matchesSearch(b.groupName))
+      ).sort((a, b) =>
+        (a.groupName || projectGroups.find((g) => g.id === a.groupId)?.name || 'Sin grupo')
+          .localeCompare(b.groupName || projectGroups.find((g) => g.id === b.groupId)?.name || 'Sin grupo', 'es', { sensitivity: 'base' }) ||
+        ((b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0))
+      );
+  const filteredRecipes = sortByNameOrDate(
+    projectRecipes.filter((recipe) => matchesSearch(recipe.displayName) || matchesSearch(recipe.identifier)),
+    (recipe) => recipe.displayName,
+  );
+  const filteredTextures = sortByNameOrDate(
+    (project.textures || []).filter((texture) => matchesSearch(texture.name)),
+    (texture) => texture.name,
+  );
+  const filteredGroups = sortByNameOrDate(
+    projectGroups.filter((group) => matchesSearch(group.name) || matchesSearch(group.category) || matchesSearch(group.bedrockGroup)),
+    (group) => group.name,
+  );
 
   return (
     <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col pb-24 select-none">
@@ -289,62 +323,90 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
         </div>
       )}
 
-      {/* Workspace Tabs: Bloques, Recetas, Texturas, Grupos */}
-      <div className="px-3 sm:px-4 pt-3 shrink-0">
-        <div className="grid grid-cols-4 gap-1 bg-[#0d1322] p-1 rounded-2xl border border-slate-800 text-[11px] sm:text-xs">
-          <button
-            type="button"
-            onClick={() => setActiveTab('blocks')}
-            className={`min-h-[40px] px-1 font-semibold rounded-xl transition-all flex items-center justify-center gap-1 ${
-              activeTab === 'blocks'
-                ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <i className="bx bxs-cube text-xs sm:text-sm" />
-            <span className="truncate">Bloques ({project.blocks?.length || 0})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('recipes')}
-            className={`min-h-[40px] px-1 font-semibold rounded-xl transition-all flex items-center justify-center gap-1 ${
-              activeTab === 'recipes'
-                ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <i className="bx bxs-grid text-xs sm:text-sm" />
-            <span className="truncate">Recetas ({projectRecipes.length})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('textures')}
-            className={`min-h-[40px] px-1 font-semibold rounded-xl transition-all flex items-center justify-center gap-1 ${
-              activeTab === 'textures'
-                ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <i className="bx bxs-paint text-xs sm:text-sm" />
-            <span className="truncate">Texturas ({project.textures?.length || 0})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('groups')}
-            className={`min-h-[40px] px-1 font-semibold rounded-xl transition-all flex items-center justify-center gap-1 ${
-              activeTab === 'groups'
-                ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <i className="bx bx-category text-xs sm:text-sm" />
-            <span className="truncate">Grupos ({projectGroups.length})</span>
-          </button>
-        </div>
+      {/* Workspace navigation: compact hamburger menu replaces the crowded tab row */}
+      <div className="relative flex justify-end px-4 pt-3">
+        <button
+          type="button"
+          onClick={() => setIsWorkspaceMenuOpen((open) => !open)}
+          aria-label="Abrir secciones del espacio de trabajo"
+          aria-expanded={isWorkspaceMenuOpen}
+          className="min-h-[44px] min-w-[44px] px-3 rounded-xl bg-[#0d1322] border border-slate-800 text-slate-100 hover:border-emerald-500/50 active:scale-95 transition-all flex items-center justify-center gap-2"
+        >
+          <i className="bx bx-menu text-2xl" />
+          <span className="text-xs font-semibold hidden sm:inline">Secciones</span>
+        </button>
+        {isWorkspaceMenuOpen && (
+          <>
+            <button
+              type="button"
+              aria-label="Cerrar menú de secciones"
+              className="fixed inset-0 z-40 cursor-default"
+              onClick={() => setIsWorkspaceMenuOpen(false)}
+            />
+            <div className="absolute right-4 top-14 z-50 w-60 max-w-[calc(100vw-2rem)] rounded-2xl border border-slate-800 bg-[#0d1322] p-2 shadow-2xl">
+              <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">Ir a una sección</p>
+              {([
+                { id: 'blocks', label: 'Bloques', icon: 'bx bxs-cube', count: project.blocks?.length || 0 },
+                { id: 'recipes', label: 'Recetas', icon: 'bx bxs-grid', count: projectRecipes.length },
+                { id: 'textures', label: 'Texturas', icon: 'bx bxs-paint', count: project.textures?.length || 0 },
+                { id: 'groups', label: 'Grupos', icon: 'bx bx-category', count: projectGroups.length },
+              ] as const).map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    setIsWorkspaceMenuOpen(false);
+                    setSearchQuery('');
+                    setSortOrder('recent');
+                  }}
+                  className={`w-full min-h-[46px] px-3 rounded-xl flex items-center justify-between gap-3 text-left transition-colors ${
+                    activeTab === item.id ? 'bg-emerald-500/15 text-emerald-300' : 'text-slate-300 hover:bg-slate-900'
+                  }`}
+                >
+                  <span className="flex items-center gap-3 text-sm font-semibold">
+                    <i className={`${item.icon} text-lg`} />
+                    {item.label}
+                  </span>
+                  <span className="text-[11px] font-mono text-slate-500">{item.count}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
+
+      {/* Live search and sort controls apply to the selected workspace section */}
+      <section className="px-4 pt-3 flex flex-col sm:flex-row gap-2 sm:items-center" aria-label="Buscar y ordenar elementos">
+        <label className="flex-1 min-w-0 min-h-[44px] flex items-center gap-2 rounded-xl border border-slate-800 bg-[#0d1322] px-3 focus-within:border-emerald-500/70">
+          <i className="bx bx-search text-lg text-slate-500" />
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder={`Buscar en ${activeTab === 'blocks' ? 'bloques' : activeTab === 'recipes' ? 'recetas' : activeTab === 'textures' ? 'texturas' : 'grupos'}...`}
+            aria-label="Buscar en la sección actual"
+            className="w-full min-w-0 min-h-[42px] bg-transparent text-sm text-slate-100 placeholder:text-slate-500 outline-none"
+          />
+          {searchQuery && (
+            <button type="button" onClick={() => setSearchQuery('')} className="min-h-[32px] min-w-[32px] rounded-lg text-slate-400 hover:text-white" aria-label="Limpiar búsqueda">
+              <i className="bx bx-x text-lg" />
+            </button>
+          )}
+        </label>
+        <label className="flex min-h-[44px] items-center gap-2 rounded-xl border border-slate-800 bg-[#0d1322] px-3 sm:w-56">
+          <i className="bx bx-sort-alt-2 text-lg text-emerald-400" />
+          <select
+            value={sortOrder}
+            onChange={(event) => setSortOrder(event.target.value as 'recent' | 'alphabetical')}
+            aria-label="Ordenar elementos"
+            className="w-full min-h-[42px] bg-transparent text-xs font-semibold text-slate-200 outline-none"
+          >
+            <option value="recent">Más reciente</option>
+            <option value="alphabetical">Orden alfabético (A-Z)</option>
+          </select>
+        </label>
+      </section>
 
       {/* Main Content Area */}
       <main className="flex-1 p-4 flex flex-col relative">
@@ -381,7 +443,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
                 >
                   Todos ({project.blocks.length})
                 </button>
-                {projectGroups.map((grp) => {
+                {filteredGroups.map((grp) => {
                   const count = project.blocks.filter((b) => b.groupId === grp.id).length;
                   return (
                     <button
@@ -404,7 +466,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
             )}
 
             {/* Blocks List */}
-            {project.blocks.length === 0 ? (
+            {project.blocks.length === 0 && !normalizedQuery ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center py-16 relative">
                 <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-emerald-400 mb-3 shadow-lg">
                   <i className="bx bxs-cube text-3xl" />
@@ -558,7 +620,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
               </button>
             </div>
 
-            {projectRecipes.length === 0 ? (
+            {filteredRecipes.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center py-16 relative">
                 <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-amber-400 mb-3 shadow-lg">
                   <i className="bx bxs-grid text-3xl" />
@@ -580,7 +642,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {projectRecipes.map((recipe) => {
+                {filteredRecipes.map((recipe) => {
                   const result = recipe.resultItem;
                   const isShaped = recipe.type === 'shaped';
 
@@ -742,7 +804,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
             </div>
 
             {/* Textures Grid */}
-            {project.textures.length === 0 ? (
+            {filteredTextures.length === 0 ? (
               <div className="py-16 text-center text-xs text-slate-400 flex flex-col items-center">
                 <i className="bx bx-images text-4xl text-slate-600 mb-2" />
                 <span>No hay texturas en el proyecto.</span>
@@ -752,7 +814,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                {project.textures.map((tex) => (
+                {filteredTextures.map((tex) => (
                   <div
                     key={tex.id}
                     className="p-2.5 rounded-2xl bg-[#0d1322] border border-slate-800 shadow-sm flex items-center justify-between"
@@ -808,7 +870,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
             </div>
 
             {/* Groups List */}
-            {projectGroups.length === 0 ? (
+            {filteredGroups.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center py-16">
                 <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-emerald-400 mb-3 shadow-lg">
                   <i className="bx bx-category text-3xl" />
