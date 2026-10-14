@@ -197,7 +197,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   const normalizedQuery = searchQuery.trim().toLocaleLowerCase('es');
   const matchesSearch = (value: string | undefined) =>
     !normalizedQuery || (value || '').toLocaleLowerCase('es').includes(normalizedQuery);
-  const sortByNameOrDate = <T extends { createdAt?: number; updatedAt?: number }>(
+  const sortByNameOrDate = <T extends { createdAt?: number; updatedAt?: number },>(
     items: T[],
     getName: (item: T) => string,
   ): T[] => [...items].sort((a, b) => {
