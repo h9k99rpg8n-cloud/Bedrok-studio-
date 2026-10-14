@@ -712,7 +712,7 @@ const CoordinateControl: React.FC<CoordinateControlProps> = ({
         step={step}
         value={value}
         onChange={(e) => onChange(parseFloat(e.target.value))}
-        className={`w-full ${accentClass} min-h-[30px]`}
+        className={`w-full h-1.5 ${accentClass} cursor-pointer my-1`}
       />
 
       {/* Stepper Buttons for Mobile Touch Precision */}
@@ -720,28 +720,28 @@ const CoordinateControl: React.FC<CoordinateControlProps> = ({
         <button
           type="button"
           onClick={() => onStep(-1)}
-          className="min-h-[30px] rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[10px] font-mono text-slate-400"
+          className="min-h-[30px] rounded-md bg-[#0B0F17] hover:bg-slate-800 border border-white/[0.08] text-[10px] font-mono text-slate-400"
         >
           -1
         </button>
         <button
           type="button"
           onClick={() => onStep(-0.5)}
-          className="min-h-[30px] rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[10px] font-mono text-slate-400"
+          className="min-h-[30px] rounded-md bg-[#0B0F17] hover:bg-slate-800 border border-white/[0.08] text-[10px] font-mono text-slate-400"
         >
           -0.5
         </button>
         <button
           type="button"
           onClick={() => onStep(+0.5)}
-          className="min-h-[30px] rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[10px] font-mono text-slate-400"
+          className="min-h-[30px] rounded-md bg-[#0B0F17] hover:bg-slate-800 border border-white/[0.08] text-[10px] font-mono text-slate-400"
         >
           +0.5
         </button>
         <button
           type="button"
           onClick={() => onStep(+1)}
-          className="min-h-[30px] rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[10px] font-mono text-slate-400"
+          className="min-h-[30px] rounded-md bg-[#0B0F17] hover:bg-slate-800 border border-white/[0.08] text-[10px] font-mono text-slate-400"
         >
           +1
         </button>
