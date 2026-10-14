@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Pickaxe, Sparkles, Plus, Box } from 'lucide-react';
 import {
   BlockBoxItem,
   BlockCollisionConfig,
@@ -670,12 +671,12 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
   const activeBehaviorsCount = Object.values(enabledBehaviors).filter(Boolean).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-[#0d1322] border border-slate-800 rounded-3xl p-5 shadow-2xl flex flex-col max-h-[94vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-3 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-2xl bg-[#0B0F17] border border-white/[0.08] rounded-2xl shadow-2xl flex flex-col max-h-[96dvh] overflow-y-auto overscroll-contain">
         {/* Header Superior del Modal */}
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="sticky top-0 z-30 flex items-center justify-between gap-3 p-3 sm:p-4 border-b border-white/[0.08] bg-[#0B0F17]/95 backdrop-blur-xl">
           <div className="flex items-center gap-2 min-w-0">
-            <i className="bx bxs-cube text-xl text-emerald-400 shrink-0" />
+            <Box size={21} strokeWidth={1.8} className="text-emerald-400 shrink-0" />
             <div className="min-w-0">
               <h2 className="text-sm font-bold text-slate-100 truncate">
                 {block ? `Editar: ${displayName}` : 'Editor de Bloque Bedrock'}
@@ -715,12 +716,12 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         {/* ================================================================= */}
         {/* CINCO SECCIONES ORGANIZADAS (v0.1.5): IDENTIDAD, ATLAS, PROPIEDADES, CAJAS, COMPORTAMIENTO */}
         {/* ================================================================= */}
-        <div className="grid grid-cols-5 gap-1 bg-slate-950 p-1 rounded-2xl border border-slate-800 my-3 shrink-0">
+        <div role="tablist" aria-label="Secciones del editor de bloques" className="sticky top-[61px] sm:top-[69px] z-20 flex gap-1.5 overflow-x-auto whitespace-nowrap overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden bg-[#111827]/95 backdrop-blur-xl p-1.5 mx-3 mt-3 mb-2 rounded-xl border border-white/[0.08] shrink-0 snap-x">
           {/* SECCIÓN 1: IDENTIDAD */}
           <button
             type="button"
             onClick={() => setActiveTab('identity')}
-            className={`min-h-[44px] px-1 rounded-xl text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 transition-all ${
+            className={`min-h-[42px] shrink-0 px-3 sm:px-4 rounded-lg text-xs font-semibold inline-flex flex-row items-center justify-center gap-2 transition-all snap-start ${
               activeTab === 'identity'
                 ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
@@ -728,14 +729,14 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
             title="Identidad: Identificador, Nombre, Grupo y Traducciones"
           >
             <i className="bx bxs-id-card text-base" />
-            <span className="truncate">Identidad</span>
+            <span>Identidad</span>
           </button>
 
           {/* SECCIÓN 2: ATLAS CORE */}
           <button
             type="button"
             onClick={() => setActiveTab('atlas')}
-            className={`min-h-[44px] px-1 rounded-xl text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 transition-all ${
+            className={`min-h-[42px] shrink-0 px-3 sm:px-4 rounded-lg text-xs font-semibold inline-flex flex-row items-center justify-center gap-2 transition-all snap-start ${
               activeTab === 'atlas'
                 ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
@@ -743,14 +744,14 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
             title="Atlas Core: Mapeo y Texturas 3D"
           >
             <i className="bx bxs-cube-alt text-base" />
-            <span className="truncate">Atlas</span>
+            <span>Atlas</span>
           </button>
 
           {/* SECCIÓN 3: PROPIEDADES */}
           <button
             type="button"
             onClick={() => setActiveTab('properties')}
-            className={`min-h-[44px] px-1 rounded-xl text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 transition-all ${
+            className={`min-h-[42px] shrink-0 px-3 sm:px-4 rounded-lg text-xs font-semibold inline-flex flex-row items-center justify-center gap-2 transition-all snap-start ${
               activeTab === 'properties'
                 ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
@@ -758,14 +759,14 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
             title="Propiedades: Dureza, Explosión, Luz, Fricción e Inflamabilidad"
           >
             <i className="bx bx-slider-alt text-base" />
-            <span className="truncate">Propiedad</span>
+            <span>Propiedad</span>
           </button>
 
           {/* SECCIÓN 4: CAJAS (v0.1.5) */}
           <button
             type="button"
             onClick={() => setActiveTab('boxes')}
-            className={`min-h-[44px] px-1 rounded-xl text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 transition-all relative ${
+            className={`min-h-[42px] shrink-0 px-3 sm:px-4 rounded-lg text-xs font-semibold inline-flex flex-row items-center justify-center gap-2 transition-all snap-start relative ${
               activeTab === 'boxes'
                 ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
@@ -773,7 +774,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
             title="Cajas 3D: Cajas de Colisión y Selección personalizadas"
           >
             <i className="bx bx-cube text-base" />
-            <span className="truncate">Cajas</span>
+            <span>Cajas</span>
             {(collisionConfig.boxes.length > 1 || selectionConfig.boxes.length > 1) && (
               <span
                 className={`ml-0.5 text-[9px] px-1 rounded-full font-mono font-bold ${
@@ -791,7 +792,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('behavior')}
-            className={`min-h-[44px] px-1 rounded-xl text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 transition-all relative ${
+            className={`min-h-[42px] shrink-0 px-3 sm:px-4 rounded-lg text-xs font-semibold inline-flex flex-row items-center justify-center gap-2 transition-all snap-start relative ${
               activeTab === 'behavior'
                 ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
@@ -799,7 +800,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
             title="Comportamiento: Reglas de minado, botín, redstone y efectos"
           >
             <i className="bx bxs-cog text-base" />
-            <span className="truncate">Comportam.</span>
+            <span>Comportamiento</span>
             {activeBehaviorsCount > 0 && (
               <span
                 className={`ml-0.5 text-[9px] px-1 rounded-full font-mono font-bold ${
@@ -836,7 +837,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                       setValidationError('');
                     }}
                     placeholder="mineral_rubi"
-                    className="w-full min-h-[46px] pr-3 bg-transparent text-sm font-mono text-emerald-400 focus:outline-none"
+                    className="w-full min-h-[40px] pr-3 bg-transparent text-sm font-mono text-emerald-300 focus:outline-none"
                   />
                 </div>
                 <span className="text-[11px] text-slate-400 mt-1 block">
@@ -893,7 +894,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                 <div className="mt-2.5 flex flex-col gap-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                      <i className="bx bx-bulb text-amber-400 text-xs" />
+                      <Sparkles size={13} className="text-amber-400" />
                       <span>Sugerencias para el nombre:</span>
                     </span>
                     <button
@@ -925,7 +926,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                             prev.map((t) => (t.langCode === 'es_ES' ? { ...t, name: sug } : t))
                           );
                         }}
-                        className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-xs text-slate-300 hover:text-emerald-300 transition-colors flex items-center gap-1 active:scale-95"
+                        className="px-2.5 py-1.5 rounded-full bg-[#111827] hover:bg-slate-800 border border-white/[0.08] hover:border-emerald-500/40 text-[11px] text-slate-300 hover:text-emerald-300 transition-colors flex items-center gap-1 active:scale-95"
                       >
                         <i className="bx bx-plus text-xs text-emerald-400" />
                         <span>{sug}</span>
@@ -1253,7 +1254,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                   step={0.1}
                   value={destroyTime}
                   onChange={(e) => setDestroyTime(parseFloat(e.target.value))}
-                  className="w-full accent-emerald-500 min-h-[36px]"
+                  className="w-full h-1.5 accent-emerald-400 cursor-pointer my-2"
                 />
                 <div className="flex justify-between text-[10px] text-slate-500">
                   <span>0.1s (Tierra/Vidrio)</span>
@@ -1277,7 +1278,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                   step={1}
                   value={explosionResistance}
                   onChange={(e) => setExplosionResistance(parseFloat(e.target.value))}
-                  className="w-full accent-rose-500 min-h-[36px]"
+                  className="w-full h-1.5 accent-rose-400 cursor-pointer my-2"
                 />
               </div>
             </div>
@@ -1324,7 +1325,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                     max={15}
                     value={lightLevel}
                     onChange={(e) => setLightLevel(parseInt(e.target.value, 10))}
-                    className="w-full accent-amber-500 min-h-[36px]"
+                    className="w-full h-1.5 accent-amber-400 cursor-pointer my-2"
                   />
                 </div>
               )}
@@ -1382,7 +1383,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                   step={0.02}
                   value={friction}
                   onChange={(e) => setFriction(parseFloat(e.target.value))}
-                  className="w-full accent-blue-400 min-h-[36px]"
+                  className="w-full h-1.5 accent-blue-400 cursor-pointer my-2"
                 />
               </div>
 
@@ -1758,7 +1759,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                         <label className="text-xs font-semibold text-slate-300">
                           ¿Qué ítem suelta al ser destruido?
                         </label>
-                        <div className="grid grid-cols-3 gap-1.5">
+                        <div className="grid grid-cols-1 min-[380px]:grid-cols-3 gap-1.5">
                           {[
                             { id: 'self', label: 'El mismo bloque' },
                             { id: 'custom_item', label: 'Ítem personalizado' },
@@ -1768,7 +1769,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                               key={opt.id}
                               type="button"
                               onClick={() => setLootDrop(opt.id as LootDropType)}
-                              className={`min-h-[40px] px-2 rounded-xl text-xs font-semibold border transition-all ${
+                              className={`min-h-[40px] min-w-0 px-2 py-2 rounded-xl text-[11px] leading-tight whitespace-normal break-words text-center font-semibold border transition-all ${
                                 lootDrop === opt.id
                                   ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-sm'
                                   : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
@@ -2099,8 +2100,8 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                     onClick={() => setIsAddBehaviorModalOpen(true)}
                     className="min-h-[44px] px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl flex items-center gap-2 shadow-md active:scale-95 transition-all"
                   >
-                    <i className="bx bx-plus font-bold" />
-                    <span>+ Agregar comportamiento</span>
+                    <Plus size={16} strokeWidth={2.5} />
+                    <span>Agregar comportamiento</span>
                   </button>
                 </div>
               )}
@@ -2153,7 +2154,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                   }`}
                 >
                   <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
-                    <i className="bx bx-pickaxe text-lg" />
+                    <Pickaxe size={18} strokeWidth={1.8} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
@@ -2266,7 +2267,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                   }`}
                 >
                   <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0 mt-0.5">
-                    <i className="bx bxs-sparkles text-lg" />
+                    <Sparkles size={18} strokeWidth={1.8} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
@@ -2342,11 +2343,11 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         {/* ================================================================= */}
         {/* FOOTER: BOTONES DE ACCIÓN (Cancelar / Guardar Bloque)             */}
         {/* ================================================================= */}
-        <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-800 mt-3 shrink-0">
+        <div className="sticky bottom-0 z-30 flex items-center justify-between gap-3 p-3 mt-3 border-t border-white/[0.08] bg-[#0B0F17]/90 backdrop-blur-xl shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[46px] px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-semibold active:scale-95 transition-all"
+            className="min-h-[46px] px-4 rounded-xl bg-[#111827] hover:bg-slate-800 border border-white/[0.08] text-slate-300 text-xs font-semibold active:scale-95 transition-all"
           >
             Cancelar
           </button>
@@ -2354,7 +2355,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
           <button
             type="button"
             onClick={handleSave}
-            className="min-h-[46px] px-6 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl flex items-center gap-2 active:scale-95 transition-all shadow-md shadow-emerald-500/20"
+            className="min-h-[46px] px-5 sm:px-6 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-xs rounded-xl flex items-center gap-2 active:scale-95 transition-all shadow-md shadow-emerald-500/20"
           >
             <i className="bx bxs-save text-base" />
             <span>Guardar Bloque</span>
