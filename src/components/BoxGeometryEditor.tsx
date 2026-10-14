@@ -315,7 +315,7 @@ export const BoxGeometryEditor: React.FC<BoxGeometryEditorProps> = ({
       )}
 
       {/* PLANTILLAS PREDETERMINADAS (PRESETS) */}
-      <div className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800 flex flex-col gap-2">
+      <div className="bg-[#111827]/85 p-3 rounded-xl border border-white/[0.08] flex flex-col gap-2">
         <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
           <i className="bx bx-category-alt text-emerald-400" />
           Plantillas Predeterminadas
@@ -542,7 +542,7 @@ export const BoxGeometryEditor: React.FC<BoxGeometryEditorProps> = ({
           )}
 
           {/* CAMPOS NUMÉRICOS: POSICIÓN DE ORIGEN (X, Y, Z) */}
-          <div className="flex flex-col gap-2 pt-1 border-t border-slate-800/80">
+          <div className="flex flex-col gap-1.5 pt-1 border-t border-white/[0.08]">
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-xs font-bold text-slate-200 block">
@@ -557,7 +557,7 @@ export const BoxGeometryEditor: React.FC<BoxGeometryEditorProps> = ({
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-3 gap-2">
               {/* Origin X */}
               <CoordinateControl
                 label="Origen X"
@@ -597,7 +597,7 @@ export const BoxGeometryEditor: React.FC<BoxGeometryEditorProps> = ({
           </div>
 
           {/* CAMPOS NUMÉRICOS: DIMENSIONES (WIDTH, HEIGHT, DEPTH) */}
-          <div className="flex flex-col gap-2 pt-2 border-t border-slate-800/80">
+          <div className="flex flex-col gap-1.5 pt-2 border-t border-white/[0.08]">
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-xs font-bold text-slate-200 block">
@@ -616,7 +616,7 @@ export const BoxGeometryEditor: React.FC<BoxGeometryEditorProps> = ({
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-3 gap-2">
               {/* Size X (Width) */}
               <CoordinateControl
                 label="Ancho (W)"
@@ -697,7 +697,7 @@ const CoordinateControl: React.FC<CoordinateControlProps> = ({
       : 'accent-sky-500';
 
   return (
-    <div className="flex flex-col gap-1.5 p-2.5 bg-slate-900/90 rounded-xl border border-slate-800">
+    <div className="flex flex-col gap-1.5 p-2 bg-[#111827] rounded-xl border border-white/[0.08]">
       <div className="flex items-center justify-between text-xs">
         <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${colorBadgeClass}`}>
           {label}
