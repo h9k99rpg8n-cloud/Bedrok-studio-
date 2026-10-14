@@ -1597,8 +1597,8 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                 onClick={() => setIsAddBehaviorModalOpen(true)}
                 className="w-full sm:w-auto min-h-[44px] px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-md shadow-emerald-500/20 active:scale-95 transition-all shrink-0"
               >
-                <i className="bx bx-plus text-base font-extrabold" />
-                <span>+ Agregar comportamiento</span>
+                <Plus size={16} strokeWidth={2.5} />
+                <span>Agregar comportamiento</span>
               </button>
             </div>
 
@@ -1610,7 +1610,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                   <div className="p-3.5 flex items-center justify-between bg-slate-900/60 border-b border-slate-800/80">
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm">
-                        <i className="bx bx-pickaxe" />
+                        <Pickaxe size={17} strokeWidth={1.8} />
                       </div>
                       <div>
                         <span className="text-xs font-bold text-slate-100 block">
@@ -1921,7 +1921,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                   <div className="p-3.5 flex items-center justify-between bg-slate-900/60 border-b border-slate-800/80">
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-sm">
-                        <i className="bx bxs-sparkles" />
+                        <Sparkles size={17} strokeWidth={1.8} />
                       </div>
                       <div>
                         <span className="text-xs font-bold text-slate-100 block">
