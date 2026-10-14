@@ -473,13 +473,13 @@ export const Box3DVisualizer: React.FC<Box3DVisualizerProps> = ({
         </div>
 
         {/* Floating Top Controls Overlay */}
-        <div className="absolute top-2 left-2 right-2 flex items-center justify-between pointer-events-none">
+        <div className="absolute top-2 left-2 right-2 flex items-start justify-between gap-2 pointer-events-none">
           {/* Quick Perspective Views */}
-          <div className="flex items-center gap-1 bg-[#090d16]/90 backdrop-blur-md p-1 rounded-xl border border-slate-800 pointer-events-auto shadow-md">
+          <div className="flex max-w-[calc(100%-5.5rem)] flex-wrap items-center gap-0.5 bg-[#0B0F17]/75 backdrop-blur-xl p-1 rounded-full border border-white/[0.10] pointer-events-auto shadow-lg">
             <button
               type="button"
               onClick={() => setView('iso')}
-              className="px-2 py-1 rounded-lg text-[10px] font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+              className="min-h-[30px] px-2 py-1 rounded-full text-[9px] sm:text-[10px] font-semibold text-slate-300 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap"
               title="Vista Isométrica"
             >
               3D Iso
@@ -487,7 +487,7 @@ export const Box3DVisualizer: React.FC<Box3DVisualizerProps> = ({
             <button
               type="button"
               onClick={() => setView('front')}
-              className="px-2 py-1 rounded-lg text-[10px] font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+              className="min-h-[30px] px-2 py-1 rounded-full text-[9px] sm:text-[10px] font-semibold text-slate-300 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap"
               title="Vista Frontal"
             >
               Frente
@@ -495,7 +495,7 @@ export const Box3DVisualizer: React.FC<Box3DVisualizerProps> = ({
             <button
               type="button"
               onClick={() => setView('top')}
-              className="px-2 py-1 rounded-lg text-[10px] font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+              className="min-h-[30px] px-2 py-1 rounded-full text-[9px] sm:text-[10px] font-semibold text-slate-300 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap"
               title="Vista Superior"
             >
               Arriba
@@ -503,7 +503,7 @@ export const Box3DVisualizer: React.FC<Box3DVisualizerProps> = ({
             <button
               type="button"
               onClick={() => setView('side')}
-              className="px-2 py-1 rounded-lg text-[10px] font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+              className="min-h-[30px] px-2 py-1 rounded-full text-[9px] sm:text-[10px] font-semibold text-slate-300 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap"
               title="Vista Lateral"
             >
               Lado
