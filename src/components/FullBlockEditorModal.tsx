@@ -1170,12 +1170,12 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
             <div className="bg-slate-950/70 p-4 rounded-2xl border border-cyan-500/25 flex flex-col gap-3">
               <div className="flex items-center gap-2">
                 <i className="bx bx-map text-cyan-300 text-lg" />
-                <div className="flex-1 min-w-0"><label htmlFor="block-map-color" className="text-xs font-bold text-slate-100">Color en el mapa</label><p className="text-[10px] text-slate-400">Cambia el color con el que se representa el bloque en mapas; no modifica su textura.</p></div>
-                <span className="w-8 h-8 rounded-lg border border-white/20 shadow-inner shrink-0" style={{ backgroundColor: mapColor }} aria-label={`Vista previa ${mapColor}`} />
+                <div className="flex-1 min-w-0"><label htmlFor="block-map-color" className="text-xs font-bold text-slate-100">Color en el mapa</label><p className="text-[10px] text-slate-400">Cambia el color del bloque en mapas, sin modificar su textura.</p></div>
               </div>
-              <div className="grid grid-cols-[minmax(0,1fr)_52px] gap-2 items-center">
+              <div className="grid grid-cols-[minmax(0,1fr)_44px_36px] gap-2 items-center">
                 <div className="flex flex-col gap-1"><label htmlFor="block-map-color" className="text-[10px] text-slate-400">Código hexadecimal</label><input id="block-map-color" type="text" value={mapColor} maxLength={7} onChange={(e) => { const next = e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`; if (/^#[0-9a-fA-F]{0,6}$/.test(next)) setMapColor(next); }} className="w-full min-h-[42px] px-3 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono text-slate-100 focus:outline-none focus:border-cyan-400" placeholder="#7FB238" /></div>
-                <label className="relative block w-[52px] h-[42px] rounded-xl overflow-hidden border border-slate-700 cursor-pointer" title="Elegir color"><input aria-label="Elegir color del mapa" type="color" value={/^#[0-9a-fA-F]{6}$/.test(mapColor) ? mapColor : '#7FB238'} onChange={(e) => setMapColor(e.target.value.toUpperCase())} className="absolute inset-0 w-full h-full scale-150 cursor-pointer" /></label>
+                <label className="relative block w-[44px] h-[42px] rounded-lg overflow-hidden border border-white/[0.10] cursor-pointer" title="Elegir color"><input aria-label="Elegir color del mapa" type="color" value={/^#[0-9a-fA-F]{6}$/.test(mapColor) ? mapColor : '#7FB238'} onChange={(e) => setMapColor(e.target.value.toUpperCase())} className="absolute inset-0 w-full h-full scale-150 cursor-pointer" /></label>
+                <span className="w-9 h-9 rounded-lg border border-white/[0.14] shadow-inner shrink-0" style={{ backgroundColor: mapColor }} aria-label={`Vista previa ${mapColor}`} />
               </div>
               <div className="rounded-xl border border-slate-800 bg-[#101827] p-3 flex items-center gap-3">
                 <div className="w-16 h-16 rounded-lg p-1 bg-[#202b3b] grid grid-cols-4 grid-rows-4 gap-0.5 shrink-0" aria-label="Vista previa de color en un mapa">
