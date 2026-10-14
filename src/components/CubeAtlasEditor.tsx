@@ -83,7 +83,7 @@ export const CubeAtlasEditor: React.FC<CubeAtlasEditorProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-3.5 bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800">
+    <div className="flex flex-col gap-3 bg-[#111827]/85 p-3 sm:p-3.5 rounded-xl border border-white/[0.08]">
       {/* Mode Switcher Buttons */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
@@ -98,11 +98,11 @@ export const CubeAtlasEditor: React.FC<CubeAtlasEditorProps> = ({
           </span>
         </div>
 
-        <div className="grid grid-cols-3 gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800">
+        <div className="grid grid-cols-3 gap-1 bg-[#0B0F17] p-1 rounded-xl border border-white/[0.08]">
           <button
             type="button"
             onClick={() => handleModeChangeRequest('one')}
-            className={`min-h-[40px] px-2 py-1 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 ${
+            className={`min-h-[40px] px-1.5 sm:px-2 py-1 text-[11px] sm:text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 ${
               mode === 'one'
                 ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
@@ -115,7 +115,7 @@ export const CubeAtlasEditor: React.FC<CubeAtlasEditorProps> = ({
           <button
             type="button"
             onClick={() => handleModeChangeRequest('three')}
-            className={`min-h-[40px] px-2 py-1 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 ${
+            className={`min-h-[40px] px-1.5 sm:px-2 py-1 text-[11px] sm:text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 ${
               mode === 'three'
                 ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
@@ -128,7 +128,7 @@ export const CubeAtlasEditor: React.FC<CubeAtlasEditorProps> = ({
           <button
             type="button"
             onClick={() => handleModeChangeRequest('six')}
-            className={`min-h-[40px] px-2 py-1 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 ${
+            className={`min-h-[40px] px-1.5 sm:px-2 py-1 text-[11px] sm:text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 ${
               mode === 'six'
                 ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
@@ -229,7 +229,7 @@ export const CubeAtlasEditor: React.FC<CubeAtlasEditorProps> = ({
               <button
                 type="button"
                 onClick={() => onOpenTextureLibraryForFace('up')}
-                className="min-h-[44px] px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-95 transition-all"
+                className="min-h-[44px] flex-1 justify-center px-3 sm:px-4 bg-emerald-400 hover:bg-emerald-300 text-slate-950 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-95 transition-all border border-emerald-300/50"
               >
                 <i className="bx bx-photo-album text-base" />
                 <span>{faceTextures.up ? 'Cambiar Textura' : 'Seleccionar Textura'}</span>
@@ -238,7 +238,7 @@ export const CubeAtlasEditor: React.FC<CubeAtlasEditorProps> = ({
                 <button
                   type="button"
                   onClick={() => onClearFaceTexture('up')}
-                  className="min-h-[44px] px-3 bg-slate-900 hover:bg-rose-500/20 hover:text-rose-400 text-slate-400 border border-slate-800 rounded-xl text-xs flex items-center gap-1 transition-colors"
+                  className="min-h-[44px] px-3 bg-[#0B0F17] hover:bg-rose-500/10 hover:text-rose-300 text-slate-400 border border-white/[0.08] rounded-xl text-xs flex items-center gap-1 transition-colors"
                   title="Quitar textura"
                 >
                   <i className="bx bx-trash text-base" />
