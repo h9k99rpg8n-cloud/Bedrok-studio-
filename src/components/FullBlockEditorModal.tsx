@@ -672,7 +672,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-3 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl bg-[#0B0F17] border border-white/[0.08] rounded-2xl shadow-2xl flex flex-col max-h-[96dvh] overflow-y-auto overscroll-contain">
+      <div style={{ fontFamily: "Inter, -apple-system, BlinkMacSystemFont, \"SF Pro Display\", sans-serif" }} className="relative w-full max-w-2xl bg-[#0B0F17] border border-white/[0.08] rounded-2xl shadow-2xl flex flex-col max-h-[96dvh] overflow-y-auto overscroll-contain">
         {/* Header Superior del Modal */}
         <div className="sticky top-0 z-30 flex items-center justify-between gap-3 p-3 sm:p-4 border-b border-white/[0.08] bg-[#0B0F17]/95 backdrop-blur-xl">
           <div className="flex items-center gap-2 min-w-0">
