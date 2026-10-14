@@ -486,7 +486,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
               </div>
             ) : filteredBlocks.length === 0 ? (
               <div className="py-12 text-center text-xs text-slate-400">
-                No hay bloques asignados al grupo seleccionado.
+                {normalizedQuery ? `No se encontraron bloques para “${searchQuery}”.` : 'No hay bloques asignados al grupo seleccionado.'}
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-2.5">
@@ -620,7 +620,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
               </button>
             </div>
 
-            {filteredRecipes.length === 0 ? (
+            {filteredRecipes.length === 0 && normalizedQuery ? (<div className="py-12 text-center text-sm text-slate-400">No se encontraron recetas para “{searchQuery}”.</div>) : filteredRecipes.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center py-16 relative">
                 <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-amber-400 mb-3 shadow-lg">
                   <i className="bx bxs-grid text-3xl" />
@@ -804,7 +804,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
             </div>
 
             {/* Textures Grid */}
-            {filteredTextures.length === 0 ? (
+            {filteredTextures.length === 0 && normalizedQuery ? (<div className="py-12 text-center text-sm text-slate-400">No se encontraron texturas para “{searchQuery}”.</div>) : filteredTextures.length === 0 ? (
               <div className="py-16 text-center text-xs text-slate-400 flex flex-col items-center">
                 <i className="bx bx-images text-4xl text-slate-600 mb-2" />
                 <span>No hay texturas en el proyecto.</span>
@@ -870,7 +870,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
             </div>
 
             {/* Groups List */}
-            {filteredGroups.length === 0 ? (
+            {filteredGroups.length === 0 && normalizedQuery ? (<div className="py-12 text-center text-sm text-slate-400">No se encontraron grupos para “{searchQuery}”.</div>) : filteredGroups.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center py-16">
                 <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-emerald-400 mb-3 shadow-lg">
                   <i className="bx bx-category text-3xl" />
