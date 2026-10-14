@@ -202,7 +202,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
     getName: (item: T) => string,
   ): T[] => [...items].sort((a, b) => {
     if (sortOrder === 'alphabetical') return getName(a).localeCompare(getName(b), 'es', { sensitivity: 'base' });
-    return ((b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
+    return ((b.createdAt || 0) - (a.createdAt || 0));
   });
   // Default view groups blocks together; within each group, newest blocks appear first.
   const filteredBlocks = sortOrder === 'alphabetical'
@@ -216,7 +216,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
       ).sort((a, b) =>
         (a.groupName || projectGroups.find((g) => g.id === a.groupId)?.name || 'Sin grupo')
           .localeCompare(b.groupName || projectGroups.find((g) => g.id === b.groupId)?.name || 'Sin grupo', 'es', { sensitivity: 'base' }) ||
-        ((b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0))
+        ((b.createdAt || 0) - (a.createdAt || 0))
       );
   const filteredRecipes = sortByNameOrDate(
     projectRecipes.filter((recipe) => matchesSearch(recipe.displayName) || matchesSearch(recipe.identifier)),
@@ -443,7 +443,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
                 >
                   Todos ({project.blocks.length})
                 </button>
-                {filteredGroups.map((grp) => {
+                {projectGroups.map((grp) => {
                   const count = project.blocks.filter((b) => b.groupId === grp.id).length;
                   return (
                     <button
