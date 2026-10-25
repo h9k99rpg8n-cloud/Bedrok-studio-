@@ -6,6 +6,7 @@ import {
   CustomBlock,
   CustomTexture,
   CraftingRecipe,
+  ProjectFolder,
 } from '../types/addon';
 import { WatermarkPickaxe } from './WatermarkPickaxe';
 import { exportAddonToMcaddon } from '../utils/exporter';
@@ -31,6 +32,8 @@ interface ProjectDetailViewProps {
   onOpenCreateRecipe: () => void;
   onOpenEditRecipe: (recipe: CraftingRecipe) => void;
   onDeleteRecipe: (recipeId: string) => void;
+  onUpdateProject: (project: AddonProject) => Promise<void>;
+  onExportComplete: () => void;
 }
 
 type WorkspaceTab = 'blocks' | 'recipes' | 'textures' | 'groups';
@@ -65,6 +68,8 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   onOpenCreateRecipe,
   onOpenEditRecipe,
   onDeleteRecipe,
+  onUpdateProject,
+  onExportComplete,
 }) => {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('blocks');
   const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState<boolean>(false);
@@ -87,6 +92,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
 
   // Filter blocks by group in Blocks tab
   const [filterGroupId, setFilterGroupId] = useState<string>('all');
+  const [activeFolderId, setActiveFolderId] = useState<string>('all');
 
   // Manual save trigger from bottom bar
   const handleSaveClick = async () => {
@@ -125,7 +131,8 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
         origin: { y: 0.6 },
         colors: ['#10b981', '#06b6d4', '#f59e0b'],
       });
-      setTimeout(() => setExportNotice(null), 6000);
+      // The download has been initiated successfully: return to the Workbench without reloading.
+      onExportComplete();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error inesperado al exportar el Addon.';
       console.error('Error al exportar:', err);
@@ -192,6 +199,37 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
     }
   };
 
+  const createProjectFolder = async () => {
+    const name = window.prompt('Nombre de la nueva carpeta:')?.trim();
+    if (!name) return;
+    if (projectFolders.some((folder) => folder.name.toLocaleLowerCase('es') === name.toLocaleLowerCase('es'))) {
+      window.alert('Ya existe una carpeta con ese nombre.');
+      return;
+    }
+    const folder: ProjectFolder = { id: `folder_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, name, resourceType: 'all', createdAt: Date.now() };
+    await onUpdateProject({ ...project, folders: [...projectFolders, folder], updatedAt: Date.now() });
+    setActiveFolderId(folder.id);
+  };
+
+  const moveBlockToFolder = async (block: CustomBlock) => {
+    const options = ['Sin carpeta', ...projectFolders.map((folder) => folder.name)];
+    const choice = window.prompt(`Mover “${block.displayName}” a una carpeta:\n${options.map((name, index) => `${index}. ${name}`).join('\n')}`, '0');
+    if (choice === null) return;
+    const index = Number(choice);
+    if (!Number.isInteger(index) || index < 0 || index >= options.length) {
+      window.alert('Selecciona el número de una carpeta válida.');
+      return;
+    }
+    const folderId = index === 0 ? undefined : projectFolders[index - 1].id;
+    await onUpdateProject({ ...project, blocks: project.blocks.map((item) => item.id === block.id ? { ...item, folderId } : item), updatedAt: Date.now() });
+  };
+
+  const duplicateBlock = async (block: CustomBlock) => {
+    const copy: CustomBlock = { ...JSON.parse(JSON.stringify(block)), id: `block_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, identifier: `${block.identifier}_copy`, displayName: `${block.displayName} (Copia)`, createdAt: Date.now(), updatedAt: Date.now() };
+    await onUpdateProject({ ...project, blocks: [...project.blocks, copy], updatedAt: Date.now() });
+  };
+
+  const projectFolders = project.folders || [];
   const projectGroups = project.groups || [];
   const projectRecipes = project.recipes || [];
   const normalizedQuery = searchQuery.trim().toLocaleLowerCase('es');
@@ -208,10 +246,12 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   const filteredBlocks = sortOrder === 'alphabetical'
     ? sortByNameOrDate((project.blocks || []).filter((b) =>
         (filterGroupId === 'all' || b.groupId === filterGroupId) &&
+        (activeFolderId === 'all' || (activeFolderId === 'unfiled' ? !b.folderId : b.folderId === activeFolderId)) &&
         (matchesSearch(b.displayName) || matchesSearch(b.identifier) || matchesSearch(b.groupName))
       ), (b) => b.displayName)
     : (project.blocks || []).filter((b) =>
         (filterGroupId === 'all' || b.groupId === filterGroupId) &&
+        (activeFolderId === 'all' || (activeFolderId === 'unfiled' ? !b.folderId : b.folderId === activeFolderId)) &&
         (matchesSearch(b.displayName) || matchesSearch(b.identifier) || matchesSearch(b.groupName))
       ).sort((a, b) =>
         (a.groupName || projectGroups.find((g) => g.id === a.groupId)?.name || 'Sin grupo')
@@ -219,11 +259,11 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
         ((b.createdAt || 0) - (a.createdAt || 0))
       );
   const filteredRecipes = sortByNameOrDate(
-    projectRecipes.filter((recipe) => matchesSearch(recipe.displayName) || matchesSearch(recipe.identifier)),
+    projectRecipes.filter((recipe) => (activeFolderId === 'all' || (activeFolderId === 'unfiled' ? !recipe.folderId : recipe.folderId === activeFolderId)) && (matchesSearch(recipe.displayName) || matchesSearch(recipe.identifier))),
     (recipe) => recipe.displayName,
   );
   const filteredTextures = sortByNameOrDate(
-    (project.textures || []).filter((texture) => matchesSearch(texture.name)),
+    (project.textures || []).filter((texture) => (activeFolderId === 'all' || (activeFolderId === 'unfiled' ? !texture.folderId : texture.folderId === activeFolderId)) && matchesSearch(texture.name)),
     (texture) => texture.name,
   );
   const filteredGroups = sortByNameOrDate(
@@ -408,6 +448,16 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
         </label>
       </section>
 
+      {/* 2.2 Project folders */}
+      <section className="mx-4 mt-3 rounded-2xl border border-slate-800 bg-[#0d1322] p-3" aria-label="Carpetas del proyecto">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-2 min-w-0"><i className="bx bx-folder text-xl text-emerald-400" /><span className="text-xs font-bold text-slate-200">Carpetas del proyecto</span><span className="text-[10px] text-slate-500">{projectFolders.length}</span></div>
+          <button type="button" onClick={createProjectFolder} className="min-h-[38px] px-3 rounded-xl bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 text-xs font-bold flex items-center gap-1.5"><i className="bx bx-folder-plus text-base" /> Nueva carpeta</button>
+        </div>
+        <label className="flex items-center gap-2 min-h-[42px] rounded-xl border border-slate-800 bg-slate-950/70 px-3"><i className="bx bx-filter-alt text-emerald-400" /><select value={activeFolderId} onChange={(event) => setActiveFolderId(event.target.value)} className="w-full min-h-[40px] bg-transparent text-xs text-slate-200 outline-none" aria-label="Filtrar por carpeta"><option value="all">Todos los recursos</option><option value="unfiled">Sin carpeta</option>{projectFolders.map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}</select></label>
+        <p className="mt-2 text-[10px] text-slate-500">Las carpetas y las ubicaciones se guardan con el proyecto. En esta versión, puedes organizar bloques; las carpetas de partículas son una estructura preparada, no un editor de partículas independiente.</p>
+      </section>
+
       {/* Main Content Area */}
       <main className="flex-1 p-4 flex flex-col relative">
         {/* TAB 1: BLOQUES DEL ADDON */}
@@ -566,8 +616,10 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
                         </div>
                       </div>
 
-                      {/* Action buttons */}
+                      {/* 2.2 resource actions */}
                       <div className="flex items-center gap-1 shrink-0 ml-2">
+                        <button type="button" onClick={(e) => { e.stopPropagation(); void duplicateBlock(block); }} className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10" title="Duplicar bloque"><i className="bx bx-copy text-lg" /></button>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); void moveBlockToFolder(block); }} className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-cyan-300 hover:bg-cyan-500/10" title="Mover a carpeta"><i className="bx bx-folder-open text-lg" /></button>
                         <button
                           type="button"
                           onClick={(e) => {
