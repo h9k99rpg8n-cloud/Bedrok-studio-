@@ -228,7 +228,8 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
     };
     try {
       await onUpdateProject({ ...project, folders: [...projectFolders, folder], updatedAt: Date.now() });
-      setActiveFolderId(folder.id);
+      // Keep all resources visible so the user can immediately move existing blocks into the new folder.
+      setActiveFolderId('all');
       setIsCreateFolderOpen(false);
       setFolderNameInput('');
       setFolderModalError('');
