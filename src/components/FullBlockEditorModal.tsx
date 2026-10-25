@@ -42,6 +42,8 @@ interface FullBlockEditorModalProps {
   availableTextures: CustomTexture[];
   availableGroups?: BlockGroup[];
   assignedTexture?: { face: BlockFaceKey | 'item'; texDataUrl: string; textureId?: string; timestamp: number } | null;
+  assignedAnimatedTexture?: { dataUrl: string; frameWidth: number; frameCount: number; timestamp: number } | null;
+  onOpenAnimatedTextureLibrary: () => void;
   onClose: () => void;
   onSaveBlock: (block: CustomBlock) => void;
   onOpenTextureLibraryForFace: (face: BlockFaceKey) => void;
@@ -59,6 +61,8 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
   availableTextures,
   availableGroups = [],
   assignedTexture,
+  assignedAnimatedTexture,
+  onOpenAnimatedTextureLibrary,
   onClose,
   onSaveBlock,
   onOpenTextureLibraryForFace,
@@ -477,6 +481,29 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
       setValidationError('');
     }
   }, [isOpen, block]);
+
+  // Recibir una plantilla animada desde la biblioteca de texturas.
+  useEffect(() => {
+    if (!assignedAnimatedTexture || !isOpen) return;
+    let cancelled = false;
+    inspectAnimatedTexture(assignedAnimatedTexture.dataUrl).then((dimensions) => {
+      if (cancelled) return;
+      setAnimatedTexture((current) => ({
+        ...current,
+        enabled: true,
+        textureDataUrl: assignedAnimatedTexture.dataUrl,
+        frameWidth: dimensions.frameWidth,
+        frameCount: dimensions.frameCount,
+      }));
+      setPreviewFrame(0);
+      setAnimationImportError('');
+      setAnimationNotice(`Plantilla de la biblioteca aplicada: ${dimensions.frameCount} fotogramas.`);
+      setActiveTab('animation');
+    }).catch((error) => {
+      if (!cancelled) setAnimationImportError(error instanceof Error ? error.message : 'No se pudo aplicar la plantilla.');
+    });
+    return () => { cancelled = true; };
+  }, [assignedAnimatedTexture, isOpen]);
 
   // Recibir textura asignada desde la biblioteca de texturas
   useEffect(() => {
@@ -1296,6 +1323,15 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                   aria-label="Activar textura animada"
                 />
               </div>
+
+              <button
+                type="button"
+                onClick={onOpenAnimatedTextureLibrary}
+                className="min-h-[44px] px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold flex items-center justify-center gap-2"
+              >
+                <i className="bx bxs-photo-album text-base" />
+                Abrir biblioteca de plantillas animadas
+              </button>
 
               <div className="grid grid-cols-2 gap-2">
                 {([

@@ -1,6 +1,7 @@
 import React, { useRef, useState, useMemo } from 'react';
 import { AddonProject, CustomTexture } from '../types/addon';
 import { getMinecraftReferenceTextures, MinecraftReferenceTexture } from '../utils/minecraftReferenceTextures';
+import { createAnimatedTextureTemplate, AnimatedTextureTemplateKind, AnimatedTextureSource } from '../utils/animatedTextures';
 
 interface TextureLibraryModalProps {
   isOpen: boolean;
@@ -8,6 +9,7 @@ interface TextureLibraryModalProps {
   onClose: () => void;
   onSelectTextureForFace?: (textureDataUrl: string) => void;
   onSelectTextureForItem?: (textureDataUrl: string, textureId?: string) => void;
+  onSelectAnimatedTextureTemplate?: (template: AnimatedTextureSource) => void;
   onSaveNewTexture: (texture: CustomTexture) => void;
   onDeleteTexture: (textureId: string) => void;
   onOpenPainter: () => void;
@@ -19,11 +21,12 @@ export const TextureLibraryModal: React.FC<TextureLibraryModalProps> = ({
   onClose,
   onSelectTextureForFace,
   onSelectTextureForItem,
+  onSelectAnimatedTextureTemplate,
   onSaveNewTexture,
   onDeleteTexture,
   onOpenPainter,
 }) => {
-  const [activeTab, setActiveTab] = useState<'project' | 'minecraft'>('project');
+  const [activeTab, setActiveTab] = useState<'project' | 'minecraft' | 'animated'>('project');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [minecraftCategory, setMinecraftCategory] = useState<string>('todos');
   const [deleteWarningTex, setDeleteWarningTex] = useState<{ id: string; name: string; usedIn: string[] } | null>(null);
@@ -32,6 +35,12 @@ export const TextureLibraryModal: React.FC<TextureLibraryModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const mcCatalog = useMemo(() => getMinecraftReferenceTextures(), []);
+  const animatedTemplates = useMemo(() => ([
+    { kind: 'water' as const, name: 'Agua animada', description: 'Ondas azules y cian' },
+    { kind: 'lava' as const, name: 'Lava animada', description: 'Flujo naranja y rojo' },
+    { kind: 'energy' as const, name: 'Energía mágica', description: 'Pulso verde brillante' },
+    { kind: 'portal' as const, name: 'Portal morado', description: 'Espiral violeta' },
+  ].map((item) => ({ ...item, source: createAnimatedTextureTemplate(item.kind) }))), []);
 
   // Filtered Minecraft Catalog
   const filteredMinecraft = useMemo(() => {
@@ -152,7 +161,7 @@ export const TextureLibraryModal: React.FC<TextureLibraryModalProps> = ({
         </div>
 
         {/* Tab Switcher: Mis Texturas vs Catálogo Bedrock */}
-        <div className="grid grid-cols-2 gap-1.5 bg-slate-950 p-1.5 rounded-2xl border border-slate-800 my-3 shrink-0">
+        <div className="grid grid-cols-3 gap-1.5 bg-slate-950 p-1.5 rounded-2xl border border-slate-800 my-3 shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab('project')}
@@ -178,6 +187,19 @@ export const TextureLibraryModal: React.FC<TextureLibraryModalProps> = ({
             <i className="bx bxs-cube-alt" />
             <span>Catálogo Bedrock</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('animated')}
+            className={`min-h-[38px] text-[11px] sm:text-xs font-semibold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'animated'
+                ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <i className="bx bx-movie-play" />
+            <span>Animadas</span>
+          </button>
         </div>
 
         {/* Search Bar & Filter */}
@@ -191,7 +213,9 @@ export const TextureLibraryModal: React.FC<TextureLibraryModalProps> = ({
               placeholder={
                 activeTab === 'project'
                   ? 'Buscar textura en el addon...'
-                  : 'Buscar por nombre (ej. piedra, tierra, diamante)...'
+                  : activeTab === 'minecraft'
+                    ? 'Buscar por nombre (ej. piedra, tierra, diamante)...'
+                    : 'Plantillas: agua, lava, energía, portal...'
               }
               className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
             />
@@ -443,6 +467,56 @@ export const TextureLibraryModal: React.FC<TextureLibraryModalProps> = ({
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'animated' && (
+          <div className="flex-1 overflow-y-auto">
+            <div className="mb-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+              <p className="text-xs font-bold text-emerald-200">Biblioteca de texturas animadas</p>
+              <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                Elige una plantilla para asignarla como animación al bloque que estás editando. Se guardará como un PNG vertical de 4 fotogramas.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5 pb-3">
+              {animatedTemplates
+                .filter((item) => !searchQuery.trim() || item.name.toLowerCase().includes(searchQuery.toLowerCase()) || item.description.toLowerCase().includes(searchQuery.toLowerCase()))
+                .map((item) => (
+                  <div key={item.kind} className="p-3 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col gap-2">
+                    <div
+                      className="w-full aspect-square rounded-xl border border-slate-800 bg-slate-900 overflow-hidden"
+                      style={{
+                        backgroundImage: `url("${item.source.dataUrl}")`,
+                        backgroundRepeat: 'no-repeat',
+                        backgroundSize: '100% 400%',
+                        backgroundPosition: 'center 0%',
+                        imageRendering: 'pixelated',
+                      }}
+                      aria-label={`Vista previa de ${item.name}`}
+                    />
+                    <div>
+                      <p className="text-xs font-bold text-slate-100">{item.name}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{item.description}</p>
+                      <p className="text-[10px] font-mono text-emerald-300 mt-1">16×64 · 4 fotogramas</p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!onSelectAnimatedTextureTemplate}
+                      onClick={() => {
+                        onSelectAnimatedTextureTemplate?.(item.source);
+                        onClose();
+                      }}
+                      className="min-h-[38px] rounded-lg bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5"
+                    >
+                      <i className="bx bx-check" />
+                      <span>Usar plantilla</span>
+                    </button>
+                  </div>
+                ))}
+            </div>
+            {!onSelectAnimatedTextureTemplate && (
+              <p className="text-[10px] text-slate-500 text-center pb-3">Abre esta biblioteca desde la pestaña Animación del editor de un bloque para asignar una plantilla.</p>
+            )}
           </div>
         )}
       </div>

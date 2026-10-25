@@ -60,6 +60,8 @@ export default function App() {
   const [isTextureLibraryOpen, setIsTextureLibraryOpen] = useState<boolean>(false);
   const [targetFaceForLibrary, setTargetFaceForLibrary] = useState<BlockFaceKey | null>(null);
   const [targetItemTextureForLibrary, setTargetItemTextureForLibrary] = useState<boolean>(false);
+  const [targetAnimatedTextureForLibrary, setTargetAnimatedTextureForLibrary] = useState<boolean>(false);
+  const [assignedAnimatedTextureForEditor, setAssignedAnimatedTextureForEditor] = useState<{ dataUrl: string; frameWidth: number; frameCount: number; timestamp: number } | null>(null);
   const [assignedTextureForEditor, setAssignedTextureForEditor] = useState<{
     face: BlockFaceKey | 'item';
     texDataUrl: string;
@@ -679,6 +681,7 @@ export default function App() {
           availableTextures={activeProject.textures}
           availableGroups={activeProject.groups || []}
           assignedTexture={assignedTextureForEditor}
+          assignedAnimatedTexture={assignedAnimatedTextureForEditor}
           onClose={() => {
             setIsFullBlockEditorOpen(false);
             setEditingBlock(null);
@@ -692,6 +695,13 @@ export default function App() {
           onOpenTextureLibraryForItem={() => {
             setTargetFaceForLibrary(null);
             setTargetItemTextureForLibrary(true);
+            setTargetAnimatedTextureForLibrary(false);
+            setIsTextureLibraryOpen(true);
+          }}
+          onOpenAnimatedTextureLibrary={() => {
+            setTargetFaceForLibrary(null);
+            setTargetItemTextureForLibrary(false);
+            setTargetAnimatedTextureForLibrary(true);
             setIsTextureLibraryOpen(true);
           }}
           onOpenTutorial={() => setIsTutorialOpen(true)}
@@ -707,7 +717,13 @@ export default function App() {
             setIsTextureLibraryOpen(false);
             setTargetFaceForLibrary(null);
             setTargetItemTextureForLibrary(false);
+            setTargetAnimatedTextureForLibrary(false);
           }}
+          onSelectAnimatedTextureTemplate={targetAnimatedTextureForLibrary ? (template) => {
+            setAssignedAnimatedTextureForEditor({ ...template, timestamp: Date.now() });
+            setTargetAnimatedTextureForLibrary(false);
+            setIsTextureLibraryOpen(false);
+          } : undefined}
           onSelectTextureForItem={targetItemTextureForLibrary ? (texDataUrl, textureId) => {
             setAssignedTextureForEditor({ face: 'item', texDataUrl, textureId, timestamp: Date.now() });
             setTargetItemTextureForLibrary(false);
