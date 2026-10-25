@@ -539,6 +539,14 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
     }
   }, [assignedTexture, isOpen, textureMode]);
 
+  useEffect(() => {
+    if (!isOpen || !animatedTexture.enabled || animatedTexture.frameCount < 2) return;
+    const interval = window.setInterval(() => {
+      setPreviewFrame((current) => (current + 1) % animatedTexture.frameCount);
+    }, animatedTexture.ticksPerFrame * 50);
+    return () => window.clearInterval(interval);
+  }, [isOpen, animatedTexture.enabled, animatedTexture.frameCount, animatedTexture.ticksPerFrame]);
+
   if (!isOpen) return null;
 
   const handleAnimatedTextureUpload = async (file?: File) => {
@@ -594,14 +602,6 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
       setAnimationImportError(error instanceof Error ? error.message : 'No se pudo crear la plantilla.');
     }
   };
-
-  useEffect(() => {
-    if (!isOpen || !animatedTexture.enabled || animatedTexture.frameCount < 2) return;
-    const interval = window.setInterval(() => {
-      setPreviewFrame((current) => (current + 1) % animatedTexture.frameCount);
-    }, animatedTexture.ticksPerFrame * 50);
-    return () => window.clearInterval(interval);
-  }, [isOpen, animatedTexture.enabled, animatedTexture.frameCount, animatedTexture.ticksPerFrame]);
 
   // Validación y guardado
   const handleSave = () => {
