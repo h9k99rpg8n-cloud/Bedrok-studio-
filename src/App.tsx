@@ -244,7 +244,7 @@ export default function App() {
       let updatedBlocks: CustomBlock[];
 
       if (exists) {
-        updatedBlocks = activeProject.blocks.map((b) => (b.id === savedBlock.id ? savedBlock : b));
+        updatedBlocks = activeProject.blocks.map((b) => (b.id === savedBlock.id ? { ...savedBlock, folderId: savedBlock.folderId ?? b.folderId } : b));
       } else {
         updatedBlocks = [...activeProject.blocks, savedBlock];
       }
@@ -397,7 +397,7 @@ export default function App() {
       let updatedRecipes: CraftingRecipe[];
 
       if (exists) {
-        updatedRecipes = existingRecipes.map((r) => (r.id === savedRecipe.id ? savedRecipe : r));
+        updatedRecipes = existingRecipes.map((r) => (r.id === savedRecipe.id ? { ...savedRecipe, folderId: savedRecipe.folderId ?? r.folderId } : r));
       } else {
         updatedRecipes = [savedRecipe, ...existingRecipes];
       }
