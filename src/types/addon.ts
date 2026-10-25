@@ -153,6 +153,7 @@ export interface BlockSelectionConfig {
 }
 
 export interface CustomBlock {
+  folderId?: string; // 2.2: ubicación en carpeta del proyecto
   id: string;
   identifier: string;
   displayName: string;
@@ -186,6 +187,7 @@ export interface CustomBlock {
 }
 
 export interface CustomTexture {
+  folderId?: string; // 2.2: ubicación en carpeta del proyecto
   id: string;
   name: string;
   dataUrl: string;
@@ -206,6 +208,7 @@ export interface RecipeSlotItem {
 }
 
 export interface CraftingRecipe {
+  folderId?: string; // 2.2: ubicación en carpeta del proyecto
   id: string;
   identifier: string; // ID técnico oficial: ej. "receta_lampara"
   displayName: string; // Nombre visible de la receta
@@ -215,6 +218,13 @@ export interface CraftingRecipe {
   resultCount: number; // Cantidad producida (1 a 64)
   createdAt: number;
   updatedAt?: number;
+}
+
+export interface ProjectFolder {
+  id: string;
+  name: string;
+  resourceType: 'all' | 'blocks' | 'textures' | 'recipes' | 'particles';
+  createdAt: number;
 }
 
 export interface AddonProject {
@@ -233,6 +243,7 @@ export interface AddonProject {
   textures: CustomTexture[];
   groups?: BlockGroup[];
   recipes?: CraftingRecipe[];
+  folders?: ProjectFolder[]; // 2.2: carpetas internas, compatibles con proyectos anteriores
 }
 
 export type SortOption = 'letters' | 'dates' | 'most_used' | 'oldest' | 'size';

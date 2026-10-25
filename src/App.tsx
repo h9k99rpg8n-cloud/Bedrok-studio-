@@ -70,7 +70,7 @@ export default function App() {
   // Diagnostics Modal
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState<boolean>(false);
 
-  // Crafting Recipes Modal (1.8 Beta Preview: Mesa de trabajo 3x3)
+  // Crafting Recipes Modal (2.2: Mesa de trabajo 3x3)
   const [isRecipeModalOpen, setIsRecipeModalOpen] = useState<boolean>(false);
   const [editingRecipe, setEditingRecipe] = useState<CraftingRecipe | null>(null);
 
@@ -121,7 +121,7 @@ export default function App() {
       // Stage 5: Finalized
       setLoadingProgress(100);
       setLoadingMessage('¡Inicialización completada!');
-      setLoadingDetail('Bienvenido a Bedrock Studio 1.8 Beta Preview');
+      setLoadingDetail('Bienvenido a Bedrock Studio 2.2');
 
       await new Promise((r) => setTimeout(r, 150));
       setIsLoading(false);
@@ -220,6 +220,21 @@ export default function App() {
     }
   };
 
+  // 2.2: persist project-level edits such as folder creation and resource moves.
+  const handleUpdateProject = async (updatedProject: AddonProject) => {
+    try {
+      setSaveStatus('saving');
+      await dbService.saveProject(updatedProject);
+      setProjects((prev) => prev.map((p) => p.id === updatedProject.id ? { ...updatedProject, updatedAt: Date.now() } : p));
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch (err) {
+      console.error('Error al actualizar el proyecto:', err);
+      setSaveStatus('error');
+      throw err;
+    }
+  };
+
   // Create or Update Block in active project
   const handleSaveBlock = async (savedBlock: CustomBlock) => {
     if (!activeProject) return;
@@ -229,7 +244,7 @@ export default function App() {
       let updatedBlocks: CustomBlock[];
 
       if (exists) {
-        updatedBlocks = activeProject.blocks.map((b) => (b.id === savedBlock.id ? savedBlock : b));
+        updatedBlocks = activeProject.blocks.map((b) => (b.id === savedBlock.id ? { ...savedBlock, folderId: savedBlock.folderId ?? b.folderId } : b));
       } else {
         updatedBlocks = [...activeProject.blocks, savedBlock];
       }
@@ -372,7 +387,7 @@ export default function App() {
     }
   };
 
-  // Create or Update Recipe in active project (1.8 Beta Preview)
+  // Create or Update Recipe in active project (2.2)
   const handleSaveRecipe = async (savedRecipe: CraftingRecipe) => {
     if (!activeProject) return;
     try {
@@ -382,7 +397,7 @@ export default function App() {
       let updatedRecipes: CraftingRecipe[];
 
       if (exists) {
-        updatedRecipes = existingRecipes.map((r) => (r.id === savedRecipe.id ? savedRecipe : r));
+        updatedRecipes = existingRecipes.map((r) => (r.id === savedRecipe.id ? { ...savedRecipe, folderId: savedRecipe.folderId ?? r.folderId } : r));
       } else {
         updatedRecipes = [savedRecipe, ...existingRecipes];
       }
@@ -404,7 +419,7 @@ export default function App() {
     }
   };
 
-  // Delete Recipe from active project (1.8 Beta Preview)
+  // Delete Recipe from active project (2.2)
   const handleDeleteRecipe = async (recipeId: string) => {
     if (!activeProject) return;
     try {
@@ -475,6 +490,7 @@ export default function App() {
     if (!activeProject) return;
     try {
       await exportAddonToMcaddon(activeProject);
+      setActiveProjectId(null);
       confetti({
         particleCount: 80,
         spread: 60,
@@ -503,13 +519,13 @@ export default function App() {
             <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-[#090d16] shadow-sm shadow-emerald-400" />
           </div>
           <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-slate-950 border border-emerald-500/30 text-[10px] font-mono font-bold text-emerald-400">
-            1.8 Beta Preview
+            2.2
           </span>
         </div>
 
         {/* Title & Description */}
         <h1 className="text-xl font-black text-slate-100 tracking-wider mb-1">
-          Bedrock Studio <span className="text-emerald-400 font-extrabold">1.8 Beta Preview</span>
+          Bedrock Studio <span className="text-emerald-400 font-extrabold">2.2</span>
         </h1>
         <p className="text-xs text-slate-400 font-mono mb-7 max-w-xs">
           Editor profesional de bloques para Minecraft Bedrock
@@ -591,6 +607,8 @@ export default function App() {
             setIsRecipeModalOpen(true);
           }}
           onDeleteRecipe={handleDeleteRecipe}
+          onUpdateProject={handleUpdateProject}
+          onExportComplete={() => setActiveProjectId(null)}
         />
       ) : (
         <WorkView
@@ -745,7 +763,7 @@ export default function App() {
         }}
       />
 
-      {/* Mesa de Trabajo 3×3 — Editor de Recetas de Fabricación (1.8 Beta Preview) */}
+      {/* Mesa de Trabajo 3×3 — Editor de Recetas de Fabricación (2.2) */}
       {activeProject && (
         <CraftingRecipeModal
           isOpen={isRecipeModalOpen}

@@ -6,9 +6,21 @@ interface ChangelogModalProps {
 }
 
 export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose }) => {
-  const [selectedVersion, setSelectedVersion] = useState<'v1.8' | 'v1.6' | 'v0.1.5' | 'v0.1.4.1' | 'v0.1.4'>('v1.8');
+  const [selectedVersion, setSelectedVersion] = useState<'v2.2' | 'v1.8' | 'v1.6' | 'v0.1.7' | 'v0.1.5' | 'v0.1.4.1' | 'v0.1.4' | 'v0.1.3' | 'v0.1.2'>('v2.2');
 
   if (!isOpen) return null;
+
+  const features22 = [
+    { title: 'Carpetas dentro del proyecto', version: '2.2', badge: 'Espacio de trabajo', desc: 'Crea carpetas internas para organizar bloques, texturas y recetas. La estructura se guarda con el proyecto y los recursos pueden moverse entre carpetas.', icon: 'bx bx-folder' },
+    { title: 'Acciones de organización', version: '2.2', badge: 'Recursos', desc: 'El espacio de trabajo incorpora herramientas para organizar recursos sin salir del proyecto. La duplicación conserva el contenido original y crea un recurso independiente.', icon: 'bx bx-copy' },
+    { title: 'Exportación sin recargar', version: '2.2', badge: 'Flujo de trabajo', desc: 'La exportación genera el archivo desde el navegador. Al terminar correctamente, la aplicación vuelve al Workbench sin recargar la página.', icon: 'bx bx-package' },
+    { title: 'Bienvenida de la nueva era', version: '2.2', badge: 'Novedades', desc: 'Una ventana de presentación explica las mejoras de la versión 2.2 una sola vez por navegador/dispositivo.', icon: 'bx bx-rocket' },
+    { title: 'Historial de versiones', version: '2.2', badge: 'Registro', desc: 'El registro muestra las versiones documentadas y sus cambios conocidos. Las versiones sin registro verificable no se inventan.', icon: 'bx bx-history' },
+  ];
+
+  const features017 = [
+    { title: 'Propiedad mineral y botín personalizado', version: 'v0.1.7', badge: 'Minerales', desc: 'Se añadió la configuración de minerales, objetos de caída con textura personalizada, persistencia y validación de exportación con mensajes de error.', icon: 'bx bx-diamond' },
+  ];
 
   const features18 = [
     { title: 'Rediseño visual adaptable', version: '1.8 Beta Preview', badge: 'Interfaz', desc: 'Jerarquía visual renovada, tarjetas de funciones más claras y controles táctiles adaptados a pantallas verticales y horizontales.', icon: 'bx bx-palette' },
@@ -204,14 +216,22 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
   ];
 
   const currentList =
-    selectedVersion === 'v1.8'
+    selectedVersion === 'v2.2'
+      ? features22
+      : selectedVersion === 'v1.8'
       ? features18
       : selectedVersion === 'v1.6'
       ? features16
+      : selectedVersion === 'v0.1.7'
+      ? features017
       : selectedVersion === 'v0.1.5'
       ? features015
       : selectedVersion === 'v0.1.4.1'
       ? features0141
+      : selectedVersion === 'v0.1.3'
+      ? features013
+      : selectedVersion === 'v0.1.2'
+      ? features012
       : features014;
 
   return (
@@ -225,7 +245,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
               <h2 className="text-sm font-black text-slate-100">Novedades de Bedrock Studio</h2>
             </div>
             <span className="text-[10px] font-mono text-emerald-400 block mt-0.5">
-              Versión 1.8 Beta Preview — Rediseño visual y color de mapa
+              Historial de versiones — de los registros disponibles a la versión 2.2
             </span>
           </div>
           <button
@@ -238,7 +258,18 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
         </div>
 
         {/* Version Switch Tabs */}
-        <div className="grid grid-cols-5 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 my-3">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 my-3">
+          <button
+            type="button"
+            onClick={() => setSelectedVersion('v2.2')}
+            className={`min-h-[38px] text-[10px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1 ${
+              selectedVersion === 'v2.2' ? 'bg-emerald-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <i className="bx bx-rocket" />
+            <span>2.2</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setSelectedVersion('v1.8')}
@@ -262,6 +293,8 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
             <i className="bx bx-check-circle" />
             <span>v1.6</span>
           </button>
+
+          <button type="button" onClick={() => setSelectedVersion('v0.1.7')} className={`min-h-[38px] text-[10px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1 ${selectedVersion === 'v0.1.7' ? 'bg-emerald-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}><span>v0.1.7</span></button>
 
           <button
             type="button"
@@ -298,6 +331,8 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
           >
             <span>v0.1.4</span>
           </button>
+          <button type="button" onClick={() => setSelectedVersion('v0.1.3')} className={`min-h-[38px] text-[10px] font-bold rounded-lg transition-colors flex items-center justify-center ${selectedVersion === 'v0.1.3' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-slate-200'}`}>v0.1.3</button>
+          <button type="button" onClick={() => setSelectedVersion('v0.1.2')} className={`min-h-[38px] text-[10px] font-bold rounded-lg transition-colors flex items-center justify-center ${selectedVersion === 'v0.1.2' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-slate-200'}`}>v0.1.2</button>
         </div>
 
         {/* Content List */}
