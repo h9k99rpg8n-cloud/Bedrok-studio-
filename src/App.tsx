@@ -685,6 +685,7 @@ export default function App() {
           onClose={() => {
             setIsFullBlockEditorOpen(false);
             setEditingBlock(null);
+            setAssignedAnimatedTextureForEditor(null);
           }}
           onSaveBlock={handleSaveBlock}
           onOpenTextureLibraryForFace={(face) => {

@@ -545,7 +545,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
     setAnimationImportError('');
     setAnimationNotice('');
     if (!file) return;
-    if (file.type !== 'image/png' && !file.name.toLowerCase().endsWith('.png')) {
+    if ((file.type && file.type !== 'image/png') || !file.name.toLowerCase().endsWith('.png')) {
       setAnimationImportError('Selecciona un archivo PNG vertical.');
       return;
     }
