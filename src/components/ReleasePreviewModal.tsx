@@ -6,12 +6,12 @@ interface ReleasePreviewModalProps {
 }
 
 const features = [
-  { icon: 'bx bx-palette', title: 'Diseño renovado', text: 'Tarjetas más claras, colores con mejor contraste y controles táctiles más cómodos.', color: 'from-emerald-500/20 to-teal-500/5', border: 'border-emerald-500/30', iconColor: 'text-emerald-300' },
-  { icon: 'bx bx-map', title: 'Color del mapa', text: 'Elige un color hexadecimal y consulta una muestra visual antes de guardar el bloque.', color: 'from-cyan-500/20 to-blue-500/5', border: 'border-cyan-500/30', iconColor: 'text-cyan-300' },
-  { icon: 'bx bx-cube-alt', title: 'Visor 3D mejorado', text: 'Ajusta el zoom con más precisión y abre el visor de cajas en pantalla completa.', color: 'from-violet-500/20 to-indigo-500/5', border: 'border-violet-500/30', iconColor: 'text-violet-300' },
-  { icon: 'bx bx-grid-alt', title: 'Recetas y minerales', text: 'Continúa usando la mesa de trabajo 3×3 y las opciones de botín mineral que ya forman parte del editor.', color: 'from-amber-500/20 to-orange-500/5', border: 'border-amber-500/30', iconColor: 'text-amber-300' },
-  { icon: 'bx bx-mobile-landscape', title: 'Vertical y horizontal', text: 'La interfaz se adapta mejor a pantallas estrechas, tabletas y ventanas apaisadas.', color: 'from-pink-500/20 to-rose-500/5', border: 'border-pink-500/30', iconColor: 'text-pink-300' },
-  { icon: 'bx bx-slider-alt', title: 'Tus herramientas siguen aquí', text: 'Identidad, texturas, propiedades, cajas, comportamientos, grupos y exportación permanecen en el flujo habitual.', color: 'from-slate-500/20 to-slate-800/5', border: 'border-slate-700', iconColor: 'text-slate-200' },
+  { icon: 'bx bx-palette', title: 'Carpetas del proyecto', text: 'Organiza bloques, texturas y recetas en carpetas internas; crea carpetas y mueve recursos sin perder tu proyecto.', color: 'from-emerald-500/20 to-teal-500/5', border: 'border-emerald-500/30', iconColor: 'text-emerald-300' },
+  { icon: 'bx bx-map', title: 'Acciones rápidas', text: 'Prepara la organización para duplicar, eliminar y mover recursos desde el espacio de trabajo.', color: 'from-cyan-500/20 to-blue-500/5', border: 'border-cyan-500/30', iconColor: 'text-cyan-300' },
+  { icon: 'bx bx-cube-alt', title: 'Exportación sin recargas', text: 'Al terminar una exportación correcta, volverás al Workbench sin recargar toda la aplicación.', color: 'from-violet-500/20 to-indigo-500/5', border: 'border-violet-500/30', iconColor: 'text-violet-300' },
+  { icon: 'bx bx-grid-alt', title: 'Historial de versiones', text: 'Consulta las novedades registradas de Bedrock Studio en un historial cronológico.', color: 'from-amber-500/20 to-orange-500/5', border: 'border-amber-500/30', iconColor: 'text-amber-300' },
+  { icon: 'bx bx-mobile-landscape', title: 'Datos conservados', text: 'Las carpetas y sus asignaciones se guardan con el proyecto y siguen disponibles al volver a abrirlo.', color: 'from-pink-500/20 to-rose-500/5', border: 'border-pink-500/30', iconColor: 'text-pink-300' },
+  { icon: 'bx bx-slider-alt', title: 'Tu espacio de trabajo', text: 'Se conserva la identidad negra y verde y las herramientas que ya conoces.', color: 'from-slate-500/20 to-slate-800/5', border: 'border-slate-700', iconColor: 'text-slate-200' },
 ];
 
 export const ReleasePreviewModal: React.FC<ReleasePreviewModalProps> = ({ isOpen, onClose }) => {
@@ -32,8 +32,8 @@ export const ReleasePreviewModal: React.FC<ReleasePreviewModalProps> = ({ isOpen
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> Nueva versión
               </span>
               <h2 id="release-preview-title" className="mt-2 text-2xl sm:text-3xl font-black tracking-tight text-white">Bedrock Studio</h2>
-              <p className="mt-1 text-sm sm:text-base font-bold text-emerald-300">1.8 Beta Preview</p>
-              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-300">Una actualización centrada en una experiencia más visual, controles más cómodos y una vista previa del color que tendrá tu bloque en el mapa.</p>
+              <p className="mt-1 text-sm sm:text-base font-bold text-emerald-300">2.2</p>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-300">Una nueva era para organizar proyectos: carpetas internas, historial de versiones y un flujo de exportación que vuelve al Workbench sin recargar la aplicación.</p>
             </div>
           </div>
         </div>
@@ -50,7 +50,7 @@ export const ReleasePreviewModal: React.FC<ReleasePreviewModalProps> = ({ isOpen
         </div>
         <div className="px-4 pb-4 sm:px-6 sm:pb-6">
           <div className="rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-[11px] leading-relaxed text-slate-400">
-            <i className="bx bx-info-circle mr-1 text-cyan-300" /> Esta presentación se muestra una vez en este navegador o dispositivo. Si borras los datos de la app o cambias de dispositivo, puede aparecer de nuevo. La animación de bloques queda reservada para la versión 2.0.
+            <i className="bx bx-info-circle mr-1 text-cyan-300" /> Esta presentación de la versión 2.2 se muestra una vez en este navegador o dispositivo. Si borras los datos de la app o cambias de dispositivo, puede aparecer de nuevo. Gracias por seguir construyendo Bedrock Studio.
           </div>
           <button type="button" onClick={onClose} className="mt-4 flex min-h-[50px] w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-300 px-5 text-sm font-black text-slate-950 shadow-lg shadow-emerald-950/30 transition hover:brightness-105 active:scale-[.99]">
             <i className="bx bx-rocket text-lg" /> Empezar a crear <i className="bx bx-right-arrow-alt text-lg" />
