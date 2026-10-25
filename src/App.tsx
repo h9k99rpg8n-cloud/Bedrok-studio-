@@ -387,7 +387,7 @@ export default function App() {
     }
   };
 
-  // Create or Update Recipe in active project (1.8 Beta Preview)
+  // Create or Update Recipe in active project (2.2)
   const handleSaveRecipe = async (savedRecipe: CraftingRecipe) => {
     if (!activeProject) return;
     try {
@@ -419,7 +419,7 @@ export default function App() {
     }
   };
 
-  // Delete Recipe from active project (1.8 Beta Preview)
+  // Delete Recipe from active project (2.2)
   const handleDeleteRecipe = async (recipeId: string) => {
     if (!activeProject) return;
     try {
@@ -519,13 +519,13 @@ export default function App() {
             <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-[#090d16] shadow-sm shadow-emerald-400" />
           </div>
           <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-slate-950 border border-emerald-500/30 text-[10px] font-mono font-bold text-emerald-400">
-            1.8 Beta Preview
+            2.2
           </span>
         </div>
 
         {/* Title & Description */}
         <h1 className="text-xl font-black text-slate-100 tracking-wider mb-1">
-          Bedrock Studio <span className="text-emerald-400 font-extrabold">1.8 Beta Preview</span>
+          Bedrock Studio <span className="text-emerald-400 font-extrabold">2.2</span>
         </h1>
         <p className="text-xs text-slate-400 font-mono mb-7 max-w-xs">
           Editor profesional de bloques para Minecraft Bedrock
@@ -763,7 +763,7 @@ export default function App() {
         }}
       />
 
-      {/* Mesa de Trabajo 3×3 — Editor de Recetas de Fabricación (1.8 Beta Preview) */}
+      {/* Mesa de Trabajo 3×3 — Editor de Recetas de Fabricación (2.2) */}
       {activeProject && (
         <CraftingRecipeModal
           isOpen={isRecipeModalOpen}
