@@ -152,7 +152,16 @@ export interface BlockSelectionConfig {
   boxes: BlockBoxItem[];
 }
 
+export interface AnimatedBlockTextureConfig {
+  enabled: boolean;
+  textureDataUrl: string; // One vertical PNG containing equally sized frames
+  frameWidth: number;
+  frameCount: number;
+  ticksPerFrame: number;
+}
+
 export interface CustomBlock {
+  animatedTexture?: AnimatedBlockTextureConfig;
   folderId?: string; // 2.2: ubicación en carpeta del proyecto
   id: string;
   identifier: string;

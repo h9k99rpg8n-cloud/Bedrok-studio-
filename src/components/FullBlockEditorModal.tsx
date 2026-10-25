@@ -23,6 +23,7 @@ import { CubeAtlasEditor } from './CubeAtlasEditor';
 import { BlockComponentsManager } from './BlockComponentsManager';
 import { Box3DVisualizer } from './Box3DVisualizer';
 import { BoxGeometryEditor } from './BoxGeometryEditor';
+import { createAnimatedTextureTemplate, inspectAnimatedTexture, AnimatedTextureTemplateKind } from '../utils/animatedTextures';
 import { isValidBedrockIdentifier } from '../utils/diagnostics';
 import {
   getNextBlockNameAndIdentifier,
@@ -49,7 +50,7 @@ interface FullBlockEditorModalProps {
 }
 
 // v0.1.5: Secciones del editor de bloques
-type EditorTab = 'identity' | 'atlas' | 'properties' | 'boxes' | 'behavior';
+type EditorTab = 'identity' | 'atlas' | 'animation' | 'properties' | 'boxes' | 'behavior';
 
 export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
   isOpen,
@@ -90,6 +91,16 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
     east: '',
     west: '',
   });
+  const [animatedTexture, setAnimatedTexture] = useState<{
+    enabled: boolean;
+    textureDataUrl: string;
+    frameWidth: number;
+    frameCount: number;
+    ticksPerFrame: number;
+  }>({ enabled: false, textureDataUrl: '', frameWidth: 16, frameCount: 0, ticksPerFrame: 2 });
+  const [animationImportError, setAnimationImportError] = useState<string>('');
+  const [animationNotice, setAnimationNotice] = useState<string>('');
+  const [previewFrame, setPreviewFrame] = useState<number>(0);
 
   // =========================================================================
   // SECCIÓN 3: PROPIEDADES
@@ -218,6 +229,15 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       if (block) {
+        setAnimatedTexture({
+          enabled: Boolean(block.animatedTexture?.enabled && block.animatedTexture.textureDataUrl),
+          textureDataUrl: block.animatedTexture?.textureDataUrl || '',
+          frameWidth: block.animatedTexture?.frameWidth || 16,
+          frameCount: block.animatedTexture?.frameCount || 0,
+          ticksPerFrame: Math.min(20, Math.max(1, block.animatedTexture?.ticksPerFrame || 2)),
+        });
+        setAnimationImportError('');
+        setAnimationNotice('');
         setIdentifier(block.identifier || 'nuevo_bloque');
         setDisplayName(block.displayName || 'Nuevo Bloque');
         setSelectedGroupId(block.groupId || '');
@@ -350,6 +370,9 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
           setSelectedSelectionBoxId(defSelBox.id);
         }
       } else {
+        setAnimatedTexture({ enabled: false, textureDataUrl: '', frameWidth: 16, frameCount: 0, ticksPerFrame: 2 });
+        setAnimationImportError('');
+        setAnimationNotice('');
         // v1.6: Sistema de nombres inteligentes y predecibles («Bloque 1», «Bloque 2»...)
         const nextSequential = getNextBlockNameAndIdentifier(existingBlocks);
         const defaultName = nextSequential.displayName;
@@ -491,6 +514,68 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
 
   if (!isOpen) return null;
 
+  const handleAnimatedTextureUpload = async (file?: File) => {
+    setAnimationImportError('');
+    setAnimationNotice('');
+    if (!file) return;
+    if (file.type !== 'image/png' && !file.name.toLowerCase().endsWith('.png')) {
+      setAnimationImportError('Selecciona un archivo PNG vertical.');
+      return;
+    }
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('No se pudo leer el archivo.'));
+        reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
+        reader.readAsDataURL(file);
+      });
+      const dimensions = await inspectAnimatedTexture(dataUrl);
+      setAnimatedTexture((current) => ({
+        ...current,
+        enabled: true,
+        textureDataUrl: dataUrl,
+        frameWidth: dimensions.frameWidth,
+        frameCount: dimensions.frameCount,
+      }));
+      setPreviewFrame(0);
+      setAnimationNotice(`PNG importado: ${dimensions.frameCount} fotogramas de ${dimensions.frameWidth}×${dimensions.frameWidth}px.`);
+    } catch (error) {
+      setAnimationImportError(error instanceof Error ? error.message : 'No se pudo importar la textura animada.');
+    }
+  };
+
+  const handleChooseAnimationTemplate = (kind: AnimatedTextureTemplateKind) => {
+    try {
+      const template = createAnimatedTextureTemplate(kind);
+      setAnimatedTexture((current) => ({
+        ...current,
+        enabled: true,
+        textureDataUrl: template.dataUrl,
+        frameWidth: template.frameWidth,
+        frameCount: template.frameCount,
+      }));
+      setPreviewFrame(0);
+      setAnimationImportError('');
+      const names: Record<AnimatedTextureTemplateKind, string> = {
+        water: 'Agua animada',
+        lava: 'Lava animada',
+        energy: 'Energía mágica',
+        portal: 'Portal morado',
+      };
+      setAnimationNotice(`Plantilla «${names[kind]}» aplicada: 4 fotogramas.`);
+    } catch (error) {
+      setAnimationImportError(error instanceof Error ? error.message : 'No se pudo crear la plantilla.');
+    }
+  };
+
+  useEffect(() => {
+    if (!isOpen || !animatedTexture.enabled || animatedTexture.frameCount < 2) return;
+    const interval = window.setInterval(() => {
+      setPreviewFrame((current) => (current + 1) % animatedTexture.frameCount);
+    }, animatedTexture.ticksPerFrame * 50);
+    return () => window.clearInterval(interval);
+  }, [isOpen, animatedTexture.enabled, animatedTexture.frameCount, animatedTexture.ticksPerFrame]);
+
   // Validación y guardado
   const handleSave = () => {
     const trimmedId = identifier.trim().toLowerCase();
@@ -564,6 +649,15 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
       textureMode,
       faceTextures: finalFaces,
       textureDataUrl: finalFaces.up || finalFaces.north || '',
+      animatedTexture: animatedTexture.enabled && animatedTexture.textureDataUrl
+        ? {
+            enabled: true,
+            textureDataUrl: animatedTexture.textureDataUrl,
+            frameWidth: animatedTexture.frameWidth,
+            frameCount: animatedTexture.frameCount,
+            ticksPerFrame: Math.min(20, Math.max(1, Math.round(animatedTexture.ticksPerFrame))),
+          }
+        : { enabled: false, textureDataUrl: '', frameWidth: 16, frameCount: 0, ticksPerFrame: 2 },
 
       // Propiedades Físicas y Visuales
       destroyTime: Math.max(0.1, destroyTime),
@@ -786,6 +880,22 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                 {Math.max(collisionConfig.boxes.length, selectionConfig.boxes.length)}
               </span>
             )}
+          </button>
+
+          {/* NUEVA SECCIÓN: TEXTURA ANIMADA */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('animation')}
+            className={`min-h-[42px] shrink-0 px-3 sm:px-4 rounded-lg text-xs font-semibold inline-flex flex-row items-center justify-center gap-2 transition-all snap-start ${
+              activeTab === 'animation'
+                ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+            title="Texturas animadas: importar PNG vertical o usar plantillas"
+          >
+            <i className="bx bx-movie-play text-base" />
+            <span>Animación</span>
+            {animatedTexture.enabled && <span className="w-1.5 h-1.5 rounded-full bg-emerald-300" />}
           </button>
 
           {/* SECCIÓN 5: COMPORTAMIENTO */}
@@ -1158,6 +1268,136 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
               onOpenTextureLibraryForFace={onOpenTextureLibraryForFace}
               onClearFaceTexture={(f) => handleFaceTextureChange(f, '')}
             />
+          </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* TEXTURAS ANIMADAS: PNG VERTICAL + PLANTILLAS */}
+        {/* ================================================================= */}
+        {activeTab === 'animation' && (
+          <div className="flex flex-col gap-3.5 animate-in fade-in duration-150">
+            <div className="bg-slate-950/70 p-4 rounded-2xl border border-emerald-500/25 flex flex-col gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-300 flex items-center justify-center shrink-0">
+                  <i className="bx bx-movie-play text-xl" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-bold text-slate-100">Textura animada del bloque</h3>
+                  <p className="text-[11px] text-slate-400 leading-relaxed mt-1">
+                    Importa una sola imagen PNG vertical con los fotogramas apilados. Bedrock Studio detecta y prepara la animación automáticamente.
+                  </p>
+                </div>
+                <input
+                  id="animated-texture-toggle"
+                  type="checkbox"
+                  checked={animatedTexture.enabled}
+                  onChange={(e) => setAnimatedTexture((current) => ({ ...current, enabled: e.target.checked }))}
+                  className="h-5 w-5 accent-emerald-500 shrink-0 mt-1"
+                  aria-label="Activar textura animada"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  ['water', 'Agua animada', 'Ondas azules'],
+                  ['lava', 'Lava animada', 'Flujo naranja'],
+                  ['energy', 'Energía mágica', 'Pulso verde'],
+                  ['portal', 'Portal morado', 'Espiral violeta'],
+                ] as [AnimatedTextureTemplateKind, string, string][]).map(([kind, name, description]) => (
+                  <button
+                    key={kind}
+                    type="button"
+                    onClick={() => handleChooseAnimationTemplate(kind)}
+                    className="min-h-[86px] p-3 rounded-xl border border-slate-800 bg-slate-900 hover:border-emerald-500/50 text-left flex flex-col gap-1.5"
+                  >
+                    <span className="text-xs font-bold text-slate-100">{name}</span>
+                    <span className="text-[10px] text-slate-400">{description}</span>
+                    <span className="text-[10px] font-mono text-emerald-300">Plantilla · 4 fotogramas</span>
+                  </button>
+                ))}
+              </div>
+
+              <label className="flex flex-col gap-2 p-3 rounded-xl border border-dashed border-slate-700 bg-slate-900/70 cursor-pointer">
+                <span className="text-xs font-bold text-slate-200 flex items-center gap-2">
+                  <i className="bx bx-upload text-emerald-400 text-base" />
+                  Importar PNG animado
+                </span>
+                <span className="text-[10px] text-slate-400 leading-relaxed">
+                  Ejemplo: 16×64 = 4 fotogramas de 16×16. También se admiten texturas de 32×128, 64×256 y otros tamaños compatibles.
+                </span>
+                <input
+                  type="file"
+                  accept="image/png,.png"
+                  onChange={(e) => { void handleAnimatedTextureUpload(e.target.files?.[0]); e.currentTarget.value = ''; }}
+                  className="w-full text-xs text-slate-300 file:mr-3 file:min-h-[38px] file:px-3 file:rounded-lg file:border-0 file:bg-emerald-500 file:text-slate-950 file:font-bold"
+                />
+              </label>
+
+              {animationImportError && (
+                <div role="alert" className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300">
+                  <i className="bx bx-error-circle mr-1" />{animationImportError}
+                </div>
+              )}
+              {animationNotice && (
+                <div role="status" className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-200">
+                  <i className="bx bx-check-circle mr-1" />{animationNotice}
+                </div>
+              )}
+            </div>
+
+            {animatedTexture.textureDataUrl && animatedTexture.frameCount >= 2 && (
+              <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-100">Vista previa de fotogramas</h4>
+                    <p className="text-[10px] text-slate-400">{animatedTexture.frameCount} fotogramas · {animatedTexture.frameWidth}×{animatedTexture.frameWidth}px</p>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-1 rounded-lg ${animatedTexture.enabled ? 'bg-emerald-500/15 text-emerald-300' : 'bg-slate-800 text-slate-400'}`}>
+                    {animatedTexture.enabled ? 'Animación activa' : 'Desactivada'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-20 h-20 shrink-0 rounded-xl border border-slate-700 bg-slate-900"
+                    style={{
+                      backgroundImage: `url("${animatedTexture.textureDataUrl}")`,
+                      backgroundRepeat: 'no-repeat',
+                      backgroundSize: `100% ${animatedTexture.frameCount * 100}%`,
+                      backgroundPosition: `center ${animatedTexture.frameCount > 1 ? (previewFrame / (animatedTexture.frameCount - 1)) * 100 : 0}%`,
+                      imageRendering: 'pixelated',
+                    }}
+                    aria-label={`Fotograma ${previewFrame + 1} de ${animatedTexture.frameCount}`}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <label className="text-xs font-semibold text-slate-200 flex justify-between gap-2">
+                      <span>Velocidad</span>
+                      <span className="font-mono text-emerald-300">{animatedTexture.ticksPerFrame} ticks/fotograma</span>
+                    </label>
+                    <input
+                      type="range"
+                      min={1}
+                      max={20}
+                      step={1}
+                      value={animatedTexture.ticksPerFrame}
+                      onChange={(e) => setAnimatedTexture((current) => ({ ...current, ticksPerFrame: Number(e.target.value) }))}
+                      className="w-full accent-emerald-500 min-h-[36px]"
+                    />
+                    <p className="text-[10px] text-slate-400">1 = más rápida · 20 = más lenta</p>
+                    <p className="text-[10px] text-slate-500 mt-1">Vista previa: fotograma {previewFrame + 1}/{animatedTexture.frameCount}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAnimatedTexture((current) => ({ ...current, enabled: false }))}
+                  className="min-h-[40px] px-3 rounded-xl border border-slate-700 text-xs text-slate-300 hover:text-emerald-300"
+                >
+                  Desactivar animación y conservar el PNG
+                </button>
+                <p className="text-[10px] text-slate-500 leading-relaxed">
+                  La animación sustituye la textura estática de todas las caras de este bloque. La biblioteca de plantillas crea PNG de 16×64 con cuatro fotogramas.
+                </p>
+              </div>
+            )}
           </div>
         )}
 

@@ -130,6 +130,28 @@ function resolveTextureDataUrl(project: AddonProject, texKeyOrDataUrl: string): 
   return found?.dataUrl || '';
 }
 
+async function animatedTextureBlobForBlock(
+  dataUrl: string,
+  expectedWidth: number,
+  expectedFrames: number,
+  blockName: string
+): Promise<Blob> {
+  if (!dataUrl) throw new Error(`El bloque "${blockName}" tiene la animación activada, pero no tiene un PNG asignado.`);
+  const image = new Image();
+  await new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error(`No se pudo leer el PNG animado del bloque "${blockName}".`));
+    image.src = dataUrl;
+  });
+  const width = image.naturalWidth;
+  const height = image.naturalHeight;
+  const isPowerOfTwo = (value: number) => value > 0 && (value & (value - 1)) === 0;
+  if (!isPowerOfTwo(width) || !isPowerOfTwo(height) || width !== expectedWidth || height / width !== expectedFrames || expectedFrames < 2) {
+    throw new Error(`La textura animada de "${blockName}" cambió o tiene dimensiones inválidas. Vuelve a importarla en el editor de animación.`);
+  }
+  return dataUrlToBlob(dataUrl);
+}
+
 /**
  * Packages the AddonProject into a standard Minecraft Bedrock .mcaddon archive
  * compatible with 1.26.20 - 1.26.52.
@@ -290,6 +312,7 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
 
   const blocksResourceMap: Record<string, unknown> = {};
   const terrainTextureData: Record<string, { textures: string }> = {};
+  const flipbookEntries: Record<string, unknown>[] = [];
 
   // Multilingual lang dictionaries map: langCode -> array of lines
   const languageCodes = new Set<string>(['en_US', 'es_ES']);
@@ -319,6 +342,23 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
       south: block.textureDataUrl || '',
       east: block.textureDataUrl || '',
       west: block.textureDataUrl || '',
+    };
+    const animation = block.animatedTexture;
+    const animatedBlob = animation?.enabled
+      ? await animatedTextureBlobForBlock(
+          animation.textureDataUrl,
+          animation.frameWidth,
+          animation.frameCount,
+          block.displayName || block.identifier
+        )
+      : null;
+    const addFlipbookEntry = (textureKey: string) => {
+      if (!animation?.enabled || !animatedBlob) return;
+      flipbookEntries.push({
+        flipbook_texture: `textures/blocks/${textureKey}`,
+        atlas_tile: textureKey,
+        ticks_per_frame: Math.min(20, Math.max(1, Math.round(animation.ticksPerFrame || 2))),
+      });
     };
 
     // Construct components dictionary cleanly
@@ -507,8 +547,9 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
       };
 
       const texData = resolveTextureDataUrl(project, faces.up || block.textureDataUrl || '');
-      const b = texData ? await dataUrlToBlob(texData) : await createFallbackTextureBlob();
+      const b = animatedBlob || (texData ? await dataUrlToBlob(texData) : await createFallbackTextureBlob());
       rpBlocksTexturesFolder?.file(`${block.identifier}.png`, b);
+      addFlipbookEntry(block.identifier);
     } else if (mode === 'three') {
       const upTexKey = `${block.identifier}_up`;
       const downTexKey = `${block.identifier}_down`;
@@ -540,16 +581,19 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
 
       rpBlocksTexturesFolder?.file(
         `${upTexKey}.png`,
-        upData ? await dataUrlToBlob(upData) : await createFallbackTextureBlob()
+        animatedBlob || (upData ? await dataUrlToBlob(upData) : await createFallbackTextureBlob())
       );
       rpBlocksTexturesFolder?.file(
         `${downTexKey}.png`,
-        downData ? await dataUrlToBlob(downData) : await createFallbackTextureBlob()
+        animatedBlob || (downData ? await dataUrlToBlob(downData) : await createFallbackTextureBlob())
       );
       rpBlocksTexturesFolder?.file(
         `${sideTexKey}.png`,
-        sideData ? await dataUrlToBlob(sideData) : await createFallbackTextureBlob()
+        animatedBlob || (sideData ? await dataUrlToBlob(sideData) : await createFallbackTextureBlob())
       );
+      addFlipbookEntry(upTexKey);
+      addFlipbookEntry(downTexKey);
+      addFlipbookEntry(sideTexKey);
     } else {
       // mode === 'six'
       const faceKeys = ['up', 'down', 'north', 'south', 'east', 'west'] as const;
@@ -565,8 +609,9 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
         const fData = resolveTextureDataUrl(project, faces[f] || faces.up || block.textureDataUrl || '');
         rpBlocksTexturesFolder?.file(
           `${texKey}.png`,
-          fData ? await dataUrlToBlob(fData) : await createFallbackTextureBlob()
+          animatedBlob || (fData ? await dataUrlToBlob(fData) : await createFallbackTextureBlob())
         );
+        addFlipbookEntry(texKey);
       }
 
       components['minecraft:material_instances'] = matInstances;
@@ -855,6 +900,11 @@ world.beforeEvents?.worldInitialize?.subscribe((initEvent) => {
       2
     )
   );
+
+  // Animated block textures: one vertical PNG per block, registered in the Resource Pack flipbook atlas.
+  if (flipbookEntries.length > 0) {
+    rpTexturesFolder?.file('flipbook_textures.json', JSON.stringify(flipbookEntries, null, 2));
+  }
 
   // Item texture atlas is generated only when at least one mineral defines a custom item.
   if (Object.keys(itemTextureData).length > 0) {
