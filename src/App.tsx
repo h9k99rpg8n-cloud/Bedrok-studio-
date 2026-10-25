@@ -70,7 +70,7 @@ export default function App() {
   // Diagnostics Modal
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState<boolean>(false);
 
-  // Crafting Recipes Modal (1.8 Beta Preview: Mesa de trabajo 3x3)
+  // Crafting Recipes Modal (2.2: Mesa de trabajo 3x3)
   const [isRecipeModalOpen, setIsRecipeModalOpen] = useState<boolean>(false);
   const [editingRecipe, setEditingRecipe] = useState<CraftingRecipe | null>(null);
 
@@ -121,7 +121,7 @@ export default function App() {
       // Stage 5: Finalized
       setLoadingProgress(100);
       setLoadingMessage('¡Inicialización completada!');
-      setLoadingDetail('Bienvenido a Bedrock Studio 1.8 Beta Preview');
+      setLoadingDetail('Bienvenido a Bedrock Studio 2.2');
 
       await new Promise((r) => setTimeout(r, 150));
       setIsLoading(false);
@@ -217,6 +217,21 @@ export default function App() {
     } catch (err) {
       console.error('Error al guardar proyecto activo:', err);
       setSaveStatus('error');
+    }
+  };
+
+  // 2.2: persist project-level edits such as folder creation and resource moves.
+  const handleUpdateProject = async (updatedProject: AddonProject) => {
+    try {
+      setSaveStatus('saving');
+      await dbService.saveProject(updatedProject);
+      setProjects((prev) => prev.map((p) => p.id === updatedProject.id ? { ...updatedProject, updatedAt: Date.now() } : p));
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch (err) {
+      console.error('Error al actualizar el proyecto:', err);
+      setSaveStatus('error');
+      throw err;
     }
   };
 
@@ -475,6 +490,7 @@ export default function App() {
     if (!activeProject) return;
     try {
       await exportAddonToMcaddon(activeProject);
+      setActiveProjectId(null);
       confetti({
         particleCount: 80,
         spread: 60,
@@ -591,6 +607,8 @@ export default function App() {
             setIsRecipeModalOpen(true);
           }}
           onDeleteRecipe={handleDeleteRecipe}
+          onUpdateProject={handleUpdateProject}
+          onExportComplete={() => setActiveProjectId(null)}
         />
       ) : (
         <WorkView
