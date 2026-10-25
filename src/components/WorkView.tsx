@@ -89,7 +89,7 @@ export const WorkView: React.FC<WorkViewProps> = ({
             <span>Bedrock Studio</span>
           </span>
           <span className="text-[10px] font-mono text-emerald-400 font-semibold tracking-tight flex items-center gap-1">
-            <span>1.8 Beta Preview</span>
+            <span>2.2</span>
             <i className="bx bx-sparkles text-[10px] text-amber-400" />
             <span>Novedades</span>
           </span>
