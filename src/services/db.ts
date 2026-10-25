@@ -35,6 +35,7 @@ export const dbService = {
             textures: Array.isArray(item.textures) ? item.textures : [],
             groups: Array.isArray(item.groups) ? item.groups : [],
             recipes: Array.isArray(item.recipes) ? item.recipes : [],
+            folders: Array.isArray(item.folders) ? item.folders : [],
           });
         }
       }
@@ -58,6 +59,7 @@ export const dbService = {
           textures: Array.isArray(proj.textures) ? proj.textures : [],
           groups: Array.isArray(proj.groups) ? proj.groups : [],
           recipes: Array.isArray(proj.recipes) ? proj.recipes : [],
+          folders: Array.isArray(proj.folders) ? proj.folders : [],
         };
       }
       return null;
@@ -197,18 +199,18 @@ export const dbService = {
   },
 
   /**
-   * Checks whether the 1.8 Beta Preview has been shown on this browser/device.
+   * Checks whether the 2.2 has been shown on this browser/device.
    */
   async hasSeenReleasePreview(): Promise<boolean> {
     try {
-      return !!(await settingsStore.getItem<boolean>('release_preview_1_8_beta_seen'));
+      return !!(await settingsStore.getItem<boolean>('release_preview_2_2_seen'));
     } catch {
       return false;
     }
   },
 
   /**
-   * Stores the one-time 1.8 Beta Preview acknowledgement.
+   * Stores the one-time 2.2 acknowledgement.
    */
   async setSeenReleasePreview(seen: boolean): Promise<void> {
     try {
