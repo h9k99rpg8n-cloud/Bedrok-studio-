@@ -224,6 +224,26 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
     await onUpdateProject({ ...project, blocks: project.blocks.map((item) => item.id === block.id ? { ...item, folderId } : item), updatedAt: Date.now() });
   };
 
+  const moveTextureToFolder = async (textureId: string, label: string) => {
+    const options = ['Sin carpeta', ...projectFolders.map((folder) => folder.name)];
+    const choice = window.prompt(`Mover textura “${label}” a una carpeta:\n${options.map((name, index) => `${index}. ${name}`).join('\n')}`, '0');
+    if (choice === null) return;
+    const index = Number(choice);
+    if (!Number.isInteger(index) || index < 0 || index >= options.length) { window.alert('Selecciona el número de una carpeta válida.'); return; }
+    const folderId = index === 0 ? undefined : projectFolders[index - 1].id;
+    await onUpdateProject({ ...project, textures: (project.textures || []).map((item) => item.id === textureId ? { ...item, folderId } : item), updatedAt: Date.now() });
+  };
+
+  const moveRecipeToFolder = async (recipeId: string, label: string) => {
+    const options = ['Sin carpeta', ...projectFolders.map((folder) => folder.name)];
+    const choice = window.prompt(`Mover receta “${label}” a una carpeta:\n${options.map((name, index) => `${index}. ${name}`).join('\n')}`, '0');
+    if (choice === null) return;
+    const index = Number(choice);
+    if (!Number.isInteger(index) || index < 0 || index >= options.length) { window.alert('Selecciona el número de una carpeta válida.'); return; }
+    const folderId = index === 0 ? undefined : projectFolders[index - 1].id;
+    await onUpdateProject({ ...project, recipes: (project.recipes || []).map((item) => item.id === recipeId ? { ...item, folderId } : item), updatedAt: Date.now() });
+  };
+
   const duplicateBlock = async (block: CustomBlock) => {
     const copy: CustomBlock = { ...JSON.parse(JSON.stringify(block)), id: `block_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, identifier: `${block.identifier}_copy`, displayName: `${block.displayName} (Copia)`, createdAt: Date.now(), updatedAt: Date.now() };
     await onUpdateProject({ ...project, blocks: [...project.blocks, copy], updatedAt: Date.now() });
@@ -728,9 +748,10 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
 
                         {/* Actions */}
                         <div className="flex items-center gap-1 shrink-0">
+                          <button type="button" onClick={() => void moveRecipeToFolder(recipe.id, recipe.displayName)} className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-cyan-500/10 text-slate-400 hover:text-cyan-300 border border-slate-800 flex items-center justify-center transition-colors" title="Mover receta a carpeta"><i className="bx bx-folder-open text-sm" /></button>
                           <button
                             type="button"
-                            onClick={() => onOpenEditRecipe(recipe)}
+                            onClick={() => onOpenEditRecipe(recipe)
                             className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-emerald-400 border border-slate-800 flex items-center justify-center transition-colors"
                             title="Editar receta"
                           >
@@ -877,6 +898,8 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
                       </div>
                       <span className="text-xs font-mono text-slate-200 truncate">{tex.name}</span>
                     </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                    <button type="button" onClick={() => void moveTextureToFolder(tex.id, tex.name)} className="min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-500 hover:text-cyan-300" title="Mover textura a carpeta"><i className="bx bx-folder-open text-sm" /></button>
                     <button
                       type="button"
                       onClick={() => onDeleteTexture(tex.id)}
@@ -885,6 +908,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
                     >
                       <i className="bx bx-trash text-sm" />
                     </button>
+                    </div>
                   </div>
                 ))}
               </div>
