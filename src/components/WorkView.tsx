@@ -82,7 +82,7 @@ export const WorkView: React.FC<WorkViewProps> = ({
           type="button"
           onClick={onOpenChangelog}
           className="flex flex-col items-center hover:opacity-90 active:scale-98 transition-all px-2 py-1 rounded-xl"
-          title="Ver novedades de la versión 1.8 Beta Preview"
+          title="Ver historial de versiones de Bedrock Studio"
         >
           <span className="text-xs font-black tracking-wider text-slate-100 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
