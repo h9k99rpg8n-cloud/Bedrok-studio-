@@ -214,7 +214,7 @@ export const dbService = {
    */
   async setSeenReleasePreview(seen: boolean): Promise<void> {
     try {
-      await settingsStore.setItem('release_preview_1_8_beta_seen', seen);
+      await settingsStore.setItem('release_preview_2_2_seen', seen);
     } catch (err) {
       console.error('Error al guardar el estado de la vista previa:', err);
     }
