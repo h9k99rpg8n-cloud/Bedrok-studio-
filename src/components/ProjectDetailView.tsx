@@ -93,6 +93,11 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   // Filter blocks by group in Blocks tab
   const [filterGroupId, setFilterGroupId] = useState<string>('all');
   const [activeFolderId, setActiveFolderId] = useState<string>('all');
+  const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
+  const [folderNameInput, setFolderNameInput] = useState('');
+  const [folderModalError, setFolderModalError] = useState('');
+  const [movingBlock, setMovingBlock] = useState<CustomBlock | null>(null);
+  const [moveTargetFolderId, setMoveTargetFolderId] = useState('');
 
   // Manual save trigger from bottom bar
   const handleSaveClick = async () => {
@@ -199,29 +204,58 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
     }
   };
 
-  const createProjectFolder = async () => {
-    const name = window.prompt('Nombre de la nueva carpeta:')?.trim();
-    if (!name) return;
-    if (projectFolders.some((folder) => folder.name.toLocaleLowerCase('es') === name.toLocaleLowerCase('es'))) {
-      window.alert('Ya existe una carpeta con ese nombre.');
-      return;
-    }
-    const folder: ProjectFolder = { id: `folder_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, name, resourceType: 'all', createdAt: Date.now() };
-    await onUpdateProject({ ...project, folders: [...projectFolders, folder], updatedAt: Date.now() });
-    setActiveFolderId(folder.id);
+  const createProjectFolder = () => {
+    setFolderNameInput('');
+    setFolderModalError('');
+    setIsCreateFolderOpen(true);
   };
 
-  const moveBlockToFolder = async (block: CustomBlock) => {
-    const options = ['Sin carpeta', ...projectFolders.map((folder) => folder.name)];
-    const choice = window.prompt(`Mover “${block.displayName}” a una carpeta:\n${options.map((name, index) => `${index}. ${name}`).join('\n')}`, '0');
-    if (choice === null) return;
-    const index = Number(choice);
-    if (!Number.isInteger(index) || index < 0 || index >= options.length) {
-      window.alert('Selecciona el número de una carpeta válida.');
+  const handleCreateProjectFolder = async () => {
+    const name = folderNameInput.trim();
+    if (!name) {
+      setFolderModalError('Escribe un nombre para la carpeta.');
       return;
     }
-    const folderId = index === 0 ? undefined : projectFolders[index - 1].id;
-    await onUpdateProject({ ...project, blocks: project.blocks.map((item) => item.id === block.id ? { ...item, folderId } : item), updatedAt: Date.now() });
+    if (projectFolders.some((folder) => folder.name.trim().toLocaleLowerCase('es') === name.toLocaleLowerCase('es'))) {
+      setFolderModalError('Ya existe una carpeta con ese nombre.');
+      return;
+    }
+    const folder: ProjectFolder = {
+      id: `folder_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      name,
+      resourceType: 'all',
+      createdAt: Date.now(),
+    };
+    try {
+      await onUpdateProject({ ...project, folders: [...projectFolders, folder], updatedAt: Date.now() });
+      setActiveFolderId(folder.id);
+      setIsCreateFolderOpen(false);
+      setFolderNameInput('');
+      setFolderModalError('');
+    } catch {
+      setFolderModalError('No se pudo guardar la carpeta. Inténtalo otra vez.');
+    }
+  };
+
+  const moveBlockToFolder = (block: CustomBlock) => {
+    setMovingBlock(block);
+    setMoveTargetFolderId(block.folderId || '');
+  };
+
+  const handleMoveBlockToFolder = async () => {
+    if (!movingBlock) return;
+    const folderId = moveTargetFolderId || undefined;
+    try {
+      await onUpdateProject({
+        ...project,
+        blocks: project.blocks.map((item) => item.id === movingBlock.id ? { ...item, folderId } : item),
+        updatedAt: Date.now(),
+      });
+      setActiveFolderId(folderId || 'unfiled');
+      setMovingBlock(null);
+    } catch {
+      window.alert('No se pudo mover el bloque. Inténtalo otra vez.');
+    }
   };
 
   const moveTextureToFolder = async (textureId: string, label: string) => {
@@ -1273,6 +1307,47 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
             </button>
           </div>
         </>
+      )}
+
+      {/* 2.2: in-app create-folder dialog (works in mobile Safari/PWA) */}
+      {isCreateFolderOpen && (
+        <div className="fixed inset-0 z-[90] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="create-folder-title">
+          <div className="w-full max-w-sm rounded-3xl border border-slate-700 bg-[#0d1322] p-5 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center"><i className="bx bx-folder-plus text-2xl" /></div>
+              <div><h2 id="create-folder-title" className="text-base font-bold text-slate-100">Nueva carpeta</h2><p className="text-xs text-slate-400">Organiza los recursos de este proyecto.</p></div>
+            </div>
+            <label htmlFor="project-folder-name" className="block text-xs font-semibold text-slate-300 mb-2">Nombre de la carpeta</label>
+            <input id="project-folder-name" autoFocus value={folderNameInput} onChange={(event) => { setFolderNameInput(event.target.value); setFolderModalError(''); }} onKeyDown={(event) => { if (event.key === 'Enter') void handleCreateProjectFolder(); }} placeholder="Ej. Partículas, Decoración..." maxLength={40} className="w-full min-h-[48px] rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-white placeholder:text-slate-600 outline-none focus:border-emerald-500" />
+            {folderModalError && <p className="mt-2 text-xs text-rose-400" role="alert">{folderModalError}</p>}
+            <div className="grid grid-cols-2 gap-2 mt-4">
+              <button type="button" onClick={() => setIsCreateFolderOpen(false)} className="min-h-[44px] rounded-xl border border-slate-700 bg-slate-900 text-sm font-semibold text-slate-300">Cancelar</button>
+              <button type="button" onClick={() => void handleCreateProjectFolder()} className="min-h-[44px] rounded-xl bg-emerald-500 text-sm font-bold text-slate-950"><i className="bx bx-check mr-1" /> Crear carpeta</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2.2: in-app move-to-folder dialog */}
+      {movingBlock && (
+        <div className="fixed inset-0 z-[90] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="move-block-title">
+          <div className="w-full max-w-sm rounded-3xl border border-slate-700 bg-[#0d1322] p-5 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-11 h-11 rounded-2xl bg-cyan-500/15 text-cyan-300 flex items-center justify-center"><i className="bx bx-folder-open text-2xl" /></div>
+              <div className="min-w-0"><h2 id="move-block-title" className="text-base font-bold text-slate-100">Mover bloque</h2><p className="text-xs text-slate-400 truncate">{movingBlock.displayName}</p></div>
+            </div>
+            <label htmlFor="move-block-folder" className="block text-xs font-semibold text-slate-300 mb-2">Elegir destino</label>
+            <select id="move-block-folder" value={moveTargetFolderId} onChange={(event) => setMoveTargetFolderId(event.target.value)} className="w-full min-h-[48px] rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-white outline-none focus:border-cyan-400">
+              <option value="">Sin carpeta</option>
+              {projectFolders.map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
+            </select>
+            {projectFolders.length === 0 && <p className="mt-2 text-xs text-amber-300">Primero crea una carpeta con el botón “Nueva carpeta”.</p>}
+            <div className="grid grid-cols-2 gap-2 mt-4">
+              <button type="button" onClick={() => setMovingBlock(null)} className="min-h-[44px] rounded-xl border border-slate-700 bg-slate-900 text-sm font-semibold text-slate-300">Cancelar</button>
+              <button type="button" onClick={() => void handleMoveBlockToFolder()} className="min-h-[44px] rounded-xl bg-cyan-400 text-sm font-bold text-slate-950"><i className="bx bx-folder-open mr-1" /> Mover bloque</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Floating Bottom Action Bar */}
