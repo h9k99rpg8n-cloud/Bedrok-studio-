@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - fix/mobile-modal-layout-v2-3
   pull_request:
     branches:
       - main
