@@ -649,9 +649,9 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
       textureMode,
       faceTextures: finalFaces,
       textureDataUrl: finalFaces.up || finalFaces.north || '',
-      animatedTexture: animatedTexture.enabled && animatedTexture.textureDataUrl
+      animatedTexture: animatedTexture.textureDataUrl
         ? {
-            enabled: true,
+            enabled: animatedTexture.enabled,
             textureDataUrl: animatedTexture.textureDataUrl,
             frameWidth: animatedTexture.frameWidth,
             frameCount: animatedTexture.frameCount,
