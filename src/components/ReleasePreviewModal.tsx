@@ -31,7 +31,7 @@ export const ReleasePreviewModal: React.FC<ReleasePreviewModalProps> = ({ isOpen
               <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> Nueva versión
               </span>
-              <h2 id="release-preview-title" className="mt-2 text-2xl sm:text-3xl font-black tracking-tight text-white">Bedrock Studio</h2>
+              <h2 id="release-preview-title" className="mt-2 text-2xl sm:text-3xl font-black tracking-tight text-white">Bedrock Studio 2.2</h2>
               <p className="mt-1 text-sm sm:text-base font-bold text-emerald-300">2.2</p>
               <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-300">Una nueva era para organizar proyectos: carpetas internas, historial de versiones y un flujo de exportación que vuelve al Workbench sin recargar la aplicación.</p>
             </div>
