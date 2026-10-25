@@ -245,7 +245,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   };
 
   const duplicateBlock = async (block: CustomBlock) => {
-    const copy: CustomBlock = { ...JSON.parse(JSON.stringify(block)), id: `block_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, identifier: `${block.identifier}_copy`, displayName: `${block.displayName} (Copia)`, createdAt: Date.now(), updatedAt: Date.now() };
+    const copy: CustomBlock = { ...JSON.parse(JSON.stringify(block)), id: `block_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, identifier: `${block.identifier}_copy_${Date.now().toString(36)}`, displayName: `${block.displayName} (Copia)`, createdAt: Date.now(), updatedAt: Date.now() };
     await onUpdateProject({ ...project, blocks: [...project.blocks, copy], updatedAt: Date.now() });
   };
 
@@ -751,7 +751,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
                           <button type="button" onClick={() => void moveRecipeToFolder(recipe.id, recipe.displayName)} className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-cyan-500/10 text-slate-400 hover:text-cyan-300 border border-slate-800 flex items-center justify-center transition-colors" title="Mover receta a carpeta"><i className="bx bx-folder-open text-sm" /></button>
                           <button
                             type="button"
-                            onClick={() => onOpenEditRecipe(recipe)
+                            onClick={() => onOpenEditRecipe(recipe)}
                             className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-emerald-400 border border-slate-800 flex items-center justify-center transition-colors"
                             title="Editar receta"
                           >
