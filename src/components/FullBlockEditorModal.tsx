@@ -128,6 +128,8 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
   const [lightDampening, setLightDampening] = useState<number>(15);
   const [friction, setFriction] = useState<number>(0.4);
   const [flammable, setFlammable] = useState<boolean>(false);
+  const [lavaFlammable, setLavaFlammable] = useState<boolean>(false);
+  const [chestObstruction, setChestObstruction] = useState<'shape' | 'always' | 'never'>('shape');
   const [flameOdds, setFlameOdds] = useState<number>(5);
   const [burnOdds, setBurnOdds] = useState<number>(20);
   const [mapColor, setMapColor] = useState<string>('#7FB238');
@@ -291,6 +293,8 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         setLightDampening(block.lightDampening ?? 15);
         setFriction(block.friction ?? 0.4);
         setFlammable(block.flammable || false);
+        setLavaFlammable(block.lavaFlammable ?? false);
+        setChestObstruction(block.chestObstruction ?? 'shape');
         setFlameOdds(block.flameOdds ?? 5);
         setBurnOdds(block.burnOdds ?? 20);
         setMapColor(/^#[0-9a-fA-F]{6}$/.test(block.mapColor || '') ? block.mapColor! : '#7FB238');
@@ -431,6 +435,8 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         setLightDampening(15);
         setFriction(0.4);
         setFlammable(false);
+        setLavaFlammable(false);
+        setChestObstruction('shape');
         setFlameOdds(5);
         setBurnOdds(20);
         setMapColor('#7FB238');
@@ -721,6 +727,8 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
       lightDampening: Math.min(15, Math.max(0, Math.round(lightDampening))),
       friction: Math.min(1.0, Math.max(0.1, friction)),
       flammable,
+      lavaFlammable,
+      chestObstruction,
       flameOdds: flammable ? Math.max(1, flameOdds) : undefined,
       burnOdds: flammable ? Math.max(1, burnOdds) : undefined,
 
@@ -1741,6 +1749,17 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                   </label>
                 </div>
 
+                <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/70 p-3 gap-3">
+                  <div>
+                    <span className="text-xs text-slate-200 block">¿Puede encenderse por lava?</span>
+                    <span className="text-[10px] text-slate-500">La lava adyacente puede prender fuego al bloque. Requiere Minecraft Bedrock 1.26.30 o posterior.</span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer min-h-[44px] min-w-[44px] justify-center shrink-0">
+                    <input type="checkbox" checked={lavaFlammable} onChange={(e) => { setLavaFlammable(e.target.checked); if (e.target.checked) setFlammable(true); }} className="sr-only peer" />
+                    <div className="w-12 h-7 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[11px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500 shadow-inner" />
+                  </label>
+                </div>
+
                 {flammable && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                     <div className="flex flex-col gap-1 p-2 bg-slate-900 rounded-xl border border-slate-800">
@@ -1775,6 +1794,18 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                   </div>
                 )}
               </div>
+            </div>
+            <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <i className="bx bx-lock-open-alt text-emerald-400 text-base" />
+                <span className="text-xs font-bold text-slate-200">Obstrucción de cofres</span>
+              </div>
+              <p className="text-[10px] text-slate-400">Define si este bloque, colocado encima de un cofre, impide abrirlo. Requiere formato de bloque 1.26.20 o posterior si eliges una regla explícita.</p>
+              <select value={chestObstruction} onChange={(e) => setChestObstruction(e.target.value as 'shape' | 'always' | 'never')} className="w-full min-h-[44px] rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100">
+                <option value="shape">Automático según la forma (predeterminado)</option>
+                <option value="always">Siempre bloquea el cofre</option>
+                <option value="never">Nunca bloquea el cofre</option>
+              </select>
             </div>
           </div>
         )}
