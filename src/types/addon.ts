@@ -168,7 +168,22 @@ export interface BlockInteractionsConfig {
   onRedstone: boolean;
 }
 
+export type VisualBehaviorEvent = 'on_use' | 'on_step_on' | 'on_step_off';
+export type VisualBehaviorCondition = 'always' | 'sneaking';
+export interface VisualBehaviorAction {
+  id: string;
+  type: 'play_sound' | 'spawn_particle' | 'send_message';
+  value: string;
+}
+export interface VisualBehaviorProgram {
+  enabled: boolean;
+  event: VisualBehaviorEvent;
+  condition: VisualBehaviorCondition;
+  actions: VisualBehaviorAction[];
+}
+
 export interface CustomBlock {
+  visualBehavior?: VisualBehaviorProgram;
   animatedTexture?: AnimatedBlockTextureConfig;
   interactions?: BlockInteractionsConfig;
   folderId?: string; // 2.2: ubicación en carpeta del proyecto

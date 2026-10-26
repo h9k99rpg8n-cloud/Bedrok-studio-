@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { Workflow } from 'lucide-react';
+import { VisualBehaviorEditor } from './VisualBehaviorEditor';
 import { Pickaxe, Sparkles, Plus, Box } from 'lucide-react';
 import {
   BlockBoxItem,
@@ -19,6 +21,7 @@ import {
   SUPPORTED_LANGUAGES,
   TextureMode,
   ToolTier,
+  VisualBehaviorProgram,
 } from '../types/addon';
 import { CubeAtlasEditor } from './CubeAtlasEditor';
 import { BlockComponentsManager } from './BlockComponentsManager';
@@ -53,7 +56,7 @@ interface FullBlockEditorModalProps {
 }
 
 // v0.1.5: Secciones del editor de bloques
-type EditorTab = 'identity' | 'atlas' | 'animation' | 'properties' | 'boxes' | 'interactions' | 'behavior';
+type EditorTab = 'identity' | 'atlas' | 'animation' | 'properties' | 'boxes' | 'interactions' | 'behavior' | 'visual';
 
 export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
   isOpen,
@@ -182,6 +185,12 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
   const [boxSubTab, setBoxSubTab] = useState<'collision' | 'selection'>('collision');
 
   // =========================================================================
+  // PROGRAMACIÓN VISUAL (Beta 1)
+  // =========================================================================
+  const [visualBehavior, setVisualBehavior] = useState<VisualBehaviorProgram | undefined>(undefined);
+  const [isVisualBehaviorEditorOpen, setIsVisualBehaviorEditorOpen] = useState(false);
+
+  // =========================================================================
   // SECCIÓN G: COMPORTAMIENTO
   // =========================================================================
   // Control modal de incorporar comportamiento
@@ -258,6 +267,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         });
         setAnimationImportError('');
         setAnimationNotice('');
+        setVisualBehavior(block.visualBehavior ? JSON.parse(JSON.stringify(block.visualBehavior)) : undefined);
         setIdentifier(block.identifier || 'nuevo_bloque');
         setDisplayName(block.displayName || 'Nuevo Bloque');
         setSelectedGroupId(block.groupId || '');
@@ -398,6 +408,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
           setSelectedSelectionBoxId(defSelBox.id);
         }
       } else {
+        setVisualBehavior(undefined);
         setTextureSourceMode('normal');
         setAnimatedTexture({ enabled: false, textureDataUrl: '', frameWidth: 16, frameCount: 0, ticksPerFrame: 2 });
         setAnimationImportError('');
@@ -708,6 +719,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
       faceTextures: finalFaces,
       textureDataUrl: finalFaces.up || finalFaces.north || '',
       interactions: Object.values(interactions).some(Boolean) ? { ...interactions } : undefined,
+      visualBehavior: visualBehavior?.enabled ? JSON.parse(JSON.stringify(visualBehavior)) : visualBehavior,
       animatedTexture: animatedTexture.textureDataUrl
         ? {
             enabled: textureSourceMode === 'animated' && Boolean(animatedTexture.textureDataUrl),
@@ -958,6 +970,18 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
             <i className="bx bx-movie-play text-base" />
             <span>Animación</span>
             {animatedTexture.enabled && <span className="w-1.5 h-1.5 rounded-full bg-emerald-300" />}
+          </button>
+
+          {/* BETA 1: PROGRAMACIÓN VISUAL */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('visual')}
+            className={`min-h-[42px] shrink-0 px-3 sm:px-4 rounded-lg text-xs font-semibold inline-flex flex-row items-center justify-center gap-2 transition-all snap-start ${activeTab === 'visual' ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+            title="Programación visual: crear comportamientos personalizados"
+          >
+            <Workflow size={15} />
+            <span>Programación visual</span>
+            {visualBehavior?.enabled && <span className="w-1.5 h-1.5 rounded-full bg-emerald-300" />}
           </button>
 
           {/* NUEVA SECCIÓN: INTERACCIONES PERSONALIZADAS */}
@@ -1982,6 +2006,26 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         {/* ================================================================= */}
         {/* TAB 5: COMPORTAMIENTO (Sección Nueva, Clara y Organizada)          */}
         {/* ================================================================= */}
+        {activeTab === 'visual' && (
+          <div className="p-3 sm:p-5 flex flex-col gap-4">
+            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.05] p-4 flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-300 flex items-center justify-center shrink-0"><Workflow size={20}/></div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-bold text-slate-100">Programación visual · Beta 1</h3>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">Construye un flujo por evento, condición y acciones. Se guarda junto con el bloque y el exportador genera la lógica del comportamiento activado.</p>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-2"><span className="text-xs font-bold text-slate-200">Estado del flujo</span><span className={`text-[10px] px-2 py-1 rounded-lg border ${visualBehavior?.enabled ? 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20' : 'text-slate-400 bg-slate-900 border-slate-700'}`}>{visualBehavior?.enabled ? 'Activado' : visualBehavior ? 'Guardado · desactivado' : 'Sin configurar'}</span></div>
+              {visualBehavior && <p className="text-xs text-slate-400">Evento: <span className="text-slate-200">{{ on_use: 'Al usar', on_step_on: 'Al pisar', on_step_off: 'Al dejar de pisar' }[visualBehavior.event]}</span> · {visualBehavior.actions.length} acción(es)</p>}
+              <button type="button" onClick={() => setIsVisualBehaviorEditorOpen(true)} className="min-h-12 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black flex items-center justify-center gap-2"><Workflow size={17}/>{visualBehavior ? 'Editar comportamiento' : 'Crear comportamiento personalizado'}</button>
+              {visualBehavior && <button type="button" onClick={() => setVisualBehavior(undefined)} className="min-h-10 px-3 rounded-xl border border-rose-500/20 text-rose-300 text-xs font-semibold">Eliminar flujo</button>}
+            </div>
+            <div className="rounded-xl border border-slate-800 p-3 text-[11px] text-slate-500 leading-relaxed">Acciones de la Beta 1: sonido, partícula y mensaje al jugador. Las acciones se generan al exportar y deben probarse en la versión objetivo de Minecraft.</div>
+            <VisualBehaviorEditor isOpen={isVisualBehaviorEditorOpen} title={displayName || 'Bloque personalizado'} initialProgram={visualBehavior} onClose={() => setIsVisualBehaviorEditorOpen(false)} onSave={(nextProgram) => setVisualBehavior(nextProgram)} />
+          </div>
+        )}
+
         {activeTab === 'behavior' && (
           <div className="flex flex-col gap-3.5 animate-in fade-in duration-150">
             {/* Cabecera de la sección con botón principal destacado */}

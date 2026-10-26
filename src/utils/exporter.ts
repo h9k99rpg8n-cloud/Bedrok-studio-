@@ -243,8 +243,12 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
   }
 
   // Script API is needed for step particles or custom block interaction events.
+  const invalidVisualPrograms = blocks.filter((b) => b.visualBehavior?.enabled && b.visualBehavior.condition === 'sneaking' && b.visualBehavior.event !== 'on_use');
+  if (invalidVisualPrograms.length) {
+    throw new Error('La condición «solo si el jugador está agachado» requiere un evento «Al usar / interactuar». Revisa: ' + invalidVisualPrograms.map((b) => b.displayName).join(', '));
+  }
   const requiresScriptApi = blocks.some((b) =>
-    b.stepParticles?.enabled || Object.values(b.interactions || {}).some(Boolean)
+    b.stepParticles?.enabled || Object.values(b.interactions || {}).some(Boolean) || b.visualBehavior?.enabled
   );
 
   // 1. Behavior Pack Manifest
@@ -475,6 +479,9 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
     if (block.interactions?.onRedstone) {
       customComponents.push('studio:interaction_redstone');
       components['minecraft:redstone_consumer'] = { min_power: 1, propagates_power: false };
+    }
+    if (block.visualBehavior?.enabled && block.visualBehavior.actions.length > 0) {
+      customComponents.push('studio:visual_' + block.identifier);
     }
     if (customComponents.length > 0) components['minecraft:custom_components'] = customComponents;
 
@@ -853,6 +860,25 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
       const block = event.block;
       const center = block.center();
       try { block.dimension.spawnParticle('minecraft:basic_flame_particle', { x: center.x, y: center.y + 0.5, z: center.z }); } catch (e) { /* particle fallback */ }
+    }
+  });`);
+    }
+    // Beta 1: generate one runtime component for every enabled visual block flow.
+    for (const visualBlock of blocks) {
+      const program = visualBlock.visualBehavior;
+      if (!program?.enabled || !program.actions.length) continue;
+      const eventName = program.event === 'on_use' ? 'onPlayerInteract' : program.event === 'on_step_on' ? 'onStepOn' : 'onStepOff';
+      const actionLines = program.actions.map((action) => {
+        if (action.type === 'play_sound') return `      try { block.dimension.playSound(${JSON.stringify(action.value)}, center); } catch (e) { /* sound unavailable */ }`;
+        if (action.type === 'spawn_particle') return `      try { block.dimension.spawnParticle(${JSON.stringify(action.value)}, { x: center.x, y: center.y + 0.5, z: center.z }); } catch (e) { /* particle unavailable */ }`;
+        return `      try { event.player?.sendMessage(${JSON.stringify(action.value)}); } catch (e) { /* player unavailable */ }`;
+      }).join('\n');
+      const condition = program.condition === 'sneaking' ? '      if (!event.player?.isSneaking) return;\n' : '';
+      registrations.push(`  initEvent.blockComponentRegistry?.registerCustomComponent('studio:visual_${visualBlock.identifier}', {
+    ${eventName}(event) {
+      const block = event.block;
+      const center = block.center();
+${condition}${actionLines}
     }
   });`);
     }
