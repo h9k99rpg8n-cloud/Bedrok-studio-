@@ -186,6 +186,8 @@ export interface CustomBlock {
   lightDampening?: number; // 0 to 15 (v0.1.4)
   friction?: number; // 0.1 to 1.0, default 0.4 (v0.1.4)
   flammable?: boolean; // v0.1.4
+  lavaFlammable?: boolean; // v1.9: puede prenderse con lava adyacente (requiere 1.26.30)
+  chestObstruction?: 'shape' | 'always' | 'never'; // v1.9: regla de apertura de cofres (1.26.20+)
   burnOdds?: number; // v0.1.4 flame odds (burn_odds)
   flameOdds?: number; // v0.1.4 catch odds (flame_odds)
   consumesRedstone: boolean;
