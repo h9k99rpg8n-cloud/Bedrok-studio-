@@ -6,6 +6,7 @@ import {
   BlockComponentItem,
   BlockFaceKey,
   BlockGroup,
+  BlockInteractionsConfig,
   BlockSelectionConfig,
   BlockTranslation,
   BoxPresetTemplate,
@@ -52,7 +53,7 @@ interface FullBlockEditorModalProps {
 }
 
 // v0.1.5: Secciones del editor de bloques
-type EditorTab = 'identity' | 'atlas' | 'animation' | 'properties' | 'boxes' | 'behavior';
+type EditorTab = 'identity' | 'atlas' | 'animation' | 'properties' | 'boxes' | 'interactions' | 'behavior';
 
 export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
   isOpen,
@@ -106,6 +107,16 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
   const [animationImportError, setAnimationImportError] = useState<string>('');
   const [animationNotice, setAnimationNotice] = useState<string>('');
   const [previewFrame, setPreviewFrame] = useState<number>(0);
+
+  // =========================================================================
+  // INTERACCIONES PERSONALIZADAS (eventos de bloque)
+  // =========================================================================
+  const [interactions, setInteractions] = useState<BlockInteractionsConfig>({
+    onUse: false,
+    onStepOn: false,
+    onStepOff: false,
+    onRedstone: false,
+  });
 
   // =========================================================================
   // SECCIÓN 3: PROPIEDADES
@@ -335,6 +346,12 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         setStepParticlesEnabled(block.stepParticles?.enabled || false);
         setStepParticleTextureId(block.stepParticles?.particleTextureId || '');
         setStepParticleIntensity(block.stepParticles?.intensity ?? 5);
+        setInteractions({
+          onUse: block.interactions?.onUse ?? false,
+          onStepOn: block.interactions?.onStepOn ?? false,
+          onStepOff: block.interactions?.onStepOff ?? false,
+          onRedstone: block.interactions?.onRedstone ?? false,
+        });
 
         setComponentsList(
           block.componentsList ? JSON.parse(JSON.stringify(block.componentsList)) : []
@@ -452,6 +469,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         setStepParticlesEnabled(false);
         setStepParticleTextureId('');
         setStepParticleIntensity(5);
+        setInteractions({ onUse: false, onStepOn: false, onStepOff: false, onRedstone: false });
 
         setComponentsList([]);
 
@@ -683,6 +701,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
       textureMode,
       faceTextures: finalFaces,
       textureDataUrl: finalFaces.up || finalFaces.north || '',
+      interactions: Object.values(interactions).some(Boolean) ? { ...interactions } : undefined,
       animatedTexture: animatedTexture.textureDataUrl
         ? {
             enabled: textureSourceMode === 'animated' && Boolean(animatedTexture.textureDataUrl),
@@ -797,6 +816,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
 
   // Cantidad de comportamientos activos para badge
   const activeBehaviorsCount = Object.values(enabledBehaviors).filter(Boolean).length;
+  const activeInteractionsCount = Object.values(interactions).filter(Boolean).length;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-3 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
@@ -930,6 +950,26 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
             <i className="bx bx-movie-play text-base" />
             <span>Animación</span>
             {animatedTexture.enabled && <span className="w-1.5 h-1.5 rounded-full bg-emerald-300" />}
+          </button>
+
+          {/* NUEVA SECCIÓN: INTERACCIONES PERSONALIZADAS */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('interactions')}
+            className={`min-h-[42px] shrink-0 px-3 sm:px-4 rounded-lg text-xs font-semibold inline-flex flex-row items-center justify-center gap-2 transition-all snap-start relative ${
+              activeTab === 'interactions'
+                ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+            title="Interacciones: usar, pisar, salir y señal de redstone"
+          >
+            <i className="bx bx-bolt-circle text-base" />
+            <span>Interacciones</span>
+            {activeInteractionsCount > 0 && (
+              <span className={`ml-0.5 text-[9px] px-1 rounded-full font-mono font-bold ${activeTab === 'interactions' ? 'bg-slate-950 text-emerald-400' : 'bg-emerald-500/20 text-emerald-300'}`}>
+                {activeInteractionsCount}
+              </span>
+            )}
           </button>
 
           {/* SECCIÓN 5: COMPORTAMIENTO */}
@@ -1863,6 +1903,48 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                 onSelectBoxId={setSelectedSelectionBoxId}
               />
             )}
+          </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* TAB: INTERACCIONES PERSONALIZADAS */}
+        {/* ================================================================= */}
+        {activeTab === 'interactions' && (
+          <div className="flex flex-col gap-3.5 animate-in fade-in duration-150">
+            <div className="bg-gradient-to-r from-emerald-950/50 to-slate-950/80 p-4 rounded-2xl border border-emerald-500/25 flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <i className="bx bx-bolt-circle text-xl text-emerald-400" />
+                <h3 className="text-sm font-bold text-slate-100">Interacciones del bloque</h3>
+                <span className="ml-auto text-[10px] font-mono text-emerald-300">{activeInteractionsCount}/4 activas</span>
+              </div>
+              <p className="text-[11px] leading-relaxed text-slate-300">Activa los eventos que quieres que responda este bloque. Bedrock Studio generará los componentes y el script necesarios al exportar el add-on.</p>
+              <p className="text-[10px] text-amber-300/90">La interacción con redstone requiere el formato de bloque 1.26.0 o posterior. El mundo debe permitir los paquetes de comportamiento y scripts.</p>
+            </div>
+
+            {([
+              { key: 'onUse', title: 'Al usar el bloque', description: 'Al tocar o usar el bloque, reproduce un sonido de clic.', icon: 'bx-hand', detail: 'Evento: onPlayerInteract' },
+              { key: 'onStepOn', title: 'Al pisar el bloque', description: 'Cuando una entidad pisa el bloque, aparecen partículas.', icon: 'bx-footprint', detail: 'Evento: onStepOn' },
+              { key: 'onStepOff', title: 'Al dejar de pisarlo', description: 'Cuando una entidad se aparta, reproduce un sonido corto.', icon: 'bx-log-out-circle', detail: 'Evento: onStepOff' },
+              { key: 'onRedstone', title: 'Al recibir redstone', description: 'Cuando recibe señal de redstone, emite partículas.', icon: 'bx-bolt', detail: 'Evento: onRedstoneUpdate' },
+            ] as const).map((item) => (
+              <div key={item.key} className={`rounded-2xl border p-3.5 flex items-start gap-3 ${interactions[item.key] ? 'bg-emerald-500/10 border-emerald-500/35' : 'bg-slate-950/70 border-slate-800'}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${interactions[item.key] ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-900 text-slate-400'}`}>
+                  <i className={`bx ${item.icon} text-xl`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-bold text-slate-100">{item.title}</div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed mt-1">{item.description}</p>
+                  <span className="text-[9px] font-mono text-slate-500 mt-1 block">{item.detail}</span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer min-h-[44px] min-w-[44px] justify-center shrink-0" aria-label={item.title}>
+                  <input type="checkbox" checked={interactions[item.key]} onChange={(e) => setInteractions((prev) => ({ ...prev, [item.key]: e.target.checked }))} className="sr-only peer" />
+                  <div className="w-11 h-6 bg-slate-800 rounded-full after:content-[''] after:absolute after:top-[10px] after:left-[5px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-5 peer-checked:bg-emerald-500" />
+                </label>
+              </div>
+            ))}
+            <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3 text-[10px] text-slate-400 leading-relaxed">
+              Consejo: activa una interacción primero y pruébala en un mundo de prueba. Las interacciones que usan scripts necesitan que Minecraft cargue el paquete de comportamiento; si no quieres scripts, deja estas opciones apagadas.
+            </div>
           </div>
         )}
 

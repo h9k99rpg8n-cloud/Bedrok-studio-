@@ -230,8 +230,10 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
   const engineParts = (project.minEngineVersion || '1.26.20').split('.').map((p) => parseInt(p, 10) || 0);
   const minEngineVersion = [engineParts[0] || 1, engineParts[1] || 26, engineParts[2] || 20];
 
-  // Check if any block has Step Particles enabled (requires Script API module)
-  const requiresScriptApi = blocks.some((b) => b.stepParticles?.enabled);
+  // Script API is needed for step particles or custom block interaction events.
+  const requiresScriptApi = blocks.some((b) =>
+    b.stepParticles?.enabled || Object.values(b.interactions || {}).some(Boolean)
+  );
 
   // 1. Behavior Pack Manifest
   const bpModules: Record<string, unknown>[] = [
@@ -426,10 +428,17 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
       }
     }
 
-    // Custom Components (Step particles walking detector via Script API)
-    if (block.stepParticles?.enabled) {
-      components['minecraft:custom_components'] = ['studio:step_particles'];
+    // Custom Components (Script API): keep legacy step particles and add only selected interactions.
+    const customComponents: string[] = [];
+    if (block.stepParticles?.enabled) customComponents.push('studio:step_particles');
+    if (block.interactions?.onUse) customComponents.push('studio:interaction_use');
+    if (block.interactions?.onStepOn) customComponents.push('studio:interaction_step_on');
+    if (block.interactions?.onStepOff) customComponents.push('studio:interaction_step_off');
+    if (block.interactions?.onRedstone) {
+      customComponents.push('studio:interaction_redstone');
+      components['minecraft:redstone_consumer'] = { min_power: 1, propagates_power: false };
     }
+    if (customComponents.length > 0) components['minecraft:custom_components'] = customComponents;
 
     // Collision Box Component (minecraft:collision_box) - v0.1.5
     if (block.collisionConfig) {
@@ -743,7 +752,7 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
     }
 
     const blockBpJson = {
-      format_version: '1.21.50',
+      format_version: block.interactions?.onRedstone ? '1.26.0' : '1.21.50',
       'minecraft:block': {
         description: blockDescription,
         components,
@@ -763,27 +772,57 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
   // 4. Script file if required
   if (requiresScriptApi) {
     const scriptsFolder = bpFolder.folder('scripts');
-    const mainScript = `// Bedrock Studio v0.1.3 - Script API Walking Particle Component
-import { world, system } from '@minecraft/server';
-
-world.beforeEvents?.worldInitialize?.subscribe((initEvent) => {
-  initEvent.blockComponentRegistry?.registerCustomComponent('studio:step_particles', {
+    const registrations: string[] = [];
+    if (blocks.some((b) => b.stepParticles?.enabled)) {
+      registrations.push(`  initEvent.blockComponentRegistry?.registerCustomComponent('studio:step_particles', {
     onStepOn(event) {
       const block = event.block;
-      const dim = block.dimension;
       const center = block.center();
-      // Spawns celebratory spark particle when walking continuously over the block
-      try {
-        dim.spawnParticle('minecraft:critical_hit_emitter', {
-          x: center.x,
-          y: center.y + 0.55,
-          z: center.z
-        });
-      } catch (e) {
-        // Fallback safe particle
-      }
+      try { block.dimension.spawnParticle('minecraft:critical_hit_emitter', { x: center.x, y: center.y + 0.55, z: center.z }); } catch (e) { /* particle fallback */ }
     }
-  });
+  });`);
+    }
+    if (blocks.some((b) => b.interactions?.onUse)) {
+      registrations.push(`  initEvent.blockComponentRegistry?.registerCustomComponent('studio:interaction_use', {
+    onPlayerInteract(event) {
+      const block = event.block;
+      const center = block.center();
+      try { block.dimension.playSound('random.click', center); } catch (e) { /* sound fallback */ }
+    }
+  });`);
+    }
+    if (blocks.some((b) => b.interactions?.onStepOn)) {
+      registrations.push(`  initEvent.blockComponentRegistry?.registerCustomComponent('studio:interaction_step_on', {
+    onStepOn(event) {
+      const block = event.block;
+      const center = block.center();
+      try { block.dimension.spawnParticle('minecraft:critical_hit_emitter', { x: center.x, y: center.y + 0.55, z: center.z }); } catch (e) { /* particle fallback */ }
+    }
+  });`);
+    }
+    if (blocks.some((b) => b.interactions?.onStepOff)) {
+      registrations.push(`  initEvent.blockComponentRegistry?.registerCustomComponent('studio:interaction_step_off', {
+    onStepOff(event) {
+      const block = event.block;
+      const center = block.center();
+      try { block.dimension.playSound('random.pop', center); } catch (e) { /* sound fallback */ }
+    }
+  });`);
+    }
+    if (blocks.some((b) => b.interactions?.onRedstone)) {
+      registrations.push(`  initEvent.blockComponentRegistry?.registerCustomComponent('studio:interaction_redstone', {
+    onRedstoneUpdate(event) {
+      const block = event.block;
+      const center = block.center();
+      try { block.dimension.spawnParticle('minecraft:basic_flame_particle', { x: center.x, y: center.y + 0.5, z: center.z }); } catch (e) { /* particle fallback */ }
+    }
+  });`);
+    }
+    const mainScript = `// Bedrock Studio: custom block interaction events
+import { world } from '@minecraft/server';
+
+world.beforeEvents?.worldInitialize?.subscribe((initEvent) => {
+${registrations.join('\n\n')}
 });
 `;
     scriptsFolder?.file('main.js', mainScript);

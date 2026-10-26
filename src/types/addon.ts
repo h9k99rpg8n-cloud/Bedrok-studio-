@@ -160,8 +160,17 @@ export interface AnimatedBlockTextureConfig {
   ticksPerFrame: number;
 }
 
+/** Stable script-backed event hooks available to custom blocks. */
+export interface BlockInteractionsConfig {
+  onUse: boolean;
+  onStepOn: boolean;
+  onStepOff: boolean;
+  onRedstone: boolean;
+}
+
 export interface CustomBlock {
   animatedTexture?: AnimatedBlockTextureConfig;
+  interactions?: BlockInteractionsConfig;
   folderId?: string; // 2.2: ubicación en carpeta del proyecto
   id: string;
   identifier: string;
