@@ -2028,6 +2028,25 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
 
         {activeTab === 'behavior' && (
           <div className="flex flex-col gap-3.5 animate-in fade-in duration-150">
+            {/* PROGRAMACIÓN VISUAL: acceso directo dentro de Comportamiento para móvil */}
+            <section className="rounded-2xl border border-emerald-500/40 bg-emerald-500/[0.07] p-4 flex flex-col gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-300 flex items-center justify-center shrink-0">
+                  <Workflow size={21} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-bold text-slate-100">Programación visual <span className="text-[10px] font-bold text-emerald-300">BETA 1</span></h3>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">Crea comportamientos personalizados con eventos, condiciones y acciones, sin escribir código.</p>
+                  <p className="text-[11px] mt-2 text-slate-300">{visualBehavior ? (visualBehavior.enabled ? 'Flujo activado' : 'Flujo guardado, pero desactivado') + ' · ' + visualBehavior.actions.length + ' acción(es)' : 'Todavía no has creado un flujo visual para este bloque.'}</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setIsVisualBehaviorEditorOpen(true)} className="w-full min-h-12 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-sm font-bold flex items-center justify-center gap-2">
+                <Workflow size={18} />{visualBehavior ? 'Editar programación visual' : 'Crear programación visual'}
+              </button>
+              {visualBehavior && <button type="button" onClick={() => setVisualBehavior(undefined)} className="min-h-10 px-3 rounded-xl border border-rose-500/25 text-rose-300 text-xs font-semibold">Eliminar programación visual</button>}
+            </section>
+            <VisualBehaviorEditor isOpen={isVisualBehaviorEditorOpen} title={displayName || 'Bloque personalizado'} initialProgram={visualBehavior} onClose={() => setIsVisualBehaviorEditorOpen(false)} onSave={(nextProgram) => setVisualBehavior(nextProgram)} />
+
             {/* Cabecera de la sección con botón principal destacado */}
             <div className="bg-gradient-to-r from-purple-950/40 to-slate-950/80 p-4 rounded-2xl border border-purple-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
               <div className="flex items-start gap-2.5">
