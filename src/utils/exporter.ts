@@ -228,7 +228,25 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
 
   // Parse min_engine_version (supports 1.26.20 / 1.26.52)
   const engineParts = (project.minEngineVersion || '1.26.20').split('.').map((p) => parseInt(p, 10) || 0);
-  const minEngineVersion = [engineParts[0] || 1, engineParts[1] || 26, engineParts[2] || 20];
+  let minEngineVersion = [engineParts[0] || 1, engineParts[1] || 26, engineParts[2] || 20];
+  // Automatically raise the pack minimum when the selected block components require it.
+  const requiredEngineVersion = blocks.some((block) => block.flammable && block.lavaFlammable)
+    ? [1, 26, 30]
+    : blocks.some((block) => block.chestObstruction && block.chestObstruction !== 'shape')
+      ? [1, 26, 20]
+      : [0, 0, 0];
+  const engineVersionIsLower = minEngineVersion.some((part, index) => {
+    for (let i = 0; i < index; i++) {
+      if (minEngineVersion[i] !== requiredEngineVersion[i]) return false;
+    }
+    return part < requiredEngineVersion[index];
+  });
+  const engineVersionComparison = minEngineVersion[0] - requiredEngineVersion[0]
+    || minEngineVersion[1] - requiredEngineVersion[1]
+    || minEngineVersion[2] - requiredEngineVersion[2];
+  if (requiredEngineVersion[0] > 0 && engineVersionComparison < 0) {
+    minEngineVersion = requiredEngineVersion;
+  }
 
   // Script API is needed for step particles or custom block interaction events.
   const requiresScriptApi = blocks.some((b) =>
@@ -337,6 +355,13 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
   for (const block of blocks) {
     const fullId = `custom:${block.identifier}`;
     const mode = block.textureMode || 'one';
+    const blockFormatVersion = block.flammable && block.lavaFlammable
+      ? '1.26.30'
+      : block.chestObstruction && block.chestObstruction !== 'shape'
+        ? '1.26.20'
+        : block.interactions?.onRedstone
+          ? '1.26.0'
+          : '1.21.50';
     const faces = block.faceTextures || {
       up: block.textureDataUrl || '',
       down: block.textureDataUrl || '',
@@ -391,11 +416,27 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
       components['minecraft:light_dampening'] = Math.min(15, Math.max(0, Math.round(block.lightDampening)));
     }
 
-    // Flammability (v0.1.4)
+    // Flammability: legacy keys for older block formats, modern keys for 1.26.20+.
     if (block.flammable) {
-      components['minecraft:flammable'] = {
-        burn_odds: block.burnOdds ?? 20,
-        flame_odds: block.flameOdds ?? 5,
+      const modernBlockFormat = blockFormatVersion === '1.26.20' || blockFormatVersion === '1.26.30';
+      components['minecraft:flammable'] = modernBlockFormat
+        ? {
+            destroy_chance_modifier: block.burnOdds ?? 20,
+            catch_chance_modifier: block.flameOdds ?? 5,
+            ...(blockFormatVersion === '1.26.30'
+              ? { lava_flammable: block.lavaFlammable ? 'always' : 'never' }
+              : {}),
+          }
+        : {
+            burn_odds: block.burnOdds ?? 20,
+            flame_odds: block.flameOdds ?? 5,
+          };
+    }
+
+    // Chest obstruction (stable from block format 1.26.20).
+    if (block.chestObstruction && block.chestObstruction !== 'shape') {
+      components['minecraft:chest_obstruction'] = {
+        obstruction_rule: block.chestObstruction,
       };
     }
 
@@ -755,7 +796,7 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
     }
 
     const blockBpJson = {
-      format_version: block.interactions?.onRedstone ? '1.26.0' : '1.21.50',
+      format_version: blockFormatVersion,
       'minecraft:block': {
         description: blockDescription,
         components,
