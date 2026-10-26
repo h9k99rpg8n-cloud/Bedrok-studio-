@@ -235,12 +235,6 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
     : blocks.some((block) => block.chestObstruction && block.chestObstruction !== 'shape')
       ? [1, 26, 20]
       : [0, 0, 0];
-  const engineVersionIsLower = minEngineVersion.some((part, index) => {
-    for (let i = 0; i < index; i++) {
-      if (minEngineVersion[i] !== requiredEngineVersion[i]) return false;
-    }
-    return part < requiredEngineVersion[index];
-  });
   const engineVersionComparison = minEngineVersion[0] - requiredEngineVersion[0]
     || minEngineVersion[1] - requiredEngineVersion[1]
     || minEngineVersion[2] - requiredEngineVersion[2];
