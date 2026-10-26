@@ -872,8 +872,8 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
         if (action.type === 'play_sound') return `      try { block.dimension.playSound(${JSON.stringify(action.value)}, center); } catch (e) { /* sound unavailable */ }`;
         if (action.type === 'spawn_particle') return `      try { block.dimension.spawnParticle(${JSON.stringify(action.value)}, { x: center.x, y: center.y + 0.5, z: center.z }); } catch (e) { /* particle unavailable */ }`;
         return `      try { event.player?.sendMessage(${JSON.stringify(action.value)}); } catch (e) { /* player unavailable */ }`;
-      }).join('\\n');
-      const condition = program.condition === 'sneaking' ? '      if (!event.player?.isSneaking) return;\\n' : '';
+      }).join('\n');
+      const condition = program.condition === 'sneaking' ? '      if (!event.player?.isSneaking) return;\n' : '';
       registrations.push(`  initEvent.blockComponentRegistry?.registerCustomComponent('studio:visual_${visualBlock.identifier}', {
     ${eventName}(event) {
       const block = event.block;
