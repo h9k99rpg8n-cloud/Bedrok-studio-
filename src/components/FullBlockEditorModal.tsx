@@ -87,6 +87,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
   // SECCIÓN 2: ATLAS CORE
   // =========================================================================
   const [textureMode, setTextureMode] = useState<TextureMode>('one');
+  const [textureSourceMode, setTextureSourceMode] = useState<'normal' | 'animated'>('normal');
   const [faceTextures, setFaceTextures] = useState<FaceTextures>({
     up: '',
     down: '',
@@ -233,8 +234,10 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       if (block) {
+        const hasEnabledAnimation = Boolean(block.animatedTexture?.enabled && block.animatedTexture.textureDataUrl);
+        setTextureSourceMode(hasEnabledAnimation ? 'animated' : 'normal');
         setAnimatedTexture({
-          enabled: Boolean(block.animatedTexture?.enabled && block.animatedTexture.textureDataUrl),
+          enabled: hasEnabledAnimation,
           textureDataUrl: block.animatedTexture?.textureDataUrl || '',
           frameWidth: block.animatedTexture?.frameWidth || 16,
           frameCount: block.animatedTexture?.frameCount || 0,
@@ -374,6 +377,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
           setSelectedSelectionBoxId(defSelBox.id);
         }
       } else {
+        setTextureSourceMode('normal');
         setAnimatedTexture({ enabled: false, textureDataUrl: '', frameWidth: 16, frameCount: 0, ticksPerFrame: 2 });
         setAnimationImportError('');
         setAnimationNotice('');
@@ -488,6 +492,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
     let cancelled = false;
     inspectAnimatedTexture(assignedAnimatedTexture.dataUrl).then((dimensions) => {
       if (cancelled) return;
+      setTextureSourceMode('animated');
       setAnimatedTexture((current) => ({
         ...current,
         enabled: true,
@@ -565,6 +570,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         reader.readAsDataURL(file);
       });
       const dimensions = await inspectAnimatedTexture(dataUrl);
+      setTextureSourceMode('animated');
       setAnimatedTexture((current) => ({
         ...current,
         enabled: true,
@@ -582,6 +588,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
   const handleChooseAnimationTemplate = (kind: AnimatedTextureTemplateKind) => {
     try {
       const template = createAnimatedTextureTemplate(kind);
+      setTextureSourceMode('animated');
       setAnimatedTexture((current) => ({
         ...current,
         enabled: true,
@@ -678,7 +685,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
       textureDataUrl: finalFaces.up || finalFaces.north || '',
       animatedTexture: animatedTexture.textureDataUrl
         ? {
-            enabled: animatedTexture.enabled,
+            enabled: textureSourceMode === 'animated' && Boolean(animatedTexture.textureDataUrl),
             textureDataUrl: animatedTexture.textureDataUrl,
             frameWidth: animatedTexture.frameWidth,
             frameCount: animatedTexture.frameCount,
@@ -1286,15 +1293,23 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         {/* ================================================================= */}
         {activeTab === 'atlas' && (
           <div className="flex flex-col gap-3 animate-in fade-in duration-150">
-            <CubeAtlasEditor
-              mode={textureMode}
-              faceTextures={faceTextures}
-              availableTextures={availableTextures}
-              onChangeMode={(m) => setTextureMode(m)}
-              onChangeFaceTexture={handleFaceTextureChange}
-              onOpenTextureLibraryForFace={onOpenTextureLibraryForFace}
-              onClearFaceTexture={(f) => handleFaceTextureChange(f, '')}
-            />
+            <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-slate-950 border border-slate-800" role="group" aria-label="Modo de textura del bloque">
+              <button type="button" onClick={() => { setTextureSourceMode('normal'); setAnimatedTexture((current) => ({ ...current, enabled: false })); }} aria-pressed={textureSourceMode === 'normal'} className={`min-h-[44px] rounded-lg px-3 text-xs font-bold transition-colors ${textureSourceMode === 'normal' ? 'bg-emerald-500 text-slate-950' : 'text-slate-300 hover:bg-slate-900'}`}>
+                <i className="bx bx-image mr-1" /> Textura normal
+              </button>
+              <button type="button" onClick={() => { setTextureSourceMode('animated'); setAnimatedTexture((current) => ({ ...current, enabled: Boolean(current.textureDataUrl) })); setActiveTab('animation'); }} aria-pressed={textureSourceMode === 'animated'} className={`min-h-[44px] rounded-lg px-3 text-xs font-bold transition-colors ${textureSourceMode === 'animated' ? 'bg-emerald-500 text-slate-950' : 'text-slate-300 hover:bg-slate-900'}`}>
+                <i className="bx bx-movie-play mr-1" /> Textura animada
+              </button>
+            </div>
+            {textureSourceMode === 'normal' ? (
+              <CubeAtlasEditor mode={textureMode} faceTextures={faceTextures} availableTextures={availableTextures} onChangeMode={(m) => setTextureMode(m)} onChangeFaceTexture={handleFaceTextureChange} onOpenTextureLibraryForFace={onOpenTextureLibraryForFace} onClearFaceTexture={(f) => handleFaceTextureChange(f, '')} />
+            ) : (
+              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4">
+                <h3 className="text-sm font-bold text-emerald-200">Modo de textura animada</h3>
+                <p className="mt-1 text-xs leading-relaxed text-slate-300">La textura animada sustituye la textura normal de todas las caras. No necesitas asignar otra textura estática.</p>
+                <button type="button" onClick={() => setActiveTab('animation')} className="mt-3 min-h-[42px] w-full rounded-xl bg-emerald-500 px-3 text-xs font-bold text-slate-950">Configurar animación, plantillas y velocidad</button>
+              </div>
+            )}
           </div>
         )}
 
@@ -1304,6 +1319,14 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         {activeTab === 'animation' && (
           <div className="flex flex-col gap-3.5 animate-in fade-in duration-150">
             <div className="bg-slate-950/70 p-4 rounded-2xl border border-emerald-500/25 flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-slate-950 border border-slate-800" role="group" aria-label="Modo de textura del bloque">
+                <button type="button" onClick={() => { setTextureSourceMode('normal'); setAnimatedTexture((current) => ({ ...current, enabled: false })); setActiveTab('atlas'); }} aria-pressed={textureSourceMode === 'normal'} className={`min-h-[44px] rounded-lg px-3 text-xs font-bold transition-colors ${textureSourceMode === 'normal' ? 'bg-emerald-500 text-slate-950' : 'text-slate-300 hover:bg-slate-900'}`}>
+                  <i className="bx bx-image mr-1" /> Textura normal
+                </button>
+                <button type="button" onClick={() => { setTextureSourceMode('animated'); setAnimatedTexture((current) => ({ ...current, enabled: Boolean(current.textureDataUrl) })); }} aria-pressed={textureSourceMode === 'animated'} className={`min-h-[44px] rounded-lg px-3 text-xs font-bold transition-colors ${textureSourceMode === 'animated' ? 'bg-emerald-500 text-slate-950' : 'text-slate-300 hover:bg-slate-900'}`}>
+                  <i className="bx bx-movie-play mr-1" /> Textura animada
+                </button>
+              </div>
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-300 flex items-center justify-center shrink-0">
                   <i className="bx bx-movie-play text-xl" />
@@ -1314,14 +1337,9 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                     Importa una sola imagen PNG vertical con los fotogramas apilados. Bedrock Studio detecta y prepara la animación automáticamente.
                   </p>
                 </div>
-                <input
-                  id="animated-texture-toggle"
-                  type="checkbox"
-                  checked={animatedTexture.enabled}
-                  onChange={(e) => setAnimatedTexture((current) => ({ ...current, enabled: e.target.checked }))}
-                  className="h-5 w-5 accent-emerald-500 shrink-0 mt-1"
-                  aria-label="Activar textura animada"
-                />
+                <span className={`shrink-0 rounded-lg px-2 py-1 text-[10px] font-bold ${textureSourceMode === 'animated' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-slate-800 text-slate-400'}`}>
+                  {textureSourceMode === 'animated' ? 'Modo activo' : 'Modo inactivo'}
+                </span>
               </div>
 
               <button
@@ -1424,13 +1442,13 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                 </div>
                 <button
                   type="button"
-                  onClick={() => setAnimatedTexture((current) => ({ ...current, enabled: false }))}
+                  onClick={() => { setTextureSourceMode('normal'); setAnimatedTexture((current) => ({ ...current, enabled: false })); setActiveTab('atlas'); }}
                   className="min-h-[40px] px-3 rounded-xl border border-slate-700 text-xs text-slate-300 hover:text-emerald-300"
                 >
                   Desactivar animación y conservar el PNG
                 </button>
                 <p className="text-[10px] text-slate-500 leading-relaxed">
-                  La animación sustituye la textura estática de todas las caras de este bloque. La biblioteca de plantillas crea PNG de 16×64 con cuatro fotogramas.
+                  La animación sustituye la textura normal de todas las caras. Al cambiar a textura normal, el PNG, los fotogramas y los ticks se conservan para volver a activarlos.
                 </p>
               </div>
             )}
