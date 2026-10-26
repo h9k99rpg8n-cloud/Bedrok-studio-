@@ -365,6 +365,9 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
 
     // Construct components dictionary cleanly
     const components: Record<string, unknown> = {
+      // Explicit full-block geometry is required for reliable custom-block rendering
+      // on modern Bedrock versions (1.21.80+), even for a simple cube.
+      'minecraft:geometry': 'minecraft:geometry.full_block',
       'minecraft:destructible_by_mining': {
         seconds_to_destroy: block.destroyTime ?? 1.5,
       },
