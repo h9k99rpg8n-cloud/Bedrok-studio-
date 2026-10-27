@@ -179,7 +179,6 @@ export const Beta1Gate: React.FC<Beta1GateProps> = ({ children, showProfileDock 
 
   const switchProfile = async (profile: LocalProfile) => {
     setActiveProfile(profile);
-    setActiveProfileId(profile.id);
     setProfileName(profile.name);
     setProfileBio(profile.bio ?? '');
     await metaStore.setItem('active_profile_id', profile.id);
