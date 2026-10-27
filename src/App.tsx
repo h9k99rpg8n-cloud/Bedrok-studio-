@@ -73,6 +73,7 @@ export default function App() {
 
   // Load from IndexedDB on startup with verifiable stages (v0.1.4.1)
   const loadProjectsFromDb = useCallback(async () => {
+    const startupStartedAt = Date.now();
     // Stage 1: Initializing local storage
     setLoadingProgress(12);
     setLoadingMessage('Conectando con almacenamiento local IndexedDB...');
@@ -114,7 +115,7 @@ export default function App() {
       setLoadingMessage('¡Inicialización completada!');
       setLoadingDetail('Bienvenido a Bedrock Studio 3.0 Beta 1 Release');
 
-      await new Promise((r) => setTimeout(r, 150));
+      await new Promise((r) => setTimeout(r, Math.max(0, 900 - (Date.now() - startupStartedAt))));
       setIsLoading(false);
     } catch (err) {
       console.error('Error al inicializar IndexedDB:', err);
@@ -500,8 +501,8 @@ export default function App() {
         {/* Logo Cube */}
         <div className="relative mb-5">
           <div className="w-20 h-20 rounded-3xl bg-slate-900 border border-slate-800 flex items-center justify-center relative shadow-2xl shadow-emerald-500/10">
-            <i className="bx bxs-cube text-4xl text-emerald-400 animate-pulse" />
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-[#080b12] shadow-sm shadow-emerald-400" />
+            <span className="text-4xl font-black tracking-tighter text-blue-300 animate-pulse">B</span>
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 rounded-full border-2 border-[#080b12] shadow-sm shadow-blue-400" />
           </div>
           <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-slate-950 border border-blue-500/30 text-[10px] font-mono font-bold text-blue-300 whitespace-nowrap">
             Beta 1 Release
