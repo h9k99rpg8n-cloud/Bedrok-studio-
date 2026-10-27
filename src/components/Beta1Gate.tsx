@@ -9,7 +9,6 @@ import {
   ImagePlus,
   Languages,
   LockKeyhole,
-  LogIn,
   Plus,
   Settings2,
   ShieldCheck,
@@ -71,7 +70,6 @@ export const Beta1Gate: React.FC<Beta1GateProps> = ({ children, showProfileDock 
   const [welcomeAccepted, setWelcomeAccepted] = useState(false);
   const [termsChecked, setTermsChecked] = useState(false);
   const [profiles, setProfiles] = useState<LocalProfile[]>([]);
-  const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
   const [activeProfile, setActiveProfile] = useState<LocalProfile | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [addingAccount, setAddingAccount] = useState(false);
@@ -98,7 +96,6 @@ export const Beta1Gate: React.FC<Beta1GateProps> = ({ children, showProfileDock 
         const selected = validProfiles.find((profile) => profile.id === savedActiveId) ?? validProfiles[validProfiles.length - 1] ?? null;
         if (selected) {
           setActiveProfile(selected);
-          setActiveProfileId(selected.id);
           setProfileName(selected.name);
           setProfileBio(selected.bio ?? '');
           await metaStore.setItem('active_profile_id', selected.id);
@@ -165,7 +162,6 @@ export const Beta1Gate: React.FC<Beta1GateProps> = ({ children, showProfileDock 
       await persistProfiles(nextProfiles);
       await metaStore.setItem('active_profile_id', profile.id);
       setActiveProfile(profile);
-      setActiveProfileId(profile.id);
       setProfileName(profile.name);
       setProfileBio('');
       setCreateName('');
@@ -264,7 +260,6 @@ export const Beta1Gate: React.FC<Beta1GateProps> = ({ children, showProfileDock 
       } else {
         await metaStore.removeItem('active_profile_id');
         setActiveProfile(null);
-        setActiveProfileId(null);
         setCreateName('');
         setCreatePassword('');
         setAddingAccount(false);
