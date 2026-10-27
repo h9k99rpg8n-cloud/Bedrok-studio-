@@ -14,19 +14,17 @@ import {
   DiagnosticIssue,
 } from './types/addon';
 import { dbService } from './services/db';
-import { OnboardingModal } from './components/OnboardingModal';
 import { ManifestModal } from './components/ManifestModal';
 import { TexturePainterModal } from './components/TexturePainterModal';
 import { WorkView } from './components/WorkView';
 import { ProjectDetailView } from './components/ProjectDetailView';
 import { ChangelogModal } from './components/ChangelogModal';
-import { ReleasePreviewModal } from './components/ReleasePreviewModal';
 import { BlockTutorialModal } from './components/BlockTutorialModal';
 import { FullBlockEditorModal } from './components/FullBlockEditorModal';
 import { DiagnosticsModal } from './components/DiagnosticsModal';
 import { TextureLibraryModal } from './components/TextureLibraryModal';
 import { CraftingRecipeModal } from './components/CraftingRecipeModal';
-import { ErrorBoundary } from './components/ErrorBoundary';
+import { Beta1Gate } from './components/Beta1Gate';
 import { runProjectDiagnostics } from './utils/diagnostics';
 import { exportAddonToMcaddon } from './utils/exporter';
 import confetti from 'canvas-confetti';
@@ -37,11 +35,8 @@ export default function App() {
   const [loadingProgress, setLoadingProgress] = useState<number>(1);
   const [loadingMessage, setLoadingMessage] = useState<string>('Iniciando Bedrock Studio...');
   const [loadingDetail, setLoadingDetail] = useState<string>('Preparando entorno de trabajo...');
-  const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(false);
   const [isChangelogOpen, setIsChangelogOpen] = useState<boolean>(false);
   const [isTutorialOpen, setIsTutorialOpen] = useState<boolean>(false);
-  const [isReleasePreviewOpen, setIsReleasePreviewOpen] = useState<boolean>(false);
-  const [showOnboardingAfterRelease, setShowOnboardingAfterRelease] = useState<boolean>(false);
 
   // Phase 2: Work Data & Active Project
   const [projects, setProjects] = useState<AddonProject[]>([]);
@@ -78,6 +73,7 @@ export default function App() {
 
   // Load from IndexedDB on startup with verifiable stages (v0.1.4.1)
   const loadProjectsFromDb = useCallback(async () => {
+    const startupStartedAt = Date.now();
     // Stage 1: Initializing local storage
     setLoadingProgress(12);
     setLoadingMessage('Conectando con almacenamiento local IndexedDB...');
@@ -102,14 +98,8 @@ export default function App() {
       setLoadingMessage('Comprobando preferencias y estado...');
       setLoadingDetail('Validando compatibilidad con Minecraft Bedrock 1.26.20+');
 
-      const seen = await dbService.hasSeenOnboarding();
-      const seenReleasePreview = await dbService.hasSeenReleasePreview();
-      if (!seenReleasePreview) {
-        setIsReleasePreviewOpen(true);
-        setShowOnboardingAfterRelease(!seen);
-      } else if (!seen) {
-        setIsOnboardingOpen(true);
-      }
+      // Bedrock Studio 3.0 Beta 1 handles its one-time welcome and local profiles in Beta1Gate.
+      // Do not show the legacy 2.2 release preview or onboarding carousel.
 
       await new Promise((r) => setTimeout(r, 120));
 
@@ -123,9 +113,9 @@ export default function App() {
       // Stage 5: Finalized
       setLoadingProgress(100);
       setLoadingMessage('¡Inicialización completada!');
-      setLoadingDetail('Bienvenido a Bedrock Studio 2.2');
+      setLoadingDetail('Bienvenido a Bedrock Studio 3.0 Beta 1 Release');
 
-      await new Promise((r) => setTimeout(r, 150));
+      await new Promise((r) => setTimeout(r, Math.max(0, 900 - (Date.now() - startupStartedAt))));
       setIsLoading(false);
     } catch (err) {
       console.error('Error al inicializar IndexedDB:', err);
@@ -139,12 +129,6 @@ export default function App() {
   useEffect(() => {
     loadProjectsFromDb();
   }, [loadProjectsFromDb]);
-
-  // Handle closing onboarding
-  const handleCloseOnboarding = async () => {
-    setIsOnboardingOpen(false);
-    await dbService.setSeenOnboarding(true);
-  };
 
   // Open an Addon folder
   const handleOpenProject = async (project: AddonProject) => {
@@ -509,7 +493,7 @@ export default function App() {
   // 1. Initial Splash Screen (v0.1.4.1)
   if (isLoading) {
     return (
-      <div className="fixed inset-0 z-50 bg-[#090d16] flex flex-col items-center justify-center p-6 text-center select-none overflow-hidden">
+      <div className="fixed inset-0 z-50 bg-[#080b12] flex flex-col items-center justify-center p-6 text-center select-none overflow-hidden">
         {/* Subtle background glow */}
         <div className="absolute w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none -top-10" />
         <div className="absolute w-72 h-72 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none -bottom-10" />
@@ -517,20 +501,20 @@ export default function App() {
         {/* Logo Cube */}
         <div className="relative mb-5">
           <div className="w-20 h-20 rounded-3xl bg-slate-900 border border-slate-800 flex items-center justify-center relative shadow-2xl shadow-emerald-500/10">
-            <i className="bx bxs-cube text-4xl text-emerald-400 animate-pulse" />
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-[#090d16] shadow-sm shadow-emerald-400" />
+            <span className="text-4xl font-black tracking-tighter text-blue-300 animate-pulse">B</span>
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 rounded-full border-2 border-[#080b12] shadow-sm shadow-blue-400" />
           </div>
-          <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-slate-950 border border-emerald-500/30 text-[10px] font-mono font-bold text-emerald-400">
-            2.2
+          <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-slate-950 border border-blue-500/30 text-[10px] font-mono font-bold text-blue-300 whitespace-nowrap">
+            Beta 1 Release
           </span>
         </div>
 
         {/* Title & Description */}
         <h1 className="text-xl font-black text-slate-100 tracking-wider mb-1">
-          Bedrock Studio <span className="text-emerald-400 font-extrabold">2.2</span>
+          Bedrock Studio <span className="text-blue-400 font-extrabold">3.0</span>
         </h1>
         <p className="text-xs text-slate-400 font-mono mb-7 max-w-xs">
-          Editor profesional de bloques para Minecraft Bedrock
+          Acceso anticipado · Beta 1 Release
         </p>
 
         {/* Progress Card */}
@@ -568,7 +552,8 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#090d16] text-slate-100 font-sans antialiased overflow-x-hidden">
+    <Beta1Gate showProfileDock={!activeProject}>
+    <div className="min-h-screen bg-[#080b12] text-slate-100 font-sans antialiased overflow-x-hidden">
       {/* Active View Switching */}
       {activeProject ? (
         <ProjectDetailView
@@ -625,24 +610,6 @@ export default function App() {
           onOpenChangelog={() => setIsChangelogOpen(true)}
         />
       )}
-
-      {/* Onboarding Carousel */}
-      <ReleasePreviewModal
-        isOpen={isReleasePreviewOpen}
-        onClose={async () => {
-          setIsReleasePreviewOpen(false);
-          await dbService.setSeenReleasePreview(true);
-          if (showOnboardingAfterRelease) {
-            setIsOnboardingOpen(true);
-            setShowOnboardingAfterRelease(false);
-          }
-        }}
-      />
-
-      <OnboardingModal
-        isOpen={isOnboardingOpen}
-        onClose={handleCloseOnboarding}
-      />
 
       {/* Novedades v0.1.3 Modal */}
       <ChangelogModal
@@ -794,5 +761,6 @@ export default function App() {
         />
       )}
     </div>
+    </Beta1Gate>
   );
 }
