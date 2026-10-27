@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, CheckCircle2, Plus, Trash2, Workflow, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, CheckCircle2, Plus, Sparkles, Trash2, X } from 'lucide-react';
 import type { VisualBehaviorProgram, VisualBehaviorAction } from '../types/addon';
 
 interface VisualBehaviorEditorProps {
@@ -75,7 +75,7 @@ export const VisualBehaviorEditor: React.FC<VisualBehaviorEditorProps> = ({
     <div className="fixed inset-0 z-[90] bg-[#070b12] text-slate-100 flex flex-col animate-in fade-in duration-150">
       <header className="shrink-0 border-b border-white/10 bg-[#0b111b] px-3 sm:px-5 py-3 flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-400/20 flex items-center justify-center text-emerald-300">
-          <Workflow size={21} />
+          <Sparkles size={21} />
         </div>
         <div className="flex-1 min-w-0">
           <h2 className="font-bold text-sm sm:text-base truncate">Programación visual</h2>
@@ -87,7 +87,7 @@ export const VisualBehaviorEditor: React.FC<VisualBehaviorEditorProps> = ({
       <main className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6">
         <div className="max-w-3xl mx-auto flex flex-col gap-4">
           <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4">
-            <div className="flex items-center gap-2 text-emerald-300 font-bold text-sm"><Workflow size={17}/> Flujo de comportamiento</div>
+            <div className="flex items-center gap-2 text-emerald-300 font-bold text-sm"><Sparkles size={17}/> Flujo de comportamiento</div>
             <p className="text-xs text-slate-400 mt-1 leading-relaxed">Elige cuándo se ejecuta, una condición y después ordena las acciones. Los bloques visuales se convertirán en lógica del complemento al exportar.</p>
           </div>
 
