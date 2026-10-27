@@ -27,6 +27,7 @@ import { DiagnosticsModal } from './components/DiagnosticsModal';
 import { TextureLibraryModal } from './components/TextureLibraryModal';
 import { CraftingRecipeModal } from './components/CraftingRecipeModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { Beta1Gate } from './components/Beta1Gate';
 import { runProjectDiagnostics } from './utils/diagnostics';
 import { exportAddonToMcaddon } from './utils/exporter';
 import confetti from 'canvas-confetti';
@@ -102,14 +103,8 @@ export default function App() {
       setLoadingMessage('Comprobando preferencias y estado...');
       setLoadingDetail('Validando compatibilidad con Minecraft Bedrock 1.26.20+');
 
-      const seen = await dbService.hasSeenOnboarding();
-      const seenReleasePreview = await dbService.hasSeenReleasePreview();
-      if (!seenReleasePreview) {
-        setIsReleasePreviewOpen(true);
-        setShowOnboardingAfterRelease(!seen);
-      } else if (!seen) {
-        setIsOnboardingOpen(true);
-      }
+      // Bedrock Studio 3.0 Beta 1 handles its one-time welcome and local profiles in Beta1Gate.
+      // Do not show the legacy 2.2 release preview or onboarding carousel.
 
       await new Promise((r) => setTimeout(r, 120));
 
@@ -123,7 +118,7 @@ export default function App() {
       // Stage 5: Finalized
       setLoadingProgress(100);
       setLoadingMessage('¡Inicialización completada!');
-      setLoadingDetail('Bienvenido a Bedrock Studio 2.2');
+      setLoadingDetail('Bienvenido a Bedrock Studio 3.0 Beta 1 Release');
 
       await new Promise((r) => setTimeout(r, 150));
       setIsLoading(false);
@@ -568,7 +563,8 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#090d16] text-slate-100 font-sans antialiased overflow-x-hidden">
+    <Beta1Gate showProfileDock={!activeProject}>
+    <div className="min-h-screen bg-[#080b12] text-slate-100 font-sans antialiased overflow-x-hidden">
       {/* Active View Switching */}
       {activeProject ? (
         <ProjectDetailView
@@ -794,5 +790,6 @@ export default function App() {
         />
       )}
     </div>
+    </Beta1Gate>
   );
 }
