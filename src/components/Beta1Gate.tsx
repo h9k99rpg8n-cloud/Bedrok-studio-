@@ -82,6 +82,8 @@ export const Beta1Gate: React.FC<Beta1GateProps> = ({ children, showProfileDock 
   const [saving, setSaving] = useState(false);
   const [designMode, setDesignMode] = useState<'classic' | 'modern' | 'custom'>('modern');
   const [accentColor, setAccentColor] = useState('#3b82f6');
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [libraryImages, setLibraryImages] = useState<Array<{ id: string; name: string; dataUrl: string }>>([]);
 
   useEffect(() => {
     try {
@@ -103,6 +105,13 @@ export const Beta1Gate: React.FC<Beta1GateProps> = ({ children, showProfileDock 
     } catch { /* La selección funciona durante esta sesión. */ }
   }, [designMode, accentColor]);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const libraryInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    metaStore.getItem<Array<{ id: string; name: string; dataUrl: string }>>('image_library').then((items) => {
+      if (Array.isArray(items)) setLibraryImages(items);
+    }).catch(() => setLibraryImages([]));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -248,6 +257,11 @@ export const Beta1Gate: React.FC<Beta1GateProps> = ({ children, showProfileDock 
     reader.onload = async () => {
       if (typeof reader.result !== 'string' || !activeProfile) return;
       try {
+        const savedImages = (await metaStore.getItem<Array<{ id: string; name: string; dataUrl: string }>>('image_library')) ?? [];
+        const imageEntry = { id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, name: file.name || 'Imagen importada', dataUrl: reader.result };
+        const nextImages = [imageEntry, ...savedImages].slice(0, 40);
+        await metaStore.setItem('image_library', nextImages);
+        setLibraryImages(nextImages);
         const updated = { ...activeProfile, avatarDataUrl: reader.result };
         const nextProfiles = profiles.map((profile) => profile.id === updated.id ? updated : profile);
         await persistProfiles(nextProfiles);
@@ -417,11 +431,36 @@ export const Beta1Gate: React.FC<Beta1GateProps> = ({ children, showProfileDock 
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold">{activeProfile.name}</p>
                     <p className="mt-1 text-xs text-slate-400">Tu perfil local</p>
-                    <button type="button" onClick={() => avatarInputRef.current?.click()} className="mt-1 text-xs font-semibold text-blue-300 hover:text-blue-200">Importar imagen</button>
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1"><button type="button" onClick={() => avatarInputRef.current?.click()} className="text-xs font-semibold text-blue-300 hover:text-blue-200">Importar imagen</button><button type="button" onClick={() => setLibraryOpen(true)} className="text-xs font-semibold text-blue-300 hover:text-blue-200">Biblioteca ({libraryImages.length})</button></div>
                     {activeProfile.avatarDataUrl && <button type="button" onClick={removeAvatar} className="ml-3 text-xs text-slate-400 hover:text-rose-300">Quitar</button>}
                   </div>
                 </div>
                 <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarImport} />
+                <input ref={libraryInputRef} type="file" accept="image/*" multiple className="hidden" onChange={async (event) => {
+                  const files = Array.from(event.target.files ?? []);
+                  event.target.value = '';
+                  const valid = files.filter((file) => file.type.startsWith('image/') && file.size <= 5 * 1024 * 1024);
+                  const readFile = (file: File) => new Promise<{ id: string; name: string; dataUrl: string } | null>((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(typeof reader.result === 'string' ? { id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, name: file.name || 'Imagen importada', dataUrl: reader.result } : null);
+                    reader.onerror = () => resolve(null);
+                    reader.readAsDataURL(file);
+                  });
+                  const imported = (await Promise.all(valid.map(readFile))).filter((item): item is { id: string; name: string; dataUrl: string } => !!item);
+                  const next = [...imported, ...libraryImages].slice(0, 40);
+                  try { await metaStore.setItem('image_library', next); setLibraryImages(next); setError(''); }
+                  catch { setError('No se pudo guardar la biblioteca de imágenes.'); }
+                }} />
+                {libraryOpen && <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 p-3" role="dialog" aria-modal="true" aria-label="Biblioteca de imágenes">
+                  <section className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-[#0b101b] text-slate-100 shadow-2xl">
+                    <header className="flex items-center justify-between border-b border-slate-800 p-4"><div><h2 className="font-bold">Biblioteca de imágenes</h2><p className="text-xs text-slate-400">Se guardan en este dispositivo · máximo 40 imágenes</p></div><button type="button" onClick={() => setLibraryOpen(false)} aria-label="Cerrar biblioteca" className="rounded-lg p-2 hover:bg-slate-800"><X size={18} /></button></header>
+                    <div className="flex gap-2 p-3"><button type="button" onClick={() => libraryInputRef.current?.click()} className="rounded-lg bg-blue-500/20 px-3 py-2 text-sm font-bold text-blue-200">+ Importar imágenes</button><button type="button" onClick={() => avatarInputRef.current?.click()} className="rounded-lg border border-slate-700 px-3 py-2 text-sm">Importar avatar</button></div>
+                    <div className="grid grid-cols-3 gap-2 overflow-y-auto p-3 sm:grid-cols-4">
+                      {libraryImages.map((item) => <div key={item.id} className="min-w-0 overflow-hidden rounded-xl border border-slate-700 bg-slate-900"><button type="button" onClick={async () => { if (!activeProfile) return; const updated = { ...activeProfile, avatarDataUrl: item.dataUrl }; const nextProfiles = profiles.map((profile) => profile.id === updated.id ? updated : profile); await persistProfiles(nextProfiles); setActiveProfile(updated); setLibraryOpen(false); }} className="block w-full text-left"><img src={item.dataUrl} alt={item.name} className="aspect-square w-full object-cover" /><span className="block truncate p-2 text-xs">{item.name}</span></button><button type="button" onClick={async () => { const next = libraryImages.filter((image) => image.id !== item.id); await metaStore.setItem('image_library', next); setLibraryImages(next); }} className="w-full border-t border-slate-700 px-2 py-1.5 text-xs text-rose-300">Eliminar</button></div>)}
+                      {libraryImages.length === 0 && <p className="col-span-3 py-8 text-center text-sm text-slate-400 sm:col-span-4">Todavía no hay imágenes. Pulsa “Importar imágenes” para añadirlas.</p>}
+                    </div>
+                  </section>
+                </div>}
 
                 <div className="mt-4 space-y-3">
                   <label className="block text-xs font-semibold text-slate-300">Nombre
