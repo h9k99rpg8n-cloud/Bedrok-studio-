@@ -276,8 +276,14 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
     });
     bpDependencies.push({
       module_name: '@minecraft/server',
-      version: '1.14.0',
+      version: project.scriptApiVersion || '1.14.0',
     });
+    if (project.scriptUiApiVersion) {
+      bpDependencies.push({
+        module_name: '@minecraft/server-ui',
+        version: project.scriptUiApiVersion,
+      });
+    }
   }
 
   const bpManifest = {
