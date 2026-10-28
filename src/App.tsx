@@ -98,7 +98,7 @@ export default function App() {
       setLoadingMessage('Comprobando preferencias y estado...');
       setLoadingDetail('Validando compatibilidad con Minecraft Bedrock 1.26.20+');
 
-      // Bedrock Studio 3.0 Beta 1 handles its one-time welcome and local profiles in Beta1Gate.
+      // Bedrock Studio 3.0 Beta 2 handles its one-time welcome and local profiles in Beta1Gate.
       // Do not show the legacy 2.2 release preview or onboarding carousel.
 
       await new Promise((r) => setTimeout(r, 120));
@@ -113,7 +113,7 @@ export default function App() {
       // Stage 5: Finalized
       setLoadingProgress(100);
       setLoadingMessage('¡Inicialización completada!');
-      setLoadingDetail('Bienvenido a Bedrock Studio 3.0 Beta 1 Release');
+      setLoadingDetail('Bienvenido a Bedrock Studio 3.0 Beta 2 Release');
 
       await new Promise((r) => setTimeout(r, Math.max(0, 900 - (Date.now() - startupStartedAt))));
       setIsLoading(false);
