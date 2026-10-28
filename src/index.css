@@ -139,3 +139,21 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 html, body { background-color: #080b12; }
 ::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, .48); }
 ::-webkit-scrollbar-thumb:hover { background: rgba(96, 165, 250, .72); }
+
+
+/* Beta 2 responsive layer: prioritize iPhone portrait and landscape. */
+:root { --bs-accent: #3b82f6; --bs-accent-soft: rgba(59,130,246,.16); }
+html, body, #root { width: 100%; max-width: 100%; min-height: 100%; }
+body { overflow-x: hidden; -webkit-text-size-adjust: 100%; }
+*, *::before, *::after { box-sizing: border-box; }
+button, input, select, textarea { max-width: 100%; }
+@media (max-width: 600px) {
+  body { font-size: 14px; }
+  #root { min-height: 100dvh; }
+  .max-w-7xl, .max-w-6xl, .max-w-5xl, .max-w-4xl { max-width: 100%; }
+  input, select, textarea { font-size: 16px; }
+  button { touch-action: manipulation; }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .fixed.inset-0 { align-items: flex-start; overflow-y: auto; }
+}
