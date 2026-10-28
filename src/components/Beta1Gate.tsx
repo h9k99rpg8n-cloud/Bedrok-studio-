@@ -35,7 +35,7 @@ interface Beta1GateProps {
 const profileStore = localforage.createInstance({
   name: 'BedrockStudioDB',
   storeName: 'beta1_profiles',
-  description: 'Perfiles locales de Bedrock Studio 3.0 Beta 1',
+  description: 'Perfiles locales de Bedrock Studio 3.0 Beta 2',
 });
 const metaStore = localforage.createInstance({
   name: 'BedrockStudioDB',
@@ -80,6 +80,28 @@ export const Beta1Gate: React.FC<Beta1GateProps> = ({ children, showProfileDock 
   const [profileBio, setProfileBio] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [designMode, setDesignMode] = useState<'classic' | 'modern' | 'custom'>('modern');
+  const [accentColor, setAccentColor] = useState('#3b82f6');
+
+  useEffect(() => {
+    try {
+      const mode = window.localStorage.getItem('bedrock-studio-design-mode');
+      const color = window.localStorage.getItem('bedrock-studio-accent-color');
+      if (mode === 'classic' || mode === 'modern' || mode === 'custom') setDesignMode(mode);
+      if (color && /^#[0-9a-f]{6}$/i.test(color)) setAccentColor(color);
+    } catch { /* El tema predeterminado sigue funcionando si el almacenamiento está bloqueado. */ }
+  }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const color = designMode === 'classic' ? '#10b981' : designMode === 'modern' ? '#3b82f6' : accentColor;
+    root.style.setProperty('--bs-accent', color);
+    root.style.setProperty('--bs-accent-soft', color + '26');
+    try {
+      window.localStorage.setItem('bedrock-studio-design-mode', designMode);
+      window.localStorage.setItem('bedrock-studio-accent-color', accentColor);
+    } catch { /* La selección funciona durante esta sesión. */ }
+  }, [designMode, accentColor]);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -382,7 +404,7 @@ export const Beta1Gate: React.FC<Beta1GateProps> = ({ children, showProfileDock 
                 <header className="mb-4 flex items-center justify-between border-b border-slate-800 pb-3">
                   <div className="flex items-center gap-2">
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-blue-400/30 bg-blue-500/10 text-blue-300"><span className="text-xl font-black">B</span></div>
-                    <div><p className="text-sm font-extrabold">Bedrock Studio</p><p className="text-[10px] font-semibold text-blue-300">3.0 Beta 1 Release</p></div>
+                    <div><p className="text-sm font-extrabold">Bedrock Studio</p><p className="text-[10px] font-semibold text-blue-300">3.0 Beta 2 Release</p></div>
                   </div>
                   <button type="button" onClick={() => setMenuOpen(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white" aria-label="Cerrar menú"><X size={18} /></button>
                 </header>
@@ -427,8 +449,17 @@ export const Beta1Gate: React.FC<Beta1GateProps> = ({ children, showProfileDock 
 
                 <div className="mt-4 border-t border-slate-800 pt-3">
                   <p className="mb-2 text-[10px] font-bold uppercase tracking-[.16em] text-slate-500">Configuración</p>
+                  <div className="mb-3 rounded-xl border border-slate-800 bg-slate-950/70 p-3">
+                    <div className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-100"><Settings2 size={16} className="text-blue-300" /> Diseño de la aplicación</div>
+                    <div className="grid grid-cols-1 gap-2">
+                      <button type="button" onClick={() => setDesignMode('classic')} className={`min-h-10 rounded-lg border px-3 text-left text-xs font-semibold ${designMode === 'classic' ? 'border-emerald-400/70 bg-emerald-500/10 text-emerald-200' : 'border-slate-700 text-slate-300'}`}>Diseño clásico · v2.2</button>
+                      <button type="button" onClick={() => setDesignMode('modern')} className={`min-h-10 rounded-lg border px-3 text-left text-xs font-semibold ${designMode === 'modern' ? 'border-blue-400/70 bg-blue-500/10 text-blue-200' : 'border-slate-700 text-slate-300'}`}>Diseño moderno · v3.0</button>
+                      <button type="button" onClick={() => setDesignMode('custom')} className={`min-h-10 rounded-lg border px-3 text-left text-xs font-semibold ${designMode === 'custom' ? 'border-blue-400/70 bg-blue-500/10 text-blue-200' : 'border-slate-700 text-slate-300'}`}>Diseño personalizado</button>
+                    </div>
+                    {designMode === 'custom' && <label className="mt-3 flex items-center justify-between gap-3 text-xs text-slate-300">Color de acento <input aria-label="Elegir color de acento" type="color" value={accentColor} onChange={(event) => setAccentColor(event.target.value)} className="h-10 w-14 cursor-pointer rounded-lg border border-slate-700 bg-slate-900 p-1" /></label>}
+                    <p className="mt-2 text-[10px] leading-4 text-slate-500">El color se guarda en este dispositivo. El selector cambia el color de acento; la reorganización completa de los diseños llegará en una actualización posterior.</p>
+                  </div>
                   <div className="flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm text-slate-500"><Languages size={16} /><span className="flex-1">Idioma</span><span className="text-[10px]">Próximamente</span><LockKeyhole size={14} /></div>
-                  <div className="flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm text-slate-500"><Settings2 size={16} /><span className="flex-1">Más ajustes</span><span className="text-[10px]">Bloqueado</span><LockKeyhole size={14} /></div>
                 </div>
                 <button type="button" onClick={deleteActiveProfile} className="mt-3 flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-sm text-rose-300 hover:bg-rose-500/10"><Trash2 size={16} /> Eliminar esta cuenta</button>
                 {error && <p role="alert" className="mt-3 text-xs text-rose-300">{error}</p>}
