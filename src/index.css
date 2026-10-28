@@ -139,3 +139,38 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 html, body { background-color: #080b12; }
 ::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, .48); }
 ::-webkit-scrollbar-thumb:hover { background: rgba(96, 165, 250, .72); }
+
+
+/* Bedrock Studio 3.0 Beta 2 — responsive-first layout */
+:root {
+  --bs-accent: #3b82f6;
+  --bs-accent-soft: rgba(59, 130, 246, .16);
+  --bs-bg: #070a12;
+  --bs-panel: #0b1120;
+  --bs-border: #17233b;
+}
+html, body, #root {
+  min-height: 100%;
+  width: 100%;
+  max-width: 100%;
+}
+body {
+  overflow-x: hidden;
+  background: var(--bs-bg);
+  -webkit-text-size-adjust: 100%;
+}
+*, *::before, *::after { box-sizing: border-box; }
+button, input, select, textarea { max-width: 100%; }
+button, [role="button"] { touch-action: manipulation; }
+img, canvas, video { max-width: 100%; }
+@media (max-width: 600px) {
+  body { font-size: 14px; }
+  #root { min-height: 100dvh; }
+  .max-w-7xl, .max-w-6xl, .max-w-5xl, .max-w-4xl { max-width: 100%; }
+  input, select, textarea { font-size: 16px; }
+  button { min-height: 40px; }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  #root { min-height: 100dvh; }
+  header { scroll-margin-top: 0; }
+}
