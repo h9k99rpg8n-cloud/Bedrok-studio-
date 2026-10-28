@@ -28,6 +28,8 @@ export const ManifestModal: React.FC<ManifestModalProps> = ({
   const [description, setDescription] = useState(initialProject?.description || '');
   const [version, setVersion] = useState(initialProject?.version || '1.0.0');
   const [minEngineVersion, setMinEngineVersion] = useState(initialProject?.minEngineVersion || '1.26.20');
+  const [scriptApiVersion, setScriptApiVersion] = useState(initialProject?.scriptApiVersion || '1.14.0');
+  const [scriptUiApiVersion, setScriptUiApiVersion] = useState(initialProject?.scriptUiApiVersion || '1.3.0');
   const [iconDataUrl, setIconDataUrl] = useState(initialProject?.iconDataUrl || '');
   const [errorMessage, setErrorMessage] = useState('');
   const [showDescriptionSuggestions, setShowDescriptionSuggestions] = useState(false);
@@ -42,12 +44,16 @@ export const ManifestModal: React.FC<ManifestModalProps> = ({
         setDescription(initialProject.description || '');
         setVersion(initialProject.version || '1.0.0');
         setMinEngineVersion(initialProject.minEngineVersion || '1.26.20');
+        setScriptApiVersion(initialProject.scriptApiVersion || '1.14.0');
+        setScriptUiApiVersion(initialProject.scriptUiApiVersion || '1.3.0');
         setIconDataUrl(initialProject.iconDataUrl || '');
       } else {
         setName('');
         setDescription('');
         setVersion('1.0.0');
         setMinEngineVersion('1.26.20');
+        setScriptApiVersion('1.14.0');
+        setScriptUiApiVersion('1.3.0');
         setIconDataUrl('');
       }
       setErrorMessage('');
@@ -111,6 +117,8 @@ export const ManifestModal: React.FC<ManifestModalProps> = ({
       description: description.trim(),
       version: version.trim() || '1.0.0',
       minEngineVersion: minEngineVersion.trim() || '1.26.20',
+      scriptApiVersion,
+      scriptUiApiVersion,
       iconDataUrl,
       bpUuid: initialProject?.bpUuid || generateBedrockUUID(),
       rpUuid: initialProject?.rpUuid || generateBedrockUUID(),
@@ -336,30 +344,45 @@ export const ManifestModal: React.FC<ManifestModalProps> = ({
             Compatible con Minecraft Bedrock 1.26.20 y versión estable 1.26.52.
           </span>
 
-          {/* APIs Section (Visually Locked) */}
-          <div className="bg-slate-950/70 p-3 rounded-2xl border border-slate-800/90 flex flex-col gap-2 opacity-85">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                <i className="bx bx-code-alt text-emerald-400" />
-                Módulos de Script API
+          {/* Script API module versions: stable compatibility defaults for Bedrock 1.26 projects */}
+          <section className="rounded-2xl border border-slate-800/90 bg-slate-950/70 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
+                <i className="bx bx-code-alt text-blue-400" /> Módulos de Script API
               </span>
-              <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-md flex items-center gap-1 font-mono">
-                <i className="fa-solid fa-lock text-[9px]" />
-                Bloqueado v0.1.1
-              </span>
+              <span className="rounded-md bg-blue-500/10 px-2 py-1 text-[10px] font-semibold text-blue-300">Beta 2 · estable</span>
             </div>
-
-            <div className="space-y-1.5 pt-1">
-              <div className="flex items-center justify-between text-xs text-slate-400 bg-slate-900/50 p-2 rounded-lg border border-slate-800/60">
-                <span className="font-mono text-[11px]">@minecraft/server (v1.14.0)</span>
-                <i className="bx bx-lock-alt text-slate-400" />
-              </div>
-              <div className="flex items-center justify-between text-xs text-slate-400 bg-slate-900/50 p-2 rounded-lg border border-slate-800/60">
-                <span className="font-mono text-[11px]">@minecraft/server-ui (v1.3.0)</span>
-                <i className="bx bx-lock-alt text-slate-400" />
-              </div>
+            <p className="mt-2 text-[11px] leading-5 text-slate-400">Elige las versiones de los módulos que se incluirán en el manifiesto del Behavior Pack. Las versiones 1.x son la opción conservadora para mantener compatibilidad con proyectos Bedrock 1.26.</p>
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="block min-w-0 text-xs font-medium text-slate-300">
+                @minecraft/server
+                <input
+                  list="bedrock-server-api-versions"
+                  value={scriptApiVersion}
+                  onChange={(event) => setScriptApiVersion(event.target.value)}
+                  placeholder="1.14.0"
+                  className="mt-1.5 min-h-[44px] w-full rounded-xl border border-slate-800 bg-slate-950 px-3 font-mono text-sm text-blue-200 outline-none focus:border-blue-500"
+                />
+                <datalist id="bedrock-server-api-versions">
+                  {['1.14.0','1.15.0','1.16.0','1.17.0','1.18.0','1.19.0','2.0.0','2.1.0','2.2.0','2.3.0','2.4.0','2.5.0','2.6.0','2.7.0','2.8.0','2.9.0','2.10.0'].map((item) => <option key={item} value={item} />)}
+                </datalist>
+              </label>
+              <label className="block min-w-0 text-xs font-medium text-slate-300">
+                @minecraft/server-ui
+                <input
+                  list="bedrock-server-ui-api-versions"
+                  value={scriptUiApiVersion}
+                  onChange={(event) => setScriptUiApiVersion(event.target.value)}
+                  placeholder="1.3.0"
+                  className="mt-1.5 min-h-[44px] w-full rounded-xl border border-slate-800 bg-slate-950 px-3 font-mono text-sm text-blue-200 outline-none focus:border-blue-500"
+                />
+                <datalist id="bedrock-server-ui-api-versions">
+                  {['1.0.0','1.1.0','1.2.0','1.3.0','2.0.0','2.1.0','2.2.0'].map((item) => <option key={item} value={item} />)}
+                </datalist>
+              </label>
             </div>
-          </div>
+            <p className="mt-2 text-[10px] leading-4 text-slate-500">Puedes escribir una versión o elegir una sugerida. Si eliges versiones 2.x, comprueba que tu versión concreta de Minecraft las admita.</p>
+          </section>
 
           {/* Submit */}
           <div className="pt-2">
