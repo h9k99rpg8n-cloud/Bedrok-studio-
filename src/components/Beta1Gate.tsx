@@ -333,12 +333,12 @@ export const Beta1Gate: React.FC<Beta1GateProps> = ({ children, showProfileDock 
             </div>
           </div>
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-200">
-            <ShieldCheck size={15} /> Beta 1 Release
+            <ShieldCheck size={15} /> Beta 2 Release
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Bienvenidos y bienvenidas al acceso anticipado</h1>
-          <p className="mt-2 text-base font-bold text-blue-300">Bedrock Studio 3.0 · Beta 1</p>
+          <p className="mt-2 text-base font-bold text-blue-300">Bedrock Studio 3.0 · Beta 2</p>
           <p className="mt-4 text-sm leading-6 text-slate-300">
-            Esta versión inicia el rework de Bedrock Studio. La Beta 1 se centra en la pantalla de bienvenida y las cuentas locales. Otras secciones se renovarán en futuras betas.
+            Esta versión inicia el rework de Bedrock Studio. La Beta 2 continúa el rework con mejoras de diseño, perfil y herramientas. Esta versión sigue en desarrollo y algunas secciones pueden recibir más ajustes.
           </p>
           <div className="mt-5 rounded-2xl border border-slate-700/80 bg-[#090d16] p-4">
             <p className="text-sm font-semibold text-slate-100">Antes de continuar</p>
@@ -495,8 +495,28 @@ export const Beta1Gate: React.FC<Beta1GateProps> = ({ children, showProfileDock 
                       <button type="button" onClick={() => setDesignMode('modern')} className={`min-h-10 rounded-lg border px-3 text-left text-xs font-semibold ${designMode === 'modern' ? 'border-blue-400/70 bg-blue-500/10 text-blue-200' : 'border-slate-700 text-slate-300'}`}>Diseño moderno · v3.0</button>
                       <button type="button" onClick={() => setDesignMode('custom')} className={`min-h-10 rounded-lg border px-3 text-left text-xs font-semibold ${designMode === 'custom' ? 'border-blue-400/70 bg-blue-500/10 text-blue-200' : 'border-slate-700 text-slate-300'}`}>Diseño personalizado</button>
                     </div>
-                    {designMode === 'custom' && <label className="mt-3 flex items-center justify-between gap-3 text-xs text-slate-300">Color de acento <input aria-label="Elegir color de acento" type="color" value={accentColor} onChange={(event) => setAccentColor(event.target.value)} className="h-10 w-14 cursor-pointer rounded-lg border border-slate-700 bg-slate-900 p-1" /></label>}
-                    <p className="mt-2 text-[10px] leading-4 text-slate-500">El color se guarda en este dispositivo. El selector cambia el color de acento; la reorganización completa de los diseños llegará en una actualización posterior.</p>
+                    {designMode === 'custom' && (
+                      <div className="mt-3 rounded-xl border border-slate-700 bg-[#080b12] p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-semibold text-slate-200">Círculo cromático</p>
+                            <p className="mt-1 text-[10px] text-slate-500">Toca el círculo para elegir tu color</p>
+                          </div>
+                          <label className="relative flex h-14 w-14 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-white/20 shadow-lg" style={{ background: 'conic-gradient(#ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)' }}>
+                            <span className="h-7 w-7 rounded-full border-2 border-white shadow" style={{ backgroundColor: accentColor }} />
+                            <input aria-label="Elegir color del círculo cromático" type="color" value={accentColor} onChange={(event) => setAccentColor(event.target.value)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
+                          </label>
+                        </div>
+                        <div className="mt-3 flex items-center gap-2">
+                          <span className="h-5 w-5 rounded-md border border-white/20" style={{ backgroundColor: accentColor }} />
+                          <span className="font-mono text-xs uppercase text-slate-300">{accentColor}</span>
+                          <label className="ml-auto text-xs text-slate-400">Color exacto
+                            <input aria-label="Introducir color personalizado" type="color" value={accentColor} onChange={(event) => setAccentColor(event.target.value)} className="ml-2 h-8 w-10 cursor-pointer rounded border border-slate-700 bg-slate-900 p-0.5 align-middle" />
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                    <p className="mt-2 text-[10px] leading-4 text-slate-500">Tu color se guarda en este dispositivo. No se usan imágenes de fondo.</p>
                   </div>
                   <div className="flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm text-slate-500"><Languages size={16} /><span className="flex-1">Idioma</span><span className="text-[10px]">Próximamente</span><LockKeyhole size={14} /></div>
                 </div>
