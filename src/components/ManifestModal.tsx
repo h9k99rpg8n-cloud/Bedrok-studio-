@@ -30,6 +30,7 @@ export const ManifestModal: React.FC<ManifestModalProps> = ({
   const [minEngineVersion, setMinEngineVersion] = useState(initialProject?.minEngineVersion || '1.26.20');
   const [iconDataUrl, setIconDataUrl] = useState(initialProject?.iconDataUrl || '');
   const [errorMessage, setErrorMessage] = useState('');
+  const [showDescriptionSuggestions, setShowDescriptionSuggestions] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -214,17 +215,22 @@ export const ManifestModal: React.FC<ManifestModalProps> = ({
               type="text"
               required
               value={name}
+              list="bedrock-addon-name-suggestions"
               onChange={(e) => {
                 setName(e.target.value);
                 setErrorMessage('');
               }}
               placeholder="Ej: Poppicraft Addon"
+              autoComplete="off"
               className={`w-full min-h-[46px] px-3.5 bg-slate-950 border rounded-xl text-sm text-slate-100 focus:outline-none transition-colors ${
                 nameModeration.hasInappropriate
                   ? 'border-amber-500/70 focus:border-amber-400'
                   : 'border-slate-800 focus:border-emerald-500'
               }`}
             />
+            <datalist id="bedrock-addon-name-suggestions">
+              {['Mi primer Addon', 'Nuevos bloques', 'Decoración Minecraft', 'Herramientas personalizadas', 'Aventura y exploración'].map((suggestion) => <option key={suggestion} value={suggestion} />)}
+            </datalist>
             {nameModeration.hasInappropriate && (
               <span className="text-[10px] text-amber-400 mt-1 flex items-center gap-1">
                 <i className="bx bx-error text-xs" />
@@ -255,6 +261,7 @@ export const ManifestModal: React.FC<ManifestModalProps> = ({
               required
               rows={2}
               value={description}
+              onFocus={() => setShowDescriptionSuggestions(true)}
               onChange={(e) => {
                 setDescription(e.target.value);
                 setErrorMessage('');
@@ -275,11 +282,10 @@ export const ManifestModal: React.FC<ManifestModalProps> = ({
 
             {/* Sugerencias inteligentes de descripción (v1.6) */}
             <div className="mt-2 flex flex-col gap-1.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+              <button type="button" onClick={() => setShowDescriptionSuggestions((visible) => !visible)} className="flex min-h-9 items-center gap-1 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400"><i className="bx bx-bulb text-amber-400 text-xs" /><span>Sugerencias para la descripción</span><span className="ml-auto text-blue-300">{showDescriptionSuggestions ? 'Ocultar' : 'Mostrar'}</span></button>
+              {showDescriptionSuggestions && <div className="flex flex-col gap-1">
                 <i className="bx bx-bulb text-amber-400 text-xs" />
-                <span>Sugerencias para la descripción:</span>
-              </span>
-              <div className="flex flex-col gap-1">
+              
                 {descriptionSuggestions.map((sug, i) => (
                   <button
                     key={i}
@@ -294,7 +300,7 @@ export const ManifestModal: React.FC<ManifestModalProps> = ({
                     <span>{sug}</span>
                   </button>
                 ))}
-              </div>
+              </div>}
             </div>
           </div>
 
