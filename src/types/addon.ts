@@ -268,6 +268,9 @@ export interface AddonProject {
   description: string;
   version: string; // e.g. "1.0.0"
   minEngineVersion: string; // e.g. "1.26.20"
+  /** Stable Script API module versions selected for the behavior pack. */
+  scriptApiVersion?: string;
+  scriptUiApiVersion?: string;
   iconDataUrl: string; // Base64 pack_icon.png
   bpUuid: string;
   rpUuid: string;
