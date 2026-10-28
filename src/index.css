@@ -143,6 +143,15 @@ html, body { background-color: #080b12; }
 
 /* Beta 2 responsive layer: prioritize iPhone portrait and landscape. */
 :root { --bs-accent: #3b82f6; --bs-accent-soft: rgba(59,130,246,.16); }
+
+/* Apply the selected accent across legacy utility classes used throughout the app. */
+.bg-emerald-500, .bg-teal-500 { background-color: var(--bs-accent) !important; }
+.hover\\:bg-emerald-400:hover, .hover\\:bg-teal-400:hover { background-color: var(--bs-accent) !important; filter: brightness(1.08); }
+.text-emerald-400, .text-emerald-300, .text-teal-400, .text-teal-300 { color: var(--bs-accent) !important; }
+.border-emerald-400, .border-emerald-500, .border-teal-400, .border-teal-500 { border-color: var(--bs-accent) !important; }
+.focus\\:border-emerald-500:focus, .focus-within\\:border-emerald-500:focus-within { border-color: var(--bs-accent) !important; }
+.ring-emerald-500 { --tw-ring-color: var(--bs-accent) !important; }
+
 html, body, #root { width: 100%; max-width: 100%; min-height: 100%; }
 body { overflow-x: hidden; -webkit-text-size-adjust: 100%; }
 *, *::before, *::after { box-sizing: border-box; }
