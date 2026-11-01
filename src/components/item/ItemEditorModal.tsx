@@ -863,18 +863,13 @@ export const ItemEditorModal: React.FC<ItemEditorModalProps> = ({
               textureDataUrl={textureDataUrl}
             />
 
-            {/* Guardar Ítem */}
-            <div className="mt-auto pt-2">
-              <button
-                type="button"
-                onClick={handleSave}
-                className="w-full min-h-[48px] px-4 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 active:scale-98 transition-all shadow-lg shadow-cyan-500/25"
-              >
-                <i className="bx bxs-save text-lg" />
-                <span>{item ? 'Guardar Cambios del Ítem' : 'Crear Ítem en el Addon'}</span>
-              </button>
-            </div>
           </div>}
+          <div className="sticky bottom-0 z-10 w-full md:w-72 shrink-0 bg-[#090e18] pt-2">
+            <button type="button" onClick={handleSave} className="w-full min-h-[48px] px-4 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 active:scale-98 transition-all shadow-lg shadow-cyan-500/25">
+              <i className="bx bxs-save text-lg" />
+              <span>{item ? 'Guardar Cambios del Ítem' : 'Crear Ítem en el Addon'}</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
