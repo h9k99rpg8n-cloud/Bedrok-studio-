@@ -11,7 +11,7 @@ import {
   ItemCooldownConfig,
   ItemCustomComponentConfig,
 } from '../../types/item';
-import { BlockGroup, CustomTexture } from '../../types/addon';
+import { BlockGroup, BlockTranslation, CustomTexture, SUPPORTED_LANGUAGES } from '../../types/addon';
 import { ItemPreview } from './ItemPreview';
 import { ItemComponentsManager } from './ItemComponentsManager';
 
@@ -48,6 +48,8 @@ export const ItemEditorModal: React.FC<ItemEditorModalProps> = ({
   // Identidad
   const [identifier, setIdentifier] = useState<string>('custom:mi_item');
   const [bedrockGroup, setBedrockGroup] = useState<string>('');
+  const [translations, setTranslations] = useState<BlockTranslation[]>([]);
+  const [selectedLangToAdd, setSelectedLangToAdd] = useState<string>('es_ES');
   const [displayName, setDisplayName] = useState<string>('Mi Ítem');
   const [category, setCategory] = useState<ItemCategory>('items');
   const [rarity, setRarity] = useState<ItemRarity>('common');
@@ -90,6 +92,7 @@ export const ItemEditorModal: React.FC<ItemEditorModalProps> = ({
       if (item) {
         setIdentifier(item.identifier?.includes(':') ? item.identifier : `custom:${item.identifier || 'mi_item'}`);
         setBedrockGroup(item.bedrockGroup || '');
+        setTranslations(item.translations?.length ? JSON.parse(JSON.stringify(item.translations)) : [{ langCode: 'es_ES', name: item.displayName || 'Mi Ítem' }, { langCode: 'en_US', name: item.displayName || 'My Item' }]);
         setDisplayName(item.displayName || 'Mi Ítem');
         setCategory(item.category || 'items');
         setRarity(item.rarity || 'common');
@@ -125,6 +128,7 @@ export const ItemEditorModal: React.FC<ItemEditorModalProps> = ({
         const nextNum = existingItems.length + 1;
         setIdentifier(`custom:item_${nextNum}`);
         setBedrockGroup('');
+        setTranslations([{ langCode: 'es_ES', name: `Ítem ${nextNum}` }, { langCode: 'en_US', name: `Item ${nextNum}` }]);
         setDisplayName(`Ítem ${nextNum}`);
         setCategory('items');
         setRarity('common');
@@ -243,6 +247,7 @@ export const ItemEditorModal: React.FC<ItemEditorModalProps> = ({
       displayName: displayName.trim(),
       folderId: item?.folderId,
       bedrockGroup: bedrockGroup || undefined,
+      translations: translations.length ? translations : undefined,
       textureId: textureId || undefined,
       textureDataUrl: textureDataUrl || undefined,
       category,
@@ -396,6 +401,25 @@ export const ItemEditorModal: React.FC<ItemEditorModalProps> = ({
                   <span className="text-[10px] text-slate-400">
                     El nombre que ven los jugadores al pasar el cursor sobre el ítem en su inventario.
                   </span>
+                </div>
+
+                <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 flex flex-col gap-3">
+                  <div className="flex items-center justify-between gap-2"><span className="text-xs font-bold text-slate-200">Idioma y traducciones (.lang)</span><span className="text-[10px] text-emerald-300">{translations.length} idiomas</span></div>
+                  <p className="text-[11px] text-slate-400">Usa los mismos idiomas disponibles en el editor de bloques.</p>
+                  {translations.map((trans, idx) => {
+                    const langMeta = SUPPORTED_LANGUAGES.find((lang) => lang.code === trans.langCode);
+                    return <div key={trans.langCode} className="flex items-center gap-2 p-2 bg-slate-900/80 rounded-xl border border-slate-800">
+                      <span className="px-2 py-1 bg-slate-950 border border-slate-800 text-[10px] font-mono text-emerald-400 rounded">{trans.langCode}</span>
+                      <input type="text" value={trans.name} onChange={(event) => setTranslations((prev) => prev.map((entry, index) => index === idx ? { ...entry, name: event.target.value } : entry))} placeholder={langMeta?.label || trans.langCode} className="flex-1 min-w-0 min-h-[36px] px-2 bg-transparent text-xs text-slate-100 focus:outline-none" />
+                      <button type="button" onClick={() => setTranslations((prev) => prev.filter((_, index) => index !== idx))} className="min-h-[36px] min-w-[36px] text-slate-500 hover:text-rose-400" aria-label="Eliminar traducción"><i className="bx bx-trash" /></button>
+                    </div>;
+                  })}
+                  <div className="flex items-center gap-2 pt-2 border-t border-slate-800/80">
+                    <select value={selectedLangToAdd} onChange={(event) => setSelectedLangToAdd(event.target.value)} className="flex-1 min-h-[40px] px-3 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-200">
+                      {SUPPORTED_LANGUAGES.filter((lang) => !translations.some((entry) => entry.langCode === lang.code)).map((lang) => <option key={lang.code} value={lang.code}>{lang.label} ({lang.code})</option>)}
+                    </select>
+                    <button type="button" onClick={() => { if (selectedLangToAdd && !translations.some((entry) => entry.langCode === selectedLangToAdd)) setTranslations((prev) => [...prev, { langCode: selectedLangToAdd, name: displayName || '' }]); }} className="min-h-[40px] px-3 bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-semibold">Añadir</button>
+                  </div>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 flex flex-col gap-2"><label className="text-xs font-bold text-slate-200">Grupo personalizado existente</label><select value={bedrockGroup} onChange={(e) => setBedrockGroup(e.target.value)} className="w-full min-h-[42px] px-3 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white outline-none focus:border-cyan-400"><option value="">Sin grupo</option>{existingGroups.filter((group) => Boolean(group.bedrockGroup)).map((group) => <option key={group.id} value={group.bedrockGroup}>{group.name} ({group.bedrockGroup})</option>)}</select><span className="text-[10px] text-slate-400">Solo aparecen los grupos ya creados en este proyecto.</span></div>
