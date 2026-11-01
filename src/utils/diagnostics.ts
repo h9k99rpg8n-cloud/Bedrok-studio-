@@ -476,7 +476,7 @@ export function runProjectDiagnostics(project: AddonProject): DiagnosticIssue[] 
           severity: 'error',
           title: `Identificador de receta duplicado: "custom:${id}"`,
           description: `Existen ${recipeIds.length} recetas con el mismo identificador.`,
-          affectedTarget: `custom:${id}`,
+          affectedTarget: id,
           reason: 'Identificadores duplicados sobrescribirán recetas en Minecraft.',
           suggestion: 'Renombra una de las recetas para que tenga un identificador único.',
         });
@@ -489,7 +489,7 @@ export function runProjectDiagnostics(project: AddonProject): DiagnosticIssue[] 
     const seenItemIds = new Map<string, string[]>();
     project.items.forEach((item) => {
       const rawId = item.identifier?.trim() || '';
-      const cleanId = rawId.toLowerCase().replace(/^custom:/, '');
+      const cleanId = rawId.toLowerCase().includes(':') ? rawId.toLowerCase() : `custom:${rawId.toLowerCase()}`;
       if (!seenItemIds.has(cleanId)) {
         seenItemIds.set(cleanId, []);
       }
@@ -505,14 +505,14 @@ export function runProjectDiagnostics(project: AddonProject): DiagnosticIssue[] 
           reason: 'Minecraft necesita un identificador alfanumérico único para registrar el ítem.',
           suggestion: 'Abre el editor de ítems y escribe un identificador válido.',
         });
-      } else if (!isValidBedrockIdentifier(cleanId)) {
+      } else if (!/^[a-z0-9_]+:[a-z0-9_]+$/.test(cleanId)) {
         issues.push({
           id: `item_invalid_format_${item.id}`,
           severity: 'error',
-          title: `Formato inválido en ítem: "custom:${cleanId}"`,
+          title: `Formato inválido en ítem: "${cleanId}"`,
           description: 'El identificador contiene caracteres no admitidos.',
-          affectedTarget: `custom:${cleanId}`,
-          reason: 'Solo se permiten letras minúsculas (a-z), números (0-9) y guiones bajos (_).',
+          affectedTarget: cleanId,
+          reason: 'Usa namespace:identificador; ambos segmentos solo admiten letras minúsculas (a-z), números (0-9) y guiones bajos (_).',
           suggestion: 'Corrige el identificador para cumplir el estándar de Minecraft Bedrock.',
         });
       }
@@ -521,9 +521,9 @@ export function runProjectDiagnostics(project: AddonProject): DiagnosticIssue[] 
         issues.push({
           id: `item_empty_name_${item.id}`,
           severity: 'warning',
-          title: `Ítem sin nombre visible: "custom:${cleanId}"`,
+          title: `Ítem sin nombre visible: "${cleanId}"`,
           description: 'El ítem se mostrará sin nombre traducido en el inventario.',
-          affectedTarget: `custom:${cleanId}`,
+          affectedTarget: cleanId,
           reason: 'El motor utilizará la clave técnica si falta el nombre legible.',
           suggestion: 'Asigna un nombre como "Espada de Rubí" o "Manzana Dorada".',
         });
@@ -535,7 +535,7 @@ export function runProjectDiagnostics(project: AddonProject): DiagnosticIssue[] 
         issues.push({
           id: `duplicate_item_id_${id}`,
           severity: 'error',
-          title: `Identificador de ítem duplicado: "custom:${id}"`,
+          title: `Identificador de ítem duplicado: "${id}"`,
           description: `Existen ${itemIds.length} ítems con el mismo identificador.`,
           affectedTarget: `custom:${id}`,
           reason: 'Los identificadores duplicados sobrescribirán ítems en Minecraft.',
