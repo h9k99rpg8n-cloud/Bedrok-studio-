@@ -11,16 +11,16 @@ import {
   ItemCooldownConfig,
   ItemCustomComponentConfig,
 } from '../../types/item';
-import { CustomTexture } from '../../types/addon';
+import { BlockGroup, CustomTexture } from '../../types/addon';
 import { ItemPreview } from './ItemPreview';
 import { ItemComponentsManager } from './ItemComponentsManager';
-import { isValidBedrockIdentifier } from '../../utils/diagnostics';
 
 interface ItemEditorModalProps {
   isOpen: boolean;
   item: CustomItem | null;
   existingItems: CustomItem[];
   availableTextures: CustomTexture[];
+  existingGroups: BlockGroup[];
   onClose: () => void;
   onSaveItem: (item: CustomItem) => void;
   onOpenTextureLibrary: () => void;
@@ -28,13 +28,14 @@ interface ItemEditorModalProps {
   assignedTextureUrl?: string | null;
 }
 
-type ItemTab = 'identity' | 'appearance' | 'mechanics' | 'food_use' | 'components';
+type ItemTab = 'identity' | 'texture' | 'properties' | 'behavior';
 
 export const ItemEditorModal: React.FC<ItemEditorModalProps> = ({
   isOpen,
   item,
   existingItems,
   availableTextures,
+  existingGroups,
   onClose,
   onSaveItem,
   onOpenTextureLibrary,
@@ -45,7 +46,8 @@ export const ItemEditorModal: React.FC<ItemEditorModalProps> = ({
   const [activeTab, setActiveTab] = useState<ItemTab>('identity');
 
   // Identidad
-  const [identifier, setIdentifier] = useState<string>('mi_item');
+  const [identifier, setIdentifier] = useState<string>('custom:mi_item');
+  const [bedrockGroup, setBedrockGroup] = useState<string>('');
   const [displayName, setDisplayName] = useState<string>('Mi Ítem');
   const [category, setCategory] = useState<ItemCategory>('items');
   const [rarity, setRarity] = useState<ItemRarity>('common');
@@ -86,7 +88,8 @@ export const ItemEditorModal: React.FC<ItemEditorModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       if (item) {
-        setIdentifier(item.identifier || 'mi_item');
+        setIdentifier(item.identifier?.includes(':') ? item.identifier : `custom:${item.identifier || 'mi_item'}`);
+        setBedrockGroup(item.bedrockGroup || '');
         setDisplayName(item.displayName || 'Mi Ítem');
         setCategory(item.category || 'items');
         setRarity(item.rarity || 'common');
@@ -120,7 +123,8 @@ export const ItemEditorModal: React.FC<ItemEditorModalProps> = ({
       } else {
         // Inicializar nuevo ítem
         const nextNum = existingItems.length + 1;
-        setIdentifier(`item_${nextNum}`);
+        setIdentifier(`custom:item_${nextNum}`);
+        setBedrockGroup('');
         setDisplayName(`Ítem ${nextNum}`);
         setCategory('items');
         setRarity('common');
@@ -161,28 +165,30 @@ export const ItemEditorModal: React.FC<ItemEditorModalProps> = ({
 
   if (!isOpen) return null;
 
-  const trimmedId = identifier.trim().toLowerCase().replace(/^custom:/i, '');
-  const isDuplicateId = existingItems.some(
-    (it) => it.identifier === trimmedId && (!item || it.id !== item.id)
-  );
-  const isValidId = isValidBedrockIdentifier(trimmedId);
+  const fullIdentifier = identifier.trim().toLowerCase();
+  const identifierParts = fullIdentifier.split(':');
+  const isValidId = identifierParts.length === 2 && /^[a-z0-9_]+$/.test(identifierParts[0]) && /^[a-z0-9_]+$/.test(identifierParts[1]);
+  const isDuplicateId = existingItems.some((it) => {
+    const existingId = (it.identifier || '').includes(':') ? it.identifier.toLowerCase() : `custom:${(it.identifier || '').toLowerCase()}`;
+    return existingId === fullIdentifier && (!item || it.id !== item.id);
+  });
 
   // Validación y guardado
   const handleSave = () => {
-    if (!trimmedId) {
+    if (!fullIdentifier) {
       setValidationError('El identificador del ítem es obligatorio.');
       setActiveTab('identity');
       return;
     }
 
     if (!isValidId) {
-      setValidationError('El identificador técnico solo puede contener letras minúsculas, números y guiones bajos (_).');
+      setValidationError('Usa el formato namespace:identificador. Solo se permiten letras minúsculas, números y guiones bajos (_).');
       setActiveTab('identity');
       return;
     }
 
     if (isDuplicateId) {
-      setValidationError(`Ya existe otro ítem con el identificador «custom:${trimmedId}». Usa uno diferente.`);
+      setValidationError(`Ya existe otro ítem con el identificador «${fullIdentifier}». Usa uno diferente.`);
       setActiveTab('identity');
       return;
     }
@@ -233,9 +239,10 @@ export const ItemEditorModal: React.FC<ItemEditorModalProps> = ({
 
     const saved: CustomItem = {
       id: item?.id || `item_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      identifier: trimmedId,
+      identifier: fullIdentifier,
       displayName: displayName.trim(),
       folderId: item?.folderId,
+      bedrockGroup: bedrockGroup || undefined,
       textureId: textureId || undefined,
       textureDataUrl: textureDataUrl || undefined,
       category,
@@ -261,7 +268,7 @@ export const ItemEditorModal: React.FC<ItemEditorModalProps> = ({
 
   // Ítem temporal para la vista previa
   const previewItemData: Partial<CustomItem> = {
-    identifier: trimmedId,
+    identifier: fullIdentifier,
     displayName: displayName.trim(),
     rarity,
     maxStackSize,
@@ -292,7 +299,7 @@ export const ItemEditorModal: React.FC<ItemEditorModalProps> = ({
                 </span>
               </div>
               <span className="text-[10px] font-mono text-cyan-400 truncate block">
-                custom:{trimmedId || 'sin_id'}
+                {fullIdentifier || 'sin_id'}
               </span>
             </div>
           </div>
@@ -317,85 +324,19 @@ export const ItemEditorModal: React.FC<ItemEditorModalProps> = ({
           </div>
         )}
 
-        {/* Pestañas de Navegación Propias del Editor de Ítems */}
-        <div
-          role="tablist"
-          className="sticky top-[61px] sm:top-[69px] z-20 flex gap-1.5 overflow-x-auto whitespace-nowrap overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden bg-[#0a0f1b]/95 backdrop-blur-xl p-1.5 mx-3 sm:mx-4 mt-3 rounded-xl border border-slate-800 shrink-0"
-        >
-          {/* TAB 1: IDENTIDAD */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('identity')}
-            className={`min-h-[40px] shrink-0 px-3.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
-              activeTab === 'identity'
-                ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <i className="bx bxs-id-card text-base" />
-            <span>Identidad</span>
-          </button>
-
-          {/* TAB 2: TEXTURA Y APARIENCIA */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('appearance')}
-            className={`min-h-[40px] shrink-0 px-3.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
-              activeTab === 'appearance'
-                ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <i className="bx bxs-paint text-base" />
-            <span>Textura e Icono</span>
-          </button>
-
-          {/* TAB 3: MECÁNICAS DE JUEGO */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('mechanics')}
-            className={`min-h-[40px] shrink-0 px-3.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
-              activeTab === 'mechanics'
-                ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <i className="bx bxs-wrench text-base" />
-            <span>Mecánicas</span>
-          </button>
-
-          {/* TAB 4: USO Y COMESTIBLES */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('food_use')}
-            className={`min-h-[40px] shrink-0 px-3.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
-              activeTab === 'food_use'
-                ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <i className="bx bxs-bowl-hot text-base" />
-            <span>Uso y Alimentos</span>
-          </button>
-
-          {/* TAB 5: COMPONENTES BEDROCK */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('components')}
-            className={`min-h-[40px] shrink-0 px-3.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
-              activeTab === 'components'
-                ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <i className="bx bx-chip text-base" />
-            <span>Componentes</span>
-            {customComponents.filter((c) => c.enabled).length > 0 && (
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-950 text-cyan-300 font-bold">
-                {customComponents.filter((c) => c.enabled).length}
-              </span>
-            )}
-          </button>
+        {/* Navegación simplificada del editor de ítems */}
+        <div role="tablist" className="sticky top-[61px] sm:top-[69px] z-20 flex gap-1.5 overflow-x-auto whitespace-nowrap overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden bg-[#0a0f1b]/95 backdrop-blur-xl p-1.5 mx-3 sm:mx-4 mt-3 rounded-xl border border-slate-800 shrink-0">
+          {([
+            ['identity', 'Identidad', 'bx bxs-id-card'],
+            ['texture', 'Textura', 'bx bxs-paint'],
+            ['properties', 'Propiedades', 'bx bxs-wrench'],
+            ['behavior', 'Comportamiento', 'bx bx-chip'],
+          ] as const).map(([tab, label, icon]) => (
+            <button key={tab} type="button" role="tab" aria-selected={activeTab === tab} onClick={() => setActiveTab(tab)} className={`min-h-[40px] shrink-0 px-3.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${activeTab === tab ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
+              <i className={`${icon} text-base`} /><span>{label}</span>
+              {tab === 'behavior' && customComponents.filter((c) => c.enabled).length > 0 && <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-950 text-cyan-300 font-bold">{customComponents.filter((c) => c.enabled).length}</span>}
+            </button>
+          ))}
         </div>
 
         {/* Cuerpo Principal: Formulario a la izquierda y Vista Previa en tiempo real a la derecha */}
@@ -412,36 +353,23 @@ export const ItemEditorModal: React.FC<ItemEditorModalProps> = ({
                   <label className="text-xs font-bold text-slate-200">
                     Identificador Técnico Único *
                   </label>
-                  <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl overflow-hidden focus-within:border-cyan-400">
-                    <span className="px-3 text-xs text-slate-400 font-mono select-none">custom:</span>
-                    <input
-                      type="text"
-                      value={identifier}
-                      onChange={(e) => {
-                        const raw = e.target.value.replace(/^custom:/i, '');
-                        setIdentifier(raw.toLowerCase().replace(/[^a-z0-9_]/g, '_'));
-                        setValidationError('');
-                      }}
-                      placeholder="espada_runica"
-                      className="w-full min-h-[40px] pr-3 bg-transparent text-sm font-mono text-cyan-300 focus:outline-none"
-                    />
-                  </div>
+                  <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl overflow-hidden focus-within:border-cyan-400"><input type="text" value={identifier} onChange={(e) => { setIdentifier(e.target.value.toLowerCase().replace(/[^a-z0-9_:]/g, '')); setValidationError(''); }} placeholder="hive:espada_runica" aria-label="Identificador completo con namespace" className="w-full min-h-[40px] px-3 bg-transparent text-sm font-mono text-cyan-300 focus:outline-none" /></div>
 
                   <div className="text-[11px] flex flex-col gap-1 mt-1">
-                    {trimmedId && isDuplicateId && (
+                    {fullIdentifier && isDuplicateId && (
                       <span className="text-rose-400 font-semibold flex items-center gap-1">
                         <i className="bx bx-error-circle" />
-                        Ya existe otro ítem con el identificador «custom:{trimmedId}».
+                        Ya existe otro ítem con el identificador «{fullIdentifier}».
                       </span>
                     )}
-                    {trimmedId && !isDuplicateId && isValidId && (
+                    {fullIdentifier && !isDuplicateId && isValidId && (
                       <span className="text-emerald-400 flex items-center gap-1">
                         <i className="bx bx-check-circle" />
                         Identificador disponible para comandos:{' '}
-                        <code className="font-mono font-bold">/give @s custom:{trimmedId}</code>
+                        <code className="font-mono font-bold">/give @s {fullIdentifier}</code>
                       </span>
                     )}
-                    {!trimmedId && (
+                    {!fullIdentifier && (
                       <span className="text-amber-400 flex items-center gap-1">
                         <i className="bx bx-info-circle" />
                         Escribe un identificador para el ítem.
@@ -469,6 +397,8 @@ export const ItemEditorModal: React.FC<ItemEditorModalProps> = ({
                     El nombre que ven los jugadores al pasar el cursor sobre el ítem en su inventario.
                   </span>
                 </div>
+
+                <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 flex flex-col gap-2"><label className="text-xs font-bold text-slate-200">Grupo personalizado existente</label><select value={bedrockGroup} onChange={(e) => setBedrockGroup(e.target.value)} className="w-full min-h-[42px] px-3 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white outline-none focus:border-cyan-400"><option value="">Sin grupo</option>{existingGroups.filter((group) => Boolean(group.bedrockGroup)).map((group) => <option key={group.id} value={group.bedrockGroup}>{group.name} ({group.bedrockGroup})</option>)}</select><span className="text-[10px] text-slate-400">Solo aparecen los grupos ya creados en este proyecto.</span></div>
 
                 {/* Categoría de Inventario Creativo y Rareza */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -510,7 +440,7 @@ export const ItemEditorModal: React.FC<ItemEditorModalProps> = ({
             {/* ============================================================= */}
             {/* SECCIÓN 2: TEXTURA Y APARIENCIA                               */}
             {/* ============================================================= */}
-            {activeTab === 'appearance' && (
+            {activeTab === 'texture' && (
               <div className="flex flex-col gap-3.5 animate-in fade-in duration-150">
                 {/* Selector de Textura 2D */}
                 <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 flex flex-col gap-3">
@@ -623,7 +553,7 @@ export const ItemEditorModal: React.FC<ItemEditorModalProps> = ({
             {/* ============================================================= */}
             {/* SECCIÓN 3: MECÁNICAS DE JUEGO                                 */}
             {/* ============================================================= */}
-            {activeTab === 'mechanics' && (
+            {activeTab === 'properties' && (
               <div className="flex flex-col gap-3.5 animate-in fade-in duration-150">
                 {/* Tamaño Máximo de Pila */}
                 <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 flex flex-col gap-2.5">
@@ -777,7 +707,7 @@ export const ItemEditorModal: React.FC<ItemEditorModalProps> = ({
             {/* ============================================================= */}
             {/* SECCIÓN 4: USO Y ALIMENTOS                                    */}
             {/* ============================================================= */}
-            {activeTab === 'food_use' && (
+            {activeTab === 'properties' && (
               <div className="flex flex-col gap-3.5 animate-in fade-in duration-150">
                 {/* Animación de Uso */}
                 <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 flex flex-col gap-2.5">
@@ -916,7 +846,7 @@ export const ItemEditorModal: React.FC<ItemEditorModalProps> = ({
             {/* ============================================================= */}
             {/* SECCIÓN 5: COMPONENTES BEDROCK OFICIALES                      */}
             {/* ============================================================= */}
-            {activeTab === 'components' && (
+            {activeTab === 'behavior' && (
               <div className="animate-in fade-in duration-150">
                 <ItemComponentsManager
                   components={customComponents}
@@ -927,7 +857,7 @@ export const ItemEditorModal: React.FC<ItemEditorModalProps> = ({
           </div>
 
           {/* COLUMNA LATERAL: VISTA PREVIA INTERACTIVA */}
-          <div className="w-full md:w-72 flex flex-col gap-3 shrink-0">
+          {activeTab === 'texture' && <div className="w-full md:w-72 flex flex-col gap-3 shrink-0">
             <ItemPreview
               item={previewItemData}
               textureDataUrl={textureDataUrl}
@@ -944,7 +874,7 @@ export const ItemEditorModal: React.FC<ItemEditorModalProps> = ({
                 <span>{item ? 'Guardar Cambios del Ítem' : 'Crear Ítem en el Addon'}</span>
               </button>
             </div>
-          </div>
+          </div>}
         </div>
       </div>
     </div>
