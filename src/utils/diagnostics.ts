@@ -537,7 +537,7 @@ export function runProjectDiagnostics(project: AddonProject): DiagnosticIssue[] 
           severity: 'error',
           title: `Identificador de ítem duplicado: "${id}"`,
           description: `Existen ${itemIds.length} ítems con el mismo identificador.`,
-          affectedTarget: `custom:${id}`,
+          affectedTarget: id,
           reason: 'Los identificadores duplicados sobrescribirán ítems en Minecraft.',
           suggestion: 'Renombra uno de los ítems para que tenga un identificador único.',
         });
