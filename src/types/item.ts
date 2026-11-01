@@ -77,6 +77,7 @@ export interface CustomItem {
   interactButton?: string;
   tags?: string[];
   bedrockGroup?: string;
+  translations?: Array<{ langCode: string; name: string }>; // Localized item names (.lang)
   canDestroyInCreative?: boolean;
   customComponents?: ItemCustomComponentConfig[];
   createdAt: number;
