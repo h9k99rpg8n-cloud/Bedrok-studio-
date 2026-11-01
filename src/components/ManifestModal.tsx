@@ -350,7 +350,7 @@ export const ManifestModal: React.FC<ManifestModalProps> = ({
               <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
                 <i className="bx bx-code-alt text-blue-400" /> Módulos de Script API
               </span>
-              <span className="rounded-md bg-blue-500/10 px-2 py-1 text-[10px] font-semibold text-blue-300">Beta 2 · estable</span>
+              <span className="rounded-md bg-blue-500/10 px-2 py-1 text-[10px] font-semibold text-blue-300">Beta 3 · estable</span>
             </div>
             <p className="mt-2 text-[11px] leading-5 text-slate-400">Elige las versiones de los módulos que se incluirán en el manifiesto del Behavior Pack. Las versiones 1.x son la opción conservadora para mantener compatibilidad con proyectos Bedrock 1.26.</p>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">

@@ -40,6 +40,8 @@ export const TextureLibraryModal: React.FC<TextureLibraryModalProps> = ({
     { kind: 'lava' as const, name: 'Lava animada', description: 'Flujo naranja y rojo' },
     { kind: 'energy' as const, name: 'Energía mágica', description: 'Pulso verde brillante' },
     { kind: 'portal' as const, name: 'Portal morado', description: 'Espiral violeta' },
+    { kind: 'blue_crystal' as const, name: 'Cristal de energía azul', description: 'Brillos y energía azul y cian' },
+    { kind: 'magma_block' as const, name: 'Bloque de magma incandescente', description: 'Corteza oscura con grietas de calor' },
   ].map((item) => ({ ...item, source: createAnimatedTextureTemplate(item.kind) }))), []);
 
   // Filtered Minecraft Catalog

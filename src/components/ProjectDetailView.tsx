@@ -8,6 +8,7 @@ import {
   CraftingRecipe,
   ProjectFolder,
 } from '../types/addon';
+import { CustomItem } from '../types/item';
 import { WatermarkPickaxe } from './WatermarkPickaxe';
 import { exportAddonToMcaddon } from '../utils/exporter';
 import { runProjectDiagnostics } from '../utils/diagnostics';
@@ -21,6 +22,10 @@ interface ProjectDetailViewProps {
   onSaveProject: () => Promise<void>;
   onOpenBlockWizard: () => void;
   onOpenBlockEditor: (block: CustomBlock) => void;
+  onOpenCreateItem?: () => void;
+  onOpenEditItem?: (item: CustomItem) => void;
+  onDeleteItem?: (itemId: string) => void;
+  onDuplicateItem?: (item: CustomItem) => void;
   onOpenTexturePainter: () => void;
   onOpenTextureLibrary: () => void;
   onOpenDiagnostics: () => void;
@@ -36,7 +41,7 @@ interface ProjectDetailViewProps {
   onExportComplete: () => void;
 }
 
-type WorkspaceTab = 'blocks' | 'recipes' | 'textures' | 'groups';
+type WorkspaceTab = 'blocks' | 'items' | 'recipes' | 'textures' | 'groups';
 
 const GROUP_PALETTE = [
   { color: '#10b981', name: 'Esmeralda' },
@@ -57,6 +62,10 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   onSaveProject,
   onOpenBlockWizard,
   onOpenBlockEditor,
+  onOpenCreateItem,
+  onOpenEditItem,
+  onDeleteItem,
+  onDuplicateItem,
   onOpenTexturePainter,
   onOpenTextureLibrary,
   onOpenDiagnostics,
@@ -287,6 +296,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   const projectFolders = project.folders || [];
   const projectGroups = project.groups || [];
   const projectRecipes = project.recipes || [];
+  const projectItems = project.items || [];
   const normalizedQuery = searchQuery.trim().toLocaleLowerCase('es');
   const matchesSearch = (value: string | undefined) =>
     !normalizedQuery || (value || '').toLocaleLowerCase('es').includes(normalizedQuery);
@@ -313,6 +323,10 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           .localeCompare(b.groupName || projectGroups.find((g) => g.id === b.groupId)?.name || 'Sin grupo', 'es', { sensitivity: 'base' }) ||
         ((b.createdAt || 0) - (a.createdAt || 0))
       );
+  const filteredItems = sortByNameOrDate(
+    projectItems.filter((item) => (activeFolderId === 'all' || (activeFolderId === 'unfiled' ? !item.folderId : item.folderId === activeFolderId)) && (matchesSearch(item.displayName) || matchesSearch(item.identifier) || matchesSearch(item.category))),
+    (item) => item.displayName,
+  );
   const filteredRecipes = sortByNameOrDate(
     projectRecipes.filter((recipe) => (activeFolderId === 'all' || (activeFolderId === 'unfiled' ? !recipe.folderId : recipe.folderId === activeFolderId)) && (matchesSearch(recipe.displayName) || matchesSearch(recipe.identifier))),
     (recipe) => recipe.displayName,
@@ -442,6 +456,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
               <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">Ir a una sección</p>
               {([
                 { id: 'blocks', label: 'Bloques', icon: 'bx bxs-cube', count: project.blocks?.length || 0 },
+                { id: 'items', label: 'Ítems', icon: 'bx bxs-magic-wand', count: projectItems.length },
                 { id: 'recipes', label: 'Recetas', icon: 'bx bxs-grid', count: projectRecipes.length },
                 { id: 'textures', label: 'Texturas', icon: 'bx bxs-paint', count: project.textures?.length || 0 },
                 { id: 'groups', label: 'Grupos', icon: 'bx bx-category', count: projectGroups.length },
@@ -479,7 +494,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
             type="search"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder={`Buscar en ${activeTab === 'blocks' ? 'bloques' : activeTab === 'recipes' ? 'recetas' : activeTab === 'textures' ? 'texturas' : 'grupos'}...`}
+            placeholder={`Buscar en ${activeTab === 'blocks' ? 'bloques' : activeTab === 'items' ? 'ítems' : activeTab === 'recipes' ? 'recetas' : activeTab === 'textures' ? 'texturas' : 'grupos'}...`}
             aria-label="Buscar en la sección actual"
             className="w-full min-w-0 min-h-[42px] bg-transparent text-sm text-slate-100 placeholder:text-slate-500 outline-none"
           />
@@ -708,7 +723,167 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           </div>
         )}
 
-        {/* TAB 2: RECETAS DE FABRICACIÓN (v1.6: Mesa de Trabajo 3×3) */}
+        {/* TAB 2: ÍTEMS DEL ADDON (BETA 4) */}
+        {activeTab === 'items' && (
+          <div className="flex flex-col gap-3 animate-in fade-in duration-150">
+            {/* Header with Add Item Button */}
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <i className="bx bxs-magic-wand text-cyan-400" />
+                Ítems Personalizados
+              </span>
+              <button
+                type="button"
+                onClick={onOpenCreateItem}
+                className="text-xs font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 active:scale-95 transition-all"
+              >
+                <i className="bx bx-plus text-sm" />
+                <span>Crear Ítem</span>
+              </button>
+            </div>
+
+            {filteredItems.length === 0 && normalizedQuery ? (
+              <div className="py-12 text-center text-sm text-slate-400">
+                No se encontraron ítems para “{searchQuery}”.
+              </div>
+            ) : filteredItems.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center py-16 relative">
+                <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-cyan-400 mb-3 shadow-lg">
+                  <i className="bx bxs-magic-wand text-3xl" />
+                </div>
+                <h3 className="text-base font-bold text-slate-100 mb-1">
+                  Crea tu primer ítem personalizado
+                </h3>
+                <p className="text-xs text-slate-400 mb-6 max-w-xs leading-relaxed">
+                  Diseña armas, herramientas, alimentos, consumibles o minerales con durabilidad, animación de uso y comportamiento Bedrock nativo independiente.
+                </p>
+                <button
+                  type="button"
+                  onClick={onOpenCreateItem}
+                  className="min-h-[46px] px-6 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded-xl flex items-center justify-center gap-2 active:scale-95 shadow-md shadow-cyan-500/20 transition-all"
+                >
+                  <i className="bx bx-plus text-lg" />
+                  <span>Crear Nuevo Ítem</span>
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {filteredItems.map((item) => {
+                  const fullId = item.identifier.includes(':') ? item.identifier : `custom:${item.identifier}`;
+                  const rarityColors: Record<string, string> = {
+                    common: 'text-white',
+                    uncommon: 'text-yellow-400',
+                    rare: 'text-cyan-400',
+                    epic: 'text-purple-400',
+                  };
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => onOpenEditItem?.(item)}
+                      className="p-3.5 rounded-2xl bg-[#0d1322] border border-slate-800 hover:border-slate-700 transition-all flex items-center justify-between gap-3 shadow-sm group cursor-pointer active:scale-[0.99]"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {/* Minecraft Slot Icon with optional foil/glint */}
+                        <div className="relative w-12 h-12 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0 shadow-inner overflow-hidden">
+                          {item.textureDataUrl ? (
+                            <img
+                              src={item.textureDataUrl}
+                              alt={item.displayName}
+                              className={`w-9 h-9 object-contain [image-rendering:pixelated] ${item.glint ? 'brightness-125 filter drop-shadow-[0_0_6px_rgba(168,85,247,0.7)]' : ''}`}
+                            />
+                          ) : (
+                            <i className="bx bx-diamond text-2xl text-slate-600" />
+                          )}
+                          {item.glint && (
+                            <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/10 via-pink-400/20 to-transparent pointer-events-none animate-pulse" />
+                          )}
+                          {item.maxStackSize && item.maxStackSize < 64 && (
+                            <span className="absolute bottom-0.5 right-1 text-[9px] font-mono font-bold text-slate-300">
+                              {item.maxStackSize}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Item Details */}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className={`text-sm font-bold truncate ${rarityColors[item.rarity || 'common'] || 'text-white'}`}>
+                              {item.displayName}
+                            </span>
+                            {item.glint && (
+                              <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                Encantado
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[11px] font-mono text-slate-500 block truncate">
+                            {fullId}
+                          </span>
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-slate-400 capitalize">
+                              {item.category || 'items'}
+                            </span>
+                            {item.durability?.enabled && (
+                              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                                {item.durability.maxDurability} usos
+                              </span>
+                            )}
+                            {item.weapon?.enabled && (
+                              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-400 border border-rose-500/20">
+                                +{item.weapon.attackDamage} DMG
+                              </span>
+                            )}
+                            {item.food?.enabled && (
+                              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/20">
+                                +{item.food.nutrition} muslos
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        {onDuplicateItem && (
+                          <button
+                            type="button"
+                            onClick={() => onDuplicateItem(item)}
+                            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-white hover:bg-slate-900 transition-colors"
+                            title="Duplicar ítem"
+                          >
+                            <i className="bx bx-copy text-lg" />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => onOpenEditItem?.(item)}
+                          className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-cyan-400 hover:bg-slate-900 transition-colors"
+                          title="Editar ítem"
+                        >
+                          <i className="bx bx-edit text-lg" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm(`¿Eliminar ítem "${item.displayName}"?`)) {
+                              onDeleteItem?.(item.id);
+                            }
+                          }}
+                          className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 active:scale-95 transition-colors"
+                          title="Eliminar ítem"
+                        >
+                          <i className="bx bx-trash text-lg" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 3: RECETAS DE FABRICACIÓN (v1.6: Mesa de Trabajo 3×3) */}
         {activeTab === 'recipes' && (
           <div className="flex flex-col gap-3 animate-in fade-in duration-150">
             {/* Header with Add Recipe Button */}
@@ -1217,7 +1392,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
               ¿Qué deseas agregar al Addon?
             </span>
 
-            {/* 1. Nuevo Bloque */}
+            {/* 1. Crear bloque */}
             <button
               type="button"
               onClick={() => {
@@ -1230,8 +1405,26 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
                 <i className="bx bxs-cube text-xl" />
               </div>
               <div>
-                <span className="text-xs font-bold text-slate-100 block">Nuevo Bloque Personalizado</span>
-                <span className="text-[10px] text-slate-400">Editor con atlas de 1, 3 o 6 caras y grupos</span>
+                <span className="text-xs font-bold text-slate-100 block">Crear bloque</span>
+                <span className="text-[10px] text-slate-400">Editor con atlas de 1, 3 o 6 caras, grupos y colisiones</span>
+              </div>
+            </button>
+
+            {/* 2. Crear ítem (BETA 4) */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsAddMenuOpen(false);
+                onOpenCreateItem?.();
+              }}
+              className="min-h-[50px] px-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-cyan-500/30 flex items-center gap-3 text-left transition-colors active:scale-98"
+            >
+              <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                <i className="bx bxs-magic-wand text-xl" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-cyan-300 block">Crear ítem</span>
+                <span className="text-[10px] text-slate-400">Editor independiente de armas, herramientas, comida y consumibles</span>
               </div>
             </button>
 

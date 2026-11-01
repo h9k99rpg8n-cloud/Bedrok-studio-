@@ -484,5 +484,66 @@ export function runProjectDiagnostics(project: AddonProject): DiagnosticIssue[] 
     });
   }
 
+  // 6. Custom Items Checks (Beta 4)
+  if (Array.isArray(project.items) && project.items.length > 0) {
+    const seenItemIds = new Map<string, string[]>();
+    project.items.forEach((item) => {
+      const rawId = item.identifier?.trim() || '';
+      const cleanId = rawId.toLowerCase().replace(/^custom:/, '');
+      if (!seenItemIds.has(cleanId)) {
+        seenItemIds.set(cleanId, []);
+      }
+      seenItemIds.get(cleanId)!.push(item.id);
+
+      if (!rawId) {
+        issues.push({
+          id: `item_empty_id_${item.id}`,
+          severity: 'error',
+          title: `Identificador vacío en ítem "${item.displayName || 'Ítem sin nombre'}"`,
+          description: 'El ítem no tiene un identificador técnico configurado.',
+          affectedTarget: `Ítem: ${item.displayName || item.id}`,
+          reason: 'Minecraft necesita un identificador alfanumérico único para registrar el ítem.',
+          suggestion: 'Abre el editor de ítems y escribe un identificador válido.',
+        });
+      } else if (!isValidBedrockIdentifier(cleanId)) {
+        issues.push({
+          id: `item_invalid_format_${item.id}`,
+          severity: 'error',
+          title: `Formato inválido en ítem: "custom:${cleanId}"`,
+          description: 'El identificador contiene caracteres no admitidos.',
+          affectedTarget: `custom:${cleanId}`,
+          reason: 'Solo se permiten letras minúsculas (a-z), números (0-9) y guiones bajos (_).',
+          suggestion: 'Corrige el identificador para cumplir el estándar de Minecraft Bedrock.',
+        });
+      }
+
+      if (!item.displayName || item.displayName.trim().length === 0) {
+        issues.push({
+          id: `item_empty_name_${item.id}`,
+          severity: 'warning',
+          title: `Ítem sin nombre visible: "custom:${cleanId}"`,
+          description: 'El ítem se mostrará sin nombre traducido en el inventario.',
+          affectedTarget: `custom:${cleanId}`,
+          reason: 'El motor utilizará la clave técnica si falta el nombre legible.',
+          suggestion: 'Asigna un nombre como "Espada de Rubí" o "Manzana Dorada".',
+        });
+      }
+    });
+
+    seenItemIds.forEach((itemIds, id) => {
+      if (itemIds.length > 1) {
+        issues.push({
+          id: `duplicate_item_id_${id}`,
+          severity: 'error',
+          title: `Identificador de ítem duplicado: "custom:${id}"`,
+          description: `Existen ${itemIds.length} ítems con el mismo identificador.`,
+          affectedTarget: `custom:${id}`,
+          reason: 'Los identificadores duplicados sobrescribirán ítems en Minecraft.',
+          suggestion: 'Renombra uno de los ítems para que tenga un identificador único.',
+        });
+      }
+    });
+  }
+
   return issues;
 }

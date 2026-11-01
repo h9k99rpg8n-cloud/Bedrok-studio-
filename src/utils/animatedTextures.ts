@@ -1,4 +1,4 @@
-export type AnimatedTextureTemplateKind = 'water' | 'lava' | 'energy' | 'portal';
+export type AnimatedTextureTemplateKind = 'water' | 'lava' | 'energy' | 'portal' | 'blue_crystal' | 'magma_block';
 
 export interface AnimatedTextureSource {
   dataUrl: string;
@@ -45,6 +45,8 @@ export function createAnimatedTextureTemplate(kind: AnimatedTextureTemplateKind)
     lava: ['#4A1010', '#B52A0D', '#F05A14', '#FFD34E'],
     energy: ['#052E25', '#087F5B', '#34D399', '#D9F99D'],
     portal: ['#210B3D', '#57218A', '#A855F7', '#E9D5FF'],
+    blue_crystal: ['#071830', '#0a4275', '#169be8', '#bbf2f6'],
+    magma_block: ['#1c0c08', '#6a1806', '#d64d00', '#ffd23f'],
   };
   const palette = palettes[kind];
 
@@ -68,10 +70,21 @@ export function createAnimatedTextureTemplate(kind: AnimatedTextureTemplateKind)
           const distance = Math.sqrt(dx * dx + dy * dy);
           const pulse = (x * 3 + y * 5 + frame * 4) % 11;
           colorIndex = distance < 2 + (frame % 2) ? 3 : distance < 5 ? 2 : pulse < 3 ? 1 : 0;
-        } else {
+        } else if (kind === 'portal') {
           const ring = Math.floor(Math.sqrt((x - 7.5) ** 2 + (y - 7.5) ** 2));
           const swirl = (Math.floor(Math.atan2(y - 7.5, x - 7.5) * 4) + ring + frame * 2 + 32) % 7;
           colorIndex = swirl < 2 ? 3 : swirl < 4 ? 2 : swirl < 6 ? 1 : 0;
+        } else if (kind === 'blue_crystal') {
+          const facet = Math.abs(x - 7.5) + Math.abs(y - 7.5);
+          const sparkle = (x * 3 + y * 2 + frame * 5) % 13;
+          const shimmer = (x - y + frame * 3 + 16) % 8;
+          colorIndex = (facet <= 3 && sparkle < 4) || shimmer === 0 ? 3 : facet <= 6 ? (sparkle < 7 ? 2 : 1) : facet <= 9 ? (sparkle < 5 ? 1 : 0) : 0;
+        } else if (kind === 'magma_block') {
+          const crack1 = Math.abs((x * 2 + y - frame * 3 + 30) % 9 - 4);
+          const crack2 = Math.abs((y * 2 - x + frame * 2 + 30) % 11 - 5);
+          const heat = (x * 4 + y * 7 + frame * 3) % 15;
+          const isCrack = crack1 <= 1 || crack2 <= 1;
+          colorIndex = isCrack && heat < 4 ? 3 : isCrack ? 2 : (crack1 <= 2 || crack2 <= 2) ? 1 : 0;
         }
         if (colorIndex > 0) {
           ctx.fillStyle = palette[colorIndex];

@@ -1,3 +1,5 @@
+import type { CustomItem } from './item';
+
 export type TextureMode = 'one' | 'three' | 'six';
 
 export type BlockFaceKey = 'up' | 'down' | 'north' | 'south' | 'east' | 'west';
@@ -217,8 +219,27 @@ export interface CustomBlock {
   componentsList?: BlockComponentItem[]; // v0.1.4 official placement components
   collisionConfig?: BlockCollisionConfig; // v0.1.5 collision boxes
   selectionConfig?: BlockSelectionConfig; // v0.1.5 selection boxes
+  isOre?: boolean; // v0.1.7: Propiedad de Bloque Mineral
+  oreConfig?: OreBlockConfig; // v0.1.7: Configuración de botín de mineral
   createdAt: number;
   updatedAt?: number;
+}
+
+// ============================================================================
+// Ore Block Configuration (v0.1.7: Propiedad de Bloque Mineral)
+// ============================================================================
+
+export interface OreBlockConfig {
+  enabled: boolean;
+  dropItemId: string; // Identifier técnico: ej. "custom:rubi" o "minecraft:raw_iron"
+  dropItemName: string; // Nombre visible: ej. "Rubí"
+  dropItemTexture?: string; // Data URL del icono 2D del objeto (independiente del bloque)
+  dropItemTextureId?: string; // Nombre o ID de la textura en el proyecto
+  minAmount: number; // Cantidad mínima (ej. 1)
+  maxAmount: number; // Cantidad máxima (ej. 3)
+  requiredTool: PreferredToolType; // 'pickaxe' | 'any' | ...
+  minToolTier?: ToolTier; // 'any' | 'wood' | 'stone' | 'iron' | 'diamond' | 'netherite'
+  experienceReward?: number; // Experiencia (XP) al minar
 }
 
 export interface CustomTexture {
@@ -278,11 +299,14 @@ export interface AddonProject {
   updatedAt: number;
   usedCount: number; // For "Más usado" sort
   blocks: CustomBlock[];
+  items?: CustomItem[];
   textures: CustomTexture[];
   groups?: BlockGroup[];
   recipes?: CraftingRecipe[];
   folders?: ProjectFolder[]; // 2.2: carpetas internas, compatibles con proyectos anteriores
 }
+
+export * from './item';
 
 export type SortOption = 'letters' | 'dates' | 'most_used' | 'oldest' | 'size';
 

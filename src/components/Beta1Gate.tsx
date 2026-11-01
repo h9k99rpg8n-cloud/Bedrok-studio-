@@ -333,12 +333,12 @@ export const Beta1Gate: React.FC<Beta1GateProps> = ({ children, showProfileDock 
             </div>
           </div>
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-200">
-            <ShieldCheck size={15} /> Beta 2 Release
+            <ShieldCheck size={15} /> Beta 3 Release
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Bienvenidos y bienvenidas al acceso anticipado</h1>
-          <p className="mt-2 text-base font-bold text-blue-300">Bedrock Studio 3.0 · Beta 2</p>
+          <p className="mt-2 text-base font-bold text-blue-300">Bedrock Studio 3.0 · Beta 3</p>
           <p className="mt-4 text-sm leading-6 text-slate-300">
-            Esta versión inicia el rework de Bedrock Studio. La Beta 2 continúa el rework con mejoras de diseño, perfil y herramientas. Esta versión sigue en desarrollo y algunas secciones pueden recibir más ajustes.
+            Esta versión continúa el desarrollo de Bedrock Studio. La Beta 3 incorpora mejoras clave en el editor de bloques, catálogo de texturas oficiales y un editor Pixel Art adaptado con selección directa y gestos naturales.
           </p>
           <div className="mt-5 rounded-2xl border border-slate-700/80 bg-[#090d16] p-4">
             <p className="text-sm font-semibold text-slate-100">Antes de continuar</p>
@@ -418,7 +418,7 @@ export const Beta1Gate: React.FC<Beta1GateProps> = ({ children, showProfileDock 
                 <header className="mb-4 flex items-center justify-between border-b border-slate-800 pb-3">
                   <div className="flex items-center gap-2">
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-blue-400/30 bg-blue-500/10 text-blue-300"><span className="text-xl font-black">B</span></div>
-                    <div><p className="text-sm font-extrabold">Bedrock Studio</p><p className="text-[10px] font-semibold text-blue-300">3.0 Beta 2 Release</p></div>
+                    <div><p className="text-sm font-extrabold">Bedrock Studio</p><p className="text-[10px] font-semibold text-blue-300">3.0 Beta 3 Release</p></div>
                   </div>
                   <button type="button" onClick={() => setMenuOpen(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white" aria-label="Cerrar menú"><X size={18} /></button>
                 </header>

@@ -13,6 +13,7 @@ import {
   CraftingRecipe,
   DiagnosticIssue,
 } from './types/addon';
+import { CustomItem } from './types/item';
 import { dbService } from './services/db';
 import { ManifestModal } from './components/ManifestModal';
 import { TexturePainterModal } from './components/TexturePainterModal';
@@ -21,6 +22,7 @@ import { ProjectDetailView } from './components/ProjectDetailView';
 import { ChangelogModal } from './components/ChangelogModal';
 import { BlockTutorialModal } from './components/BlockTutorialModal';
 import { FullBlockEditorModal } from './components/FullBlockEditorModal';
+import { ItemEditorModal } from './components/item/ItemEditorModal';
 import { DiagnosticsModal } from './components/DiagnosticsModal';
 import { TextureLibraryModal } from './components/TextureLibraryModal';
 import { CraftingRecipeModal } from './components/CraftingRecipeModal';
@@ -71,6 +73,10 @@ export default function App() {
   const [isRecipeModalOpen, setIsRecipeModalOpen] = useState<boolean>(false);
   const [editingRecipe, setEditingRecipe] = useState<CraftingRecipe | null>(null);
 
+  // Custom Item Modal (Beta 4)
+  const [isItemEditorOpen, setIsItemEditorOpen] = useState<boolean>(false);
+  const [editingItem, setEditingItem] = useState<CustomItem | null>(null);
+
   // Load from IndexedDB on startup with verifiable stages (v0.1.4.1)
   const loadProjectsFromDb = useCallback(async () => {
     const startupStartedAt = Date.now();
@@ -98,7 +104,7 @@ export default function App() {
       setLoadingMessage('Comprobando preferencias y estado...');
       setLoadingDetail('Validando compatibilidad con Minecraft Bedrock 1.26.20+');
 
-      // Bedrock Studio 3.0 Beta 2 handles its one-time welcome and local profiles in Beta1Gate.
+      // Bedrock Studio 3.0 Beta 3 handles its one-time welcome and local profiles in Beta1Gate.
       // Do not show the legacy 2.2 release preview or onboarding carousel.
 
       await new Promise((r) => setTimeout(r, 120));
@@ -113,7 +119,7 @@ export default function App() {
       // Stage 5: Finalized
       setLoadingProgress(100);
       setLoadingMessage('¡Inicialización completada!');
-      setLoadingDetail('Bienvenido a Bedrock Studio 3.0 Beta 2 Release');
+      setLoadingDetail('Bienvenido a Bedrock Studio 3.0 Beta 3 Release');
 
       await new Promise((r) => setTimeout(r, Math.max(0, 900 - (Date.now() - startupStartedAt))));
       setIsLoading(false);
@@ -426,6 +432,78 @@ export default function App() {
     }
   };
 
+  // Custom Item Handlers (Beta 4)
+  const handleSaveItem = async (savedItem: CustomItem) => {
+    if (!activeProject) return;
+    try {
+      setSaveStatus('saving');
+      const existingItems = activeProject.items || [];
+      const exists = existingItems.some((i) => i.id === savedItem.id);
+      let updatedItems: CustomItem[];
+      if (exists) {
+        updatedItems = existingItems.map((i) => (i.id === savedItem.id ? savedItem : i));
+      } else {
+        updatedItems = [savedItem, ...existingItems];
+      }
+      const updatedProject: AddonProject = {
+        ...activeProject,
+        items: updatedItems,
+        updatedAt: Date.now(),
+      };
+      await dbService.saveProject(updatedProject);
+      setProjects((prev) => prev.map((p) => (p.id === updatedProject.id ? updatedProject : p)));
+      setEditingItem(null);
+      setIsItemEditorOpen(false);
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2500);
+    } catch (err) {
+      console.error('Error al guardar ítem:', err);
+      setSaveStatus('error');
+    }
+  };
+
+  const handleDeleteItem = async (itemId: string) => {
+    if (!activeProject) return;
+    try {
+      setSaveStatus('saving');
+      const updatedProject: AddonProject = {
+        ...activeProject,
+        items: (activeProject.items || []).filter((i) => i.id !== itemId),
+        updatedAt: Date.now(),
+      };
+      await dbService.saveProject(updatedProject);
+      setProjects((prev) => prev.map((p) => (p.id === updatedProject.id ? updatedProject : p)));
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2500);
+    } catch (err) {
+      console.error('Error al eliminar ítem:', err);
+      setSaveStatus('error');
+    }
+  };
+
+  const handleDuplicateItem = async (item: CustomItem) => {
+    if (!activeProject) return;
+    try {
+      const copy: CustomItem = {
+        ...JSON.parse(JSON.stringify(item)),
+        id: `item_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        identifier: `${item.identifier}_copy_${Date.now().toString(36)}`,
+        displayName: `${item.displayName} (Copia)`,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      const updatedProject: AddonProject = {
+        ...activeProject,
+        items: [...(activeProject.items || []), copy],
+        updatedAt: Date.now(),
+      };
+      await dbService.saveProject(updatedProject);
+      setProjects((prev) => prev.map((p) => (p.id === updatedProject.id ? updatedProject : p)));
+    } catch (err) {
+      console.error('Error al duplicar ítem:', err);
+    }
+  };
+
   // Auto-Fix Diagnostic issues
   const handleAutoFix = async (issue: DiagnosticIssue) => {
     if (!activeProject) return;
@@ -573,6 +651,16 @@ export default function App() {
             setEditingBlock(blk);
             setIsFullBlockEditorOpen(true);
           }}
+          onOpenCreateItem={() => {
+            setEditingItem(null);
+            setIsItemEditorOpen(true);
+          }}
+          onOpenEditItem={(it) => {
+            setEditingItem(it);
+            setIsItemEditorOpen(true);
+          }}
+          onDeleteItem={handleDeleteItem}
+          onDuplicateItem={handleDuplicateItem}
           onOpenTexturePainter={() => setIsTexturePainterOpen(true)}
           onOpenTextureLibrary={() => {
             setTargetItemTextureForLibrary(false);
@@ -758,6 +846,29 @@ export default function App() {
             setEditingRecipe(null);
           }}
           onSaveRecipe={handleSaveRecipe}
+        />
+      )}
+
+      {/* Editor Independiente de Ítems Personalizados (Beta 4) */}
+      {activeProject && (
+        <ItemEditorModal
+          isOpen={isItemEditorOpen}
+          item={editingItem}
+          existingItems={activeProject.items || []}
+          availableTextures={activeProject.textures || []}
+          assignedTextureUrl={assignedTextureForEditor?.face === 'item' ? assignedTextureForEditor.texDataUrl : null}
+          onClose={() => {
+            setIsItemEditorOpen(false);
+            setEditingItem(null);
+          }}
+          onSaveItem={handleSaveItem}
+          onOpenTexturePainter={() => setIsTexturePainterOpen(true)}
+          onOpenTextureLibrary={() => {
+            setTargetFaceForLibrary(null);
+            setTargetItemTextureForLibrary(true);
+            setTargetAnimatedTextureForLibrary(false);
+            setIsTextureLibraryOpen(true);
+          }}
         />
       )}
     </div>

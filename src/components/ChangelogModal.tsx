@@ -6,9 +6,47 @@ interface ChangelogModalProps {
 }
 
 export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose }) => {
-  const [selectedVersion, setSelectedVersion] = useState<'v2.2' | 'v1.8' | 'v1.6' | 'v0.1.7' | 'v0.1.5' | 'v0.1.4.1' | 'v0.1.4' | 'v0.1.3' | 'v0.1.2'>('v2.2');
+  const [selectedVersion, setSelectedVersion] = useState<'v3.0' | 'v2.2' | 'v1.8' | 'v1.6' | 'v0.1.7' | 'v0.1.5' | 'v0.1.4.1' | 'v0.1.4' | 'v0.1.3' | 'v0.1.2'>('v3.0');
 
   if (!isOpen) return null;
+
+  const features30 = [
+    {
+      title: 'Editor de Ítems independiente (Beta 4)',
+      version: '3.0 Beta 4',
+      badge: 'Nuevo Sistema',
+      desc: 'Arquitectura dedicada e independiente para crear ítems (armas, herramientas, comida, consumibles, lingotes). No mezcla la estructura de bloques y cuenta con sus propias pestañas, validaciones y previsualizador.',
+      icon: 'bx bxs-magic-wand',
+    },
+    {
+      title: 'Previsualizador Minecraft GUI Slot & Foil',
+      version: '3.0 Beta 4',
+      badge: 'Visualizador',
+      desc: 'Slot interactivo estilo inventario de Minecraft con contador de stack numérico, barra de durabilidad con color progresivo (verde/amarillo/rojo) y efecto de encantamiento púrpura animado.',
+      icon: 'bx bx-diamond',
+    },
+    {
+      title: 'Mecánicas completas de Ítem (Durabilidad, Combustible, Ataque)',
+      version: '3.0 Beta 4',
+      badge: 'Mecánicas',
+      desc: 'Configura tamaño de pila (1, 16 o 64), puntos de durabilidad con porcentaje de rotura, daño de ataque para armas y tiempo de combustión en hornos.',
+      icon: 'bx bxs-shield',
+    },
+    {
+      title: 'Alimentos y Consumibles con Cooldown',
+      version: '3.0 Beta 4',
+      badge: 'Comida',
+      desc: 'Animaciones de uso Bedrock (comer, beber, arco, bloqueo), puntos de nutrición, saturación configurable y tiempos de reutilización con categoría personalizada.',
+      icon: 'bx bxs-coffee',
+    },
+    {
+      title: 'Exportación Bedrock 1.20.80+ en .mcaddon',
+      version: '3.0 Beta 4',
+      badge: 'Exportación',
+      desc: 'Generación automática de archivos BP/items/<id>.json, atlas RP/textures/item_texture.json, texturas PNG en RP/textures/items/ y claves de idioma .lang para traducción.',
+      icon: 'bx bxs-package',
+    },
+  ];
 
   const features22 = [
     { title: 'Carpetas dentro del proyecto', version: '2.2', badge: 'Espacio de trabajo', desc: 'Crea carpetas internas para organizar bloques, texturas y recetas. La estructura se guarda con el proyecto y los recursos pueden moverse entre carpetas.', icon: 'bx bx-folder' },
@@ -216,7 +254,9 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
   ];
 
   const currentList =
-    selectedVersion === 'v2.2'
+    selectedVersion === 'v3.0'
+      ? features30
+      : selectedVersion === 'v2.2'
       ? features22
       : selectedVersion === 'v1.8'
       ? features18
@@ -241,11 +281,11 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
           <div>
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
+              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-sm shadow-cyan-400/50" />
               <h2 className="text-sm font-black text-slate-100">Novedades de Bedrock Studio</h2>
             </div>
-            <span className="text-[10px] font-mono text-emerald-400 block mt-0.5">
-              Historial de versiones — de los registros disponibles a la versión 2.2
+            <span className="text-[10px] font-mono text-cyan-400 block mt-0.5">
+              Historial de versiones — Bedrock Studio 3.0 Beta 4
             </span>
           </div>
           <button
@@ -258,7 +298,18 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
         </div>
 
         {/* Version Switch Tabs */}
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 my-3">
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 my-3">
+          <button
+            type="button"
+            onClick={() => setSelectedVersion('v3.0')}
+            className={`min-h-[38px] text-[10px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1 ${
+              selectedVersion === 'v3.0' ? 'bg-cyan-500 text-slate-950 shadow-sm font-extrabold' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <i className="bx bxs-magic-wand" />
+            <span>3.0</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setSelectedVersion('v2.2')}

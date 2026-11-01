@@ -328,8 +328,9 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
   const rpTexturesFolder = rpFolder.folder('textures');
   const rpBlocksTexturesFolder = rpTexturesFolder?.folder('blocks');
   const rpParticleTexturesFolder = rpTexturesFolder?.folder('particle');
-  const bpItemsFolder = customMineralItems.size > 0 ? bpFolder.folder('items') : null;
-  const rpItemsTexturesFolder = customMineralItems.size > 0 ? rpTexturesFolder?.folder('items') : null;
+  const hasCustomItems = customMineralItems.size > 0 || (Array.isArray(project.items) && project.items.length > 0);
+  const bpItemsFolder = hasCustomItems ? bpFolder.folder('items') : null;
+  const rpItemsTexturesFolder = hasCustomItems ? rpTexturesFolder?.folder('items') : null;
   const itemTextureData: Record<string, { textures: string }> = {};
   const generatedCustomItemIds = new Set<string>();
   const lootTablesFolder = blocks.some((block) => block.mineral?.enabled) ? bpFolder.folder('loot_tables')?.folder('blocks') : null;
@@ -818,6 +819,136 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
       const nameForLang = matched?.name?.trim() || block.displayName;
       langFilesMap[code].push(`tile.${fullId}.name=${nameForLang}`);
     });
+  }
+
+  // 3b. Export Custom Items (Beta 4)
+  if (Array.isArray(project.items) && project.items.length > 0) {
+    for (const item of project.items) {
+      const shortId = item.identifier.trim().toLowerCase().replace(/^custom:/, '');
+      const fullId = `custom:${shortId}`;
+      if (generatedCustomItemIds.has(fullId)) continue;
+      generatedCustomItemIds.add(fullId);
+
+      const textureKey = `item_${shortId}`;
+      const textureData = item.textureDataUrl || resolveTextureDataUrl(project, item.textureId || '');
+
+      if (textureData) {
+        try {
+          const pngBlob = await dataUrlToCompatiblePngBlob(textureData);
+          rpItemsTexturesFolder?.file(`${textureKey}.png`, pngBlob);
+          itemTextureData[textureKey] = { textures: `textures/items/${textureKey}` };
+        } catch {
+          const fallbackBlob = await createFallbackTextureBlob();
+          rpItemsTexturesFolder?.file(`${textureKey}.png`, fallbackBlob);
+          itemTextureData[textureKey] = { textures: `textures/items/${textureKey}` };
+        }
+      }
+
+      // Build components object according to official Minecraft Bedrock item schema
+      const itemComponents: Record<string, unknown> = {
+        'minecraft:icon': { texture: textureKey },
+        'minecraft:display_name': { value: item.displayName },
+        'minecraft:max_stack_size': item.maxStackSize ?? 64,
+      };
+
+      if (item.glint) {
+        itemComponents['minecraft:foil'] = true;
+      }
+      if (item.handEquipped) {
+        itemComponents['minecraft:hand_equipped'] = true;
+      }
+      if (item.canDestroyInCreative !== undefined) {
+        itemComponents['minecraft:can_destroy_in_creative'] = item.canDestroyInCreative;
+      }
+      if (item.hoverTextColor) {
+        itemComponents['minecraft:hover_text_color'] = item.hoverTextColor;
+      }
+      if (item.interactButton) {
+        itemComponents['minecraft:interact_button'] = item.interactButton;
+      }
+      if (item.tags && item.tags.length > 0) {
+        itemComponents['minecraft:tags'] = { tags: item.tags };
+      }
+
+      // Durability
+      if (item.durability?.enabled) {
+        itemComponents['minecraft:durability'] = {
+          max_durability: item.durability.maxDurability,
+          ...(item.durability.damageChanceMin !== undefined || item.durability.damageChanceMax !== undefined
+            ? { damage_chance: { min: item.durability.damageChanceMin ?? 100, max: item.durability.damageChanceMax ?? 100 } }
+            : {})
+        };
+      }
+
+      // Weapon / Damage
+      if (item.weapon?.enabled) {
+        itemComponents['minecraft:damage'] = item.weapon.attackDamage;
+      }
+
+      // Fuel
+      if (item.fuel?.enabled) {
+        itemComponents['minecraft:fuel'] = {
+          duration: item.fuel.duration,
+        };
+      }
+
+      // Cooldown
+      if (item.cooldown?.enabled) {
+        itemComponents['minecraft:cooldown'] = {
+          category: item.cooldown.category || 'item_cooldown',
+          duration: item.cooldown.duration || 3,
+        };
+      }
+
+      // Food / Consume
+      if (item.food?.enabled) {
+        itemComponents['minecraft:use_animation'] = item.useAnimation && item.useAnimation !== 'none' ? item.useAnimation : 'eat';
+        itemComponents['minecraft:use_modifiers'] = {
+          use_duration: 1.6,
+          movement_modifier: 0.35,
+        };
+        itemComponents['minecraft:food'] = {
+          nutrition: item.food.nutrition,
+          saturation_modifier: item.food.saturationModifier,
+          can_always_eat: Boolean(item.food.canAlwaysEat),
+        };
+      } else if (item.useAnimation && item.useAnimation !== 'none') {
+        itemComponents['minecraft:use_animation'] = item.useAnimation;
+        itemComponents['minecraft:use_modifiers'] = {
+          use_duration: 1.6,
+        };
+      }
+
+      // Additional custom components if any
+      if (item.customComponents && item.customComponents.length > 0) {
+        for (const comp of item.customComponents) {
+          if (comp.enabled && comp.id) {
+            itemComponents[comp.id] = comp.value ?? {};
+          }
+        }
+      }
+
+      const itemBpJson = {
+        format_version: '1.20.80',
+        'minecraft:item': {
+          description: {
+            identifier: fullId,
+            menu_category: {
+              category: item.category || 'items',
+              ...(item.bedrockGroup ? { group: item.bedrockGroup } : {})
+            },
+          },
+          components: itemComponents,
+        },
+      };
+
+      bpItemsFolder?.file(`${shortId}.json`, JSON.stringify(itemBpJson, null, 2));
+
+      // Add localization
+      languageCodes.forEach((code) => {
+        langFilesMap[code].push(`item.${fullId}.name=${item.displayName}`);
+      });
+    }
   }
 
   // 4. Script file if required

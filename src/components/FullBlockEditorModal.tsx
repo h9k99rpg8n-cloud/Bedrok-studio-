@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { VisualBehaviorEditor } from './VisualBehaviorEditor';
-import { Pickaxe, Sparkles, Plus, Box } from 'lucide-react';
+import { Pickaxe, Sparkles, Plus, Box, Workflow } from 'lucide-react';
 import {
   BlockBoxItem,
   BlockCollisionConfig,
@@ -20,12 +19,14 @@ import {
   SUPPORTED_LANGUAGES,
   TextureMode,
   ToolTier,
+  OreBlockConfig,
   VisualBehaviorProgram,
 } from '../types/addon';
 import { CubeAtlasEditor } from './CubeAtlasEditor';
 import { BlockComponentsManager } from './BlockComponentsManager';
 import { Box3DVisualizer } from './Box3DVisualizer';
 import { BoxGeometryEditor } from './BoxGeometryEditor';
+import { VisualBehaviorEditor } from './VisualBehaviorEditor';
 import { createAnimatedTextureTemplate, inspectAnimatedTexture, AnimatedTextureTemplateKind } from '../utils/animatedTextures';
 import { isValidBedrockIdentifier } from '../utils/diagnostics';
 import {
@@ -55,7 +56,7 @@ interface FullBlockEditorModalProps {
 }
 
 // v0.1.5: Secciones del editor de bloques
-type EditorTab = 'identity' | 'atlas' | 'animation' | 'properties' | 'boxes' | 'interactions' | 'behavior' | 'visual';
+type EditorTab = 'identity' | 'atlas' | 'animation' | 'properties' | 'boxes' | 'interactions' | 'behavior';
 
 export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
   isOpen,
@@ -180,20 +181,30 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
   });
   const [selectedSelectionBoxId, setSelectedSelectionBoxId] = useState<string>('sel_1');
 
+  // =========================================================================
+  // SECCIÓN F: PROPIEDAD DE BLOQUE MINERAL (v0.1.7: Es un mineral)
+  // =========================================================================
+  const [isOre, setIsOre] = useState<boolean>(false);
+  const [oreDropItemId, setOreDropItemId] = useState<string>('rubi');
+  const [oreDropItemName, setOreDropItemName] = useState<string>('Rubí');
+  const [oreDropItemTexture, setOreDropItemTexture] = useState<string>('');
+  const [oreMinAmount, setOreMinAmount] = useState<number>(1);
+  const [oreMaxAmount, setOreMaxAmount] = useState<number>(1);
+  const [oreRequiredTool, setOreRequiredTool] = useState<PreferredToolType>('pickaxe');
+  const [oreMinToolTier, setOreMinToolTier] = useState<ToolTier>('iron');
+  const [oreExperienceReward, setOreExperienceReward] = useState<number>(2);
+  const [isOreTexturePickerOpen, setIsOreTexturePickerOpen] = useState<boolean>(false);
+
   // Subpestaña activa en la sección de Cajas (Colisión vs Selección)
   const [boxSubTab, setBoxSubTab] = useState<'collision' | 'selection'>('collision');
-
-  // =========================================================================
-  // PROGRAMACIÓN VISUAL (Beta 1)
-  // =========================================================================
-  const [visualBehavior, setVisualBehavior] = useState<VisualBehaviorProgram | undefined>(undefined);
-  const [isVisualBehaviorEditorOpen, setIsVisualBehaviorEditorOpen] = useState(false);
 
   // =========================================================================
   // SECCIÓN G: COMPORTAMIENTO
   // =========================================================================
   // Control modal de incorporar comportamiento
   const [isAddBehaviorModalOpen, setIsAddBehaviorModalOpen] = useState<boolean>(false);
+  const [isVisualBehaviorEditorOpen, setIsVisualBehaviorEditorOpen] = useState<boolean>(false);
+  const [visualBehavior, setVisualBehavior] = useState<VisualBehaviorProgram | undefined>(undefined);
 
   // Comportamientos activos en este bloque
   const [enabledBehaviors, setEnabledBehaviors] = useState<{
@@ -266,7 +277,6 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         });
         setAnimationImportError('');
         setAnimationNotice('');
-        setVisualBehavior(block.visualBehavior ? JSON.parse(JSON.stringify(block.visualBehavior)) : undefined);
         setIdentifier(block.identifier || 'nuevo_bloque');
         setDisplayName(block.displayName || 'Nuevo Bloque');
         setSelectedGroupId(block.groupId || '');
@@ -300,7 +310,8 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         setEmitsLight(block.emitsLight || false);
         setLightLevel(block.lightLevel ?? 15);
         setLightDampening(block.lightDampening ?? 15);
-        setFriction(block.friction ?? 0.4);
+        const rawFriction = Number(block.friction);
+        setFriction(Number.isFinite(rawFriction) && rawFriction > 0 ? Math.min(1.0, Math.max(0.1, Number(rawFriction.toFixed(2)))) : 0.4);
         setFlammable(block.flammable || false);
         setLavaFlammable(block.lavaFlammable ?? false);
         setChestObstruction(block.chestObstruction ?? 'shape');
@@ -406,8 +417,32 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
           });
           setSelectedSelectionBoxId(defSelBox.id);
         }
+
+        // Mineral (v0.1.7)
+        setIsOre(Boolean(block.isOre));
+        if (block.oreConfig) {
+          setOreDropItemId(block.oreConfig.dropItemId || 'rubi');
+          setOreDropItemName(block.oreConfig.dropItemName || 'Rubí');
+          setOreDropItemTexture(block.oreConfig.dropItemTexture || '');
+          setOreMinAmount(block.oreConfig.minAmount ?? 1);
+          setOreMaxAmount(block.oreConfig.maxAmount ?? 1);
+          setOreRequiredTool(block.oreConfig.requiredTool || 'pickaxe');
+          setOreMinToolTier(block.oreConfig.minToolTier || 'iron');
+          setOreExperienceReward(block.oreConfig.experienceReward ?? 2);
+        } else {
+          setOreDropItemId('rubi');
+          setOreDropItemName('Rubí');
+          setOreDropItemTexture('');
+          setOreMinAmount(1);
+          setOreMaxAmount(1);
+          setOreRequiredTool('pickaxe');
+          setOreMinToolTier('iron');
+          setOreExperienceReward(2);
+        }
+        setVisualBehavior(block.visualBehavior ? JSON.parse(JSON.stringify(block.visualBehavior)) : undefined);
+        setIsVisualBehaviorEditorOpen(false);
+        setIsOreTexturePickerOpen(false);
       } else {
-        setVisualBehavior(undefined);
         setTextureSourceMode('normal');
         setAnimatedTexture({ enabled: false, textureDataUrl: '', frameWidth: 16, frameCount: 0, ticksPerFrame: 2 });
         setAnimationImportError('');
@@ -515,6 +550,20 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
           boxes: [newSelBox],
         });
         setSelectedSelectionBoxId(newSelBox.id);
+
+        // Mineral (v0.1.7)
+        setIsOre(false);
+        setOreDropItemId('rubi');
+        setOreDropItemName('Rubí');
+        setOreDropItemTexture('');
+        setOreMinAmount(1);
+        setOreMaxAmount(1);
+        setOreRequiredTool('pickaxe');
+        setOreMinToolTier('iron');
+        setOreExperienceReward(2);
+        setVisualBehavior(undefined);
+        setIsVisualBehaviorEditorOpen(false);
+        setIsOreTexturePickerOpen(false);
       }
       setValidationError('');
     }
@@ -637,6 +686,8 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         lava: 'Lava animada',
         energy: 'Energía mágica',
         portal: 'Portal morado',
+        blue_crystal: 'Cristal de energía azul',
+        magma_block: 'Bloque de magma incandescente',
       };
       setAnimationNotice(`Plantilla «${names[kind]}» aplicada: 4 fotogramas.`);
     } catch (error) {
@@ -718,7 +769,6 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
       faceTextures: finalFaces,
       textureDataUrl: finalFaces.up || finalFaces.north || '',
       interactions: Object.values(interactions).some(Boolean) ? { ...interactions } : undefined,
-      visualBehavior: visualBehavior?.enabled ? JSON.parse(JSON.stringify(visualBehavior)) : visualBehavior,
       animatedTexture: animatedTexture.textureDataUrl
         ? {
             enabled: textureSourceMode === 'animated' && Boolean(animatedTexture.textureDataUrl),
@@ -736,7 +786,7 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
       emitsLight,
       lightLevel: emitsLight ? Math.min(15, Math.max(0, lightLevel)) : 0,
       lightDampening: Math.min(15, Math.max(0, Math.round(lightDampening))),
-      friction: Math.min(1.0, Math.max(0.1, friction)),
+      friction: Number.isFinite(friction) ? Math.min(1.0, Math.max(0.1, Number(friction.toFixed(2)))) : 0.4,
       flammable,
       lavaFlammable,
       chestObstruction,
@@ -798,6 +848,8 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
       // Cajas de Colisión y Selección (v0.1.5)
       collisionConfig,
       selectionConfig,
+
+      visualBehavior,
 
       createdAt: block?.createdAt || Date.now(),
       updatedAt: Date.now(),
@@ -971,18 +1023,6 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
             {animatedTexture.enabled && <span className="w-1.5 h-1.5 rounded-full bg-emerald-300" />}
           </button>
 
-          {/* BETA 1: PROGRAMACIÓN VISUAL */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('visual')}
-            className={`min-h-[42px] shrink-0 px-3 sm:px-4 rounded-lg text-xs font-semibold inline-flex flex-row items-center justify-center gap-2 transition-all snap-start ${activeTab === 'visual' ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
-            title="Programación visual: crear comportamientos personalizados"
-          >
-            <Sparkles size={15} />
-            <span>Programación visual</span>
-            {visualBehavior?.enabled && <span className="w-1.5 h-1.5 rounded-full bg-emerald-300" />}
-          </button>
-
           {/* NUEVA SECCIÓN: INTERACCIONES PERSONALIZADAS */}
           <button
             type="button"
@@ -1047,7 +1087,8 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                     type="text"
                     value={identifier}
                     onChange={(e) => {
-                      const cleaned = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+                      const raw = e.target.value.replace(/^custom:/i, '');
+                      const cleaned = raw.toLowerCase().replace(/[^a-z0-9_]/g, '_');
                       setIdentifier(cleaned);
                       setValidationError('');
                     }}
@@ -1055,12 +1096,37 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                     className="w-full min-h-[40px] pr-3 bg-transparent text-sm font-mono text-emerald-300 focus:outline-none"
                   />
                 </div>
-                <span className="text-[11px] text-slate-400 mt-1 block">
-                  Identificador oficial para el comando Minecraft:{' '}
-                  <code className="font-mono text-slate-300 bg-slate-900 px-1 py-0.5 rounded">
-                    /give @s custom:{identifier || 'bloque'}
-                  </code>
-                </span>
+                <div className="mt-1.5 flex flex-col gap-1">
+                  {identifier.trim() && existingBlocks.some((b) => b.identifier === identifier.trim().toLowerCase() && (!block || b.id !== block.id)) && (
+                    <span className="text-xs text-rose-400 flex items-center gap-1 font-semibold">
+                      <i className="bx bx-error-circle" />
+                      Ya existe otro bloque con el identificador «custom:{identifier.trim().toLowerCase()}». Elige otro nombre técnico.
+                    </span>
+                  )}
+                  {identifier.trim() && !existingBlocks.some((b) => b.identifier === identifier.trim().toLowerCase() && (!block || b.id !== block.id)) && isValidBedrockIdentifier(identifier.trim().toLowerCase()) && (
+                    <span className="text-[11px] text-emerald-400 flex items-center gap-1">
+                      <i className="bx bx-check-circle" />
+                      Identificador disponible: <code className="font-mono font-bold">custom:{identifier.trim().toLowerCase()}</code>
+                    </span>
+                  )}
+                  {!identifier.trim() && (
+                    <span className="text-[11px] text-amber-400 flex items-center gap-1">
+                      <i className="bx bx-info-circle" />
+                      El identificador técnico no puede estar vacío.
+                    </span>
+                  )}
+                  <span className="text-[11px] text-slate-400 block">
+                    Comando en Minecraft:{' '}
+                    <code className="font-mono text-slate-300 bg-slate-900 px-1 py-0.5 rounded">
+                      /give @s custom:{identifier.trim().toLowerCase() || 'bloque'}
+                    </code>
+                  </span>
+                  {block && (
+                    <span className="text-[10px] text-slate-400 bg-slate-900/60 p-2 rounded-lg border border-slate-800/80 mt-1 block leading-relaxed">
+                      💡 <strong>Modificación segura:</strong> Al cambiar el identificador de este bloque, se conservan todas sus texturas asignadas, cajas de colisión 3D, propiedades físicas y reglas de comportamiento ya configuradas.
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* 2. Nombre Visible */}
@@ -1422,18 +1488,20 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                 Abrir biblioteca de plantillas animadas
               </button>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {([
                   ['water', 'Agua animada', 'Ondas azules'],
                   ['lava', 'Lava animada', 'Flujo naranja'],
                   ['energy', 'Energía mágica', 'Pulso verde'],
                   ['portal', 'Portal morado', 'Espiral violeta'],
+                  ['blue_crystal', 'Cristal de energía azul', 'Brillo azul y cian'],
+                  ['magma_block', 'Bloque de magma', 'Calor y grietas rojas'],
                 ] as [AnimatedTextureTemplateKind, string, string][]).map(([kind, name, description]) => (
                   <button
                     key={kind}
                     type="button"
                     onClick={() => handleChooseAnimationTemplate(kind)}
-                    className="min-h-[86px] p-3 rounded-xl border border-slate-800 bg-slate-900 hover:border-emerald-500/50 text-left flex flex-col gap-1.5"
+                    className="min-h-[86px] p-3 rounded-xl border border-slate-800 bg-slate-900 hover:border-emerald-500/50 text-left flex flex-col gap-1.5 transition-colors"
                   >
                     <span className="text-xs font-bold text-slate-100">{name}</span>
                     <span className="text-[10px] text-slate-400">{description}</span>
@@ -1729,27 +1797,100 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
               </div>
 
               {/* Fricción */}
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-2.5 p-3 rounded-xl bg-slate-900/60 border border-slate-800/80">
                 <div className="flex items-center justify-between text-xs">
                   <div>
-                    <span className="text-slate-300 block">Fricción (minecraft:friction):</span>
-                    <span className="text-[10px] text-slate-500">
-                      0.4 = estándar; 0.98 = muy resbaladizo como hielo
+                    <span className="text-slate-200 font-bold block">Fricción física (minecraft:friction):</span>
+                    <span className="text-[10px] text-slate-400">
+                      0.40 = estándar; 0.60 = resbaladizo; 0.98 = muy resbaladizo (hielo)
                     </span>
                   </div>
-                  <span className="font-mono font-bold text-blue-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800 shrink-0">
-                    {friction.toFixed(2)}
-                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-[11px] font-mono text-slate-400">
+                      Escala visual: {Math.round(Math.min(100, Math.max(1, (Number.isFinite(friction) ? friction : 0.4) * 100)))}%
+                    </span>
+                    <span className="font-mono font-bold text-blue-400 bg-slate-950 px-2 py-0.5 rounded border border-blue-500/30">
+                      {(Number.isFinite(friction) ? friction : 0.4).toFixed(2)}
+                    </span>
+                  </div>
                 </div>
-                <input
-                  type="range"
-                  min={0.1}
-                  max={1.0}
-                  step={0.02}
-                  value={friction}
-                  onChange={(e) => setFriction(parseFloat(e.target.value))}
-                  className="w-full h-1.5 accent-blue-400 cursor-pointer my-2"
-                />
+
+                {/* Deslizador visual con escala de 1 a 100 */}
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] font-mono text-slate-500">1</span>
+                  <input
+                    type="range"
+                    min={1}
+                    max={100}
+                    step={1}
+                    value={Math.round(Math.min(100, Math.max(1, (Number.isFinite(friction) ? friction : 0.4) * 100)))}
+                    onChange={(e) => {
+                      const sliderVal = parseInt(e.target.value, 10);
+                      const computedFriction = Number((sliderVal / 100).toFixed(2));
+                      setFriction(Math.min(1.0, Math.max(0.1, computedFriction)));
+                    }}
+                    className="w-full h-2 accent-blue-400 cursor-pointer"
+                  />
+                  <span className="text-[10px] font-mono text-slate-500">100</span>
+                </div>
+
+                {/* Campo numérico manual y presets rápidos */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-[11px] text-slate-400">Valor decimal exacto:</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.10"
+                      max="1.00"
+                      value={Number.isFinite(friction) ? Number(friction.toFixed(2)) : 0.4}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (!isNaN(val)) {
+                          setFriction(Math.min(1.0, Math.max(0.1, Number(val.toFixed(2)))));
+                        }
+                      }}
+                      className="w-20 min-h-[32px] px-2 bg-slate-950 border border-slate-700 rounded-lg text-xs font-mono text-blue-300 focus:outline-none focus:border-blue-400"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-1 text-[10px]">
+                    <span className="text-slate-500">Atajos:</span>
+                    <button
+                      type="button"
+                      onClick={() => setFriction(0.4)}
+                      className={`px-2 py-1 rounded-md border transition-colors ${
+                        Math.abs(friction - 0.4) < 0.01
+                          ? 'bg-blue-500/20 border-blue-400 text-blue-300 font-bold'
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      Estándar (0.40)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFriction(0.6)}
+                      className={`px-2 py-1 rounded-md border transition-colors ${
+                        Math.abs(friction - 0.6) < 0.01
+                          ? 'bg-blue-500/20 border-blue-400 text-blue-300 font-bold'
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      Resbaladizo (0.60)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFriction(0.98)}
+                      className={`px-2 py-1 rounded-md border transition-colors ${
+                        Math.abs(friction - 0.98) < 0.01
+                          ? 'bg-blue-500/20 border-blue-400 text-blue-300 font-bold'
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      Hielo (0.98)
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Inflamabilidad */}
@@ -2005,33 +2146,13 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
         {/* ================================================================= */}
         {/* TAB 5: COMPORTAMIENTO (Sección Nueva, Clara y Organizada)          */}
         {/* ================================================================= */}
-        {activeTab === 'visual' && (
-          <div className="p-3 sm:p-5 flex flex-col gap-4">
-            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.05] p-4 flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-300 flex items-center justify-center shrink-0"><Sparkles size={20}/></div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-bold text-slate-100">Programación visual · Beta 1</h3>
-                <p className="text-xs text-slate-400 mt-1 leading-relaxed">Construye un flujo por evento, condición y acciones. Se guarda junto con el bloque y el exportador genera la lógica del comportamiento activado.</p>
-              </div>
-            </div>
-            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 flex flex-col gap-3">
-              <div className="flex items-center justify-between gap-2"><span className="text-xs font-bold text-slate-200">Estado del flujo</span><span className={`text-[10px] px-2 py-1 rounded-lg border ${visualBehavior?.enabled ? 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20' : 'text-slate-400 bg-slate-900 border-slate-700'}`}>{visualBehavior?.enabled ? 'Activado' : visualBehavior ? 'Guardado · desactivado' : 'Sin configurar'}</span></div>
-              {visualBehavior && <p className="text-xs text-slate-400">Evento: <span className="text-slate-200">{{ on_use: 'Al usar', on_step_on: 'Al pisar', on_step_off: 'Al dejar de pisar' }[visualBehavior.event]}</span> · {visualBehavior.actions.length} acción(es)</p>}
-              <button type="button" onClick={() => setIsVisualBehaviorEditorOpen(true)} className="min-h-12 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black flex items-center justify-center gap-2"><Sparkles size={17}/>{visualBehavior ? 'Editar comportamiento' : 'Crear comportamiento personalizado'}</button>
-              {visualBehavior && <button type="button" onClick={() => setVisualBehavior(undefined)} className="min-h-10 px-3 rounded-xl border border-rose-500/20 text-rose-300 text-xs font-semibold">Eliminar flujo</button>}
-            </div>
-            <div className="rounded-xl border border-slate-800 p-3 text-[11px] text-slate-500 leading-relaxed">Acciones de la Beta 1: sonido, partícula y mensaje al jugador. Las acciones se generan al exportar y deben probarse en la versión objetivo de Minecraft.</div>
-            <VisualBehaviorEditor isOpen={isVisualBehaviorEditorOpen} title={displayName || 'Bloque personalizado'} initialProgram={visualBehavior} onClose={() => setIsVisualBehaviorEditorOpen(false)} onSave={(nextProgram) => setVisualBehavior(nextProgram)} />
-          </div>
-        )}
-
         {activeTab === 'behavior' && (
           <div className="flex flex-col gap-3.5 animate-in fade-in duration-150">
             {/* PROGRAMACIÓN VISUAL: acceso directo dentro de Comportamiento para móvil */}
             <section className="rounded-2xl border border-emerald-500/40 bg-emerald-500/[0.07] p-4 flex flex-col gap-3">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-300 flex items-center justify-center shrink-0">
-                  <Sparkles size={21} />
+                  <Workflow size={21} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-sm font-bold text-slate-100">Programación visual <span className="text-[10px] font-bold text-emerald-300">BETA 1</span></h3>
@@ -2040,11 +2161,20 @@ export const FullBlockEditorModal: React.FC<FullBlockEditorModalProps> = ({
                 </div>
               </div>
               <button type="button" onClick={() => setIsVisualBehaviorEditorOpen(true)} className="w-full min-h-12 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-sm font-bold flex items-center justify-center gap-2">
-                <Sparkles size={18} />{visualBehavior ? 'Editar programación visual' : 'Crear programación visual'}
+                <Workflow size={18} />{visualBehavior ? 'Editar programación visual' : 'Crear programación visual'}
               </button>
               {visualBehavior && <button type="button" onClick={() => setVisualBehavior(undefined)} className="min-h-10 px-3 rounded-xl border border-rose-500/25 text-rose-300 text-xs font-semibold">Eliminar programación visual</button>}
             </section>
-            <VisualBehaviorEditor isOpen={isVisualBehaviorEditorOpen} title={displayName || 'Bloque personalizado'} initialProgram={visualBehavior} onClose={() => setIsVisualBehaviorEditorOpen(false)} onSave={(nextProgram) => setVisualBehavior(nextProgram)} />
+            <VisualBehaviorEditor
+              isOpen={isVisualBehaviorEditorOpen}
+              title={displayName || 'Bloque personalizado'}
+              initialProgram={visualBehavior}
+              onClose={() => setIsVisualBehaviorEditorOpen(false)}
+              onSave={(nextProgram: VisualBehaviorProgram) => {
+                setVisualBehavior(nextProgram);
+                setIsVisualBehaviorEditorOpen(false);
+              }}
+            />
 
             {/* Cabecera de la sección con botón principal destacado */}
             <div className="bg-gradient-to-r from-purple-950/40 to-slate-950/80 p-4 rounded-2xl border border-purple-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
