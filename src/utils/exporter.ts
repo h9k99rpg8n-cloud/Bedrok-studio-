@@ -950,7 +950,8 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
 
       // Add localization
       languageCodes.forEach((code) => {
-        langFilesMap[code].push(`item.${fullId}.name=${item.displayName}`);
+        const itemTranslation = item.translations?.find((translation) => translation.langCode === code);
+        langFilesMap[code].push(`item.${fullId}.name=${itemTranslation?.name?.trim() || item.displayName}`);
       });
     }
   }
