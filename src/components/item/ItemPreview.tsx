@@ -205,7 +205,7 @@ export const ItemPreview: React.FC<ItemPreviewProps> = ({
         </span>
 
         <span className="text-[10px] font-mono text-slate-400">
-          custom:{item.identifier || 'mi_item'}
+          {item.identifier || 'custom:mi_item'}
         </span>
 
         {/* Badges / Stats */}
