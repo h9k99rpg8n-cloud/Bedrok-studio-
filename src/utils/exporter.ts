@@ -341,6 +341,7 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
 
   // Multilingual lang dictionaries map: langCode -> array of lines
   const languageCodes = new Set<string>(['en_US', 'es_ES']);
+  project.items?.forEach((item) => item.translations?.forEach((translation) => { if (translation.langCode) languageCodes.add(translation.langCode); }));
   blocks.forEach((b) => {
     b.translations?.forEach((t) => {
       if (t.langCode) languageCodes.add(t.langCode);
