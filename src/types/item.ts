@@ -55,7 +55,7 @@ export interface ItemCustomComponentConfig {
 
 export interface CustomItem {
   id: string;
-  identifier: string; // Suffix after custom:
+  identifier: string; // Full namespace:id; legacy projects may still contain only the suffix
   displayName: string;
   folderId?: string;
   textureId?: string;
