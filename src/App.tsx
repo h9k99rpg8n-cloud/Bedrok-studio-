@@ -856,6 +856,7 @@ export default function App() {
           item={editingItem}
           existingItems={activeProject.items || []}
           availableTextures={activeProject.textures || []}
+          existingGroups={activeProject.groups || []}
           assignedTextureUrl={assignedTextureForEditor?.face === 'item' ? assignedTextureForEditor.texDataUrl : null}
           onClose={() => {
             setIsItemEditorOpen(false);
