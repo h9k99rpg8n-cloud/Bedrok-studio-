@@ -824,12 +824,15 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
   // 3b. Export Custom Items (Beta 4)
   if (Array.isArray(project.items) && project.items.length > 0) {
     for (const item of project.items) {
-      const shortId = item.identifier.trim().toLowerCase().replace(/^custom:/, '');
-      const fullId = `custom:${shortId}`;
+      const rawIdentifier = (item.identifier || '').trim().toLowerCase();
+      const fullId = rawIdentifier.includes(':') ? rawIdentifier : `custom:${rawIdentifier}`;
+      const [itemNamespace, itemPath] = fullId.split(':');
+      const shortId = itemPath || rawIdentifier.replace(/^custom:/, '');
+      const safeItemKey = `${itemNamespace || 'custom'}_${shortId}`.replace(/[^a-z0-9_]/g, '_');
       if (generatedCustomItemIds.has(fullId)) continue;
       generatedCustomItemIds.add(fullId);
 
-      const textureKey = `item_${shortId}`;
+      const textureKey = `item_${safeItemKey}`;
       const textureData = item.textureDataUrl || resolveTextureDataUrl(project, item.textureId || '');
 
       if (textureData) {
@@ -942,7 +945,7 @@ export async function exportAddonToMcaddon(project: AddonProject): Promise<{ fil
         },
       };
 
-      bpItemsFolder?.file(`${shortId}.json`, JSON.stringify(itemBpJson, null, 2));
+      bpItemsFolder?.file(`${safeItemKey}.json`, JSON.stringify(itemBpJson, null, 2));
 
       // Add localization
       languageCodes.forEach((code) => {
