@@ -29,6 +29,7 @@ import { CraftingRecipeModal } from './components/CraftingRecipeModal';
 import { Beta1Gate } from './components/Beta1Gate';
 import { runProjectDiagnostics } from './utils/diagnostics';
 import { exportAddonToMcaddon } from './utils/exporter';
+import { generateBedrockUUID } from './utils/uuid';
 import confetti from 'canvas-confetti';
 
 export default function App() {
@@ -119,7 +120,7 @@ export default function App() {
       // Stage 5: Finalized
       setLoadingProgress(100);
       setLoadingMessage('¡Inicialización completada!');
-      setLoadingDetail('Bienvenido a Bedrock Studio 3.0 Beta 3 Release');
+      setLoadingDetail('Bienvenido a Bedrock Studio 3.1 Beta 1');
 
       await new Promise((r) => setTimeout(r, Math.max(0, 900 - (Date.now() - startupStartedAt))));
       setIsLoading(false);
@@ -508,7 +509,12 @@ export default function App() {
   const handleAutoFix = async (issue: DiagnosticIssue) => {
     if (!activeProject) return;
 
-    if (issue.autoFixType === 'clean_id' && issue.blockId) {
+    if (issue.autoFixType === 'regenerate_uuids') {
+      const bpUuid = generateBedrockUUID();
+      let rpUuid = generateBedrockUUID();
+      while (rpUuid === bpUuid) rpUuid = generateBedrockUUID();
+      await handleSaveManifest({ ...activeProject, bpUuid, rpUuid, updatedAt: Date.now() });
+    } else if (issue.autoFixType === 'clean_id' && issue.blockId) {
       const blk = activeProject.blocks.find((b) => b.id === issue.blockId);
       if (blk) {
         const cleaned = blk.identifier.toLowerCase().replace(/[^a-z0-9_]/g, '_');
@@ -517,7 +523,14 @@ export default function App() {
     } else if (issue.autoFixType === 'remove_duplicate_id' && issue.blockId) {
       const blk = activeProject.blocks.find((b) => b.id === issue.blockId);
       if (blk) {
-        const unique = `${blk.identifier}_${Math.floor(Math.random() * 899 + 100)}`;
+        const usedIdentifiers = new Set(activeProject.blocks.filter((candidate) => candidate.id !== blk.id).map((candidate) => candidate.identifier));
+        const baseIdentifier = blk.identifier.replace(/[^a-z0-9_]/g, '_') || 'bloque';
+        let suffix = 2;
+        let unique = `${baseIdentifier}_${suffix}`;
+        while (usedIdentifiers.has(unique)) {
+          suffix += 1;
+          unique = `${baseIdentifier}_${suffix}`;
+        }
         await handleSaveBlock({ ...blk, identifier: unique });
       }
     } else if (issue.autoFixType === 'clamp_values' && issue.blockId) {
@@ -525,8 +538,8 @@ export default function App() {
       if (blk) {
         await handleSaveBlock({
           ...blk,
-          lightLevel: Math.min(15, Math.max(0, blk.lightLevel)),
-          destroyTime: Math.max(0.1, blk.destroyTime ?? 1.5),
+          lightLevel: Number.isFinite(blk.lightLevel) ? Math.min(15, Math.max(0, blk.lightLevel)) : 0,
+          destroyTime: Number.isFinite(blk.destroyTime) ? Math.max(0.1, blk.destroyTime) : 1.5,
         });
       }
     } else if (issue.autoFixType === 'fill_missing_textures' && issue.blockId) {
@@ -589,10 +602,10 @@ export default function App() {
 
         {/* Title & Description */}
         <h1 className="text-xl font-black text-slate-100 tracking-wider mb-1">
-          Bedrock Studio <span className="text-blue-400 font-extrabold">3.0</span>
+          Bedrock Studio <span className="text-blue-400 font-extrabold">3.1</span>
         </h1>
         <p className="text-xs text-slate-400 font-mono mb-7 max-w-xs">
-          Acceso anticipado · Beta 1 Release
+          Actualización de estabilidad · Beta 1
         </p>
 
         {/* Progress Card */}
