@@ -53,7 +53,7 @@ export function runProjectDiagnostics(project: AddonProject): DiagnosticIssue[] 
       reason: 'Minecraft rechazará la importación si ambos paquetes tienen el mismo identificador UUID.',
       suggestion: 'Regenera los UUIDs en la configuración del proyecto para que sean únicos.',
       canAutoFix: true,
-      autoFixType: 'clean_id',
+      autoFixType: 'regenerate_uuids',
     });
   }
 
@@ -153,7 +153,7 @@ export function runProjectDiagnostics(project: AddonProject): DiagnosticIssue[] 
     }
 
     // 4. Value Range Checks
-    if (block.emitsLight && (block.lightLevel < 0 || block.lightLevel > 15)) {
+    if (block.emitsLight && (!Number.isFinite(block.lightLevel) || block.lightLevel < 0 || block.lightLevel > 15)) {
       issues.push({
         id: `block_invalid_light_${block.id}`,
         severity: 'error',
@@ -168,7 +168,7 @@ export function runProjectDiagnostics(project: AddonProject): DiagnosticIssue[] 
       });
     }
 
-    if (block.destroyTime !== undefined && block.destroyTime < 0) {
+    if (block.destroyTime !== undefined && (!Number.isFinite(block.destroyTime) || block.destroyTime < 0)) {
       issues.push({
         id: `block_invalid_destroy_${block.id}`,
         severity: 'error',
