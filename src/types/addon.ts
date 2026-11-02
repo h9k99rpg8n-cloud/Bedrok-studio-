@@ -321,7 +321,7 @@ export interface DiagnosticIssue {
   reason: string;
   suggestion: string;
   canAutoFix?: boolean;
-  autoFixType?: 'clean_id' | 'fill_missing_textures' | 'clamp_values' | 'remove_duplicate_id';
+  autoFixType?: 'clean_id' | 'fill_missing_textures' | 'clamp_values' | 'remove_duplicate_id' | 'regenerate_uuids';
   blockId?: string;
 }
 

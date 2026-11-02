@@ -74,12 +74,12 @@ export const DiagnosticsModal: React.FC<DiagnosticsModalProps> = ({
                 ? 'Se detectaron problemas críticos para Minecraft'
                 : warnings.length > 0
                 ? 'Addon listo con recomendaciones de optimización'
-                : '¡Addon 100% verificado y compatible!'}
+                : 'No se detectaron incidencias en estas comprobaciones'}
             </span>
             <p className="text-[11px] opacity-90 mt-0.5">
               {hasBlockingErrors
                 ? 'Debes corregir los errores marcados en rojo antes de importar a Minecraft Bedrock.'
-                : 'El Addon puede exportarse directamente a .mcaddon sin fallos estructurales.'}
+                : 'Las comprobaciones disponibles no detectaron errores. Revisa también la versión objetivo y prueba el paquete en Minecraft.'}
             </p>
           </div>
         </div>

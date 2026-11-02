@@ -6,9 +6,16 @@ interface ChangelogModalProps {
 }
 
 export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose }) => {
-  const [selectedVersion, setSelectedVersion] = useState<'v3.0' | 'v2.2' | 'v1.8' | 'v1.6' | 'v0.1.7' | 'v0.1.5' | 'v0.1.4.1' | 'v0.1.4' | 'v0.1.3' | 'v0.1.2'>('v3.0');
+  const [selectedVersion, setSelectedVersion] = useState<'v3.1' | 'v3.0' | 'v2.2' | 'v1.8' | 'v1.6' | 'v0.1.7' | 'v0.1.5' | 'v0.1.4.1' | 'v0.1.4' | 'v0.1.3' | 'v0.1.2'>('v3.1');
 
   if (!isOpen) return null;
+
+  const features31 = [
+    { title: 'Reparación automática de UUID del manifiesto', version: '3.1 Beta 1', badge: 'Corrección', desc: 'El diagnóstico ahora puede regenerar los UUID del Behavior Pack y Resource Pack cuando son iguales, guardando el proyecto con identificadores independientes.', icon: 'bx bx-shield-check' },
+    { title: 'Diagnóstico numérico más resistente', version: '3.1 Beta 1', badge: 'Validación', desc: 'Los valores no finitos de iluminación y tiempo de destrucción ya se detectan y pueden corregirse con valores seguros.', icon: 'bx bx-calculator' },
+    { title: 'Corrección de identificadores duplicados', version: '3.1 Beta 1', badge: 'Estabilidad', desc: 'La reparación busca un sufijo libre en lugar de confiar en un número aleatorio, evitando crear otro identificador repetido.', icon: 'bx bx-wrench' },
+    { title: 'Mensajes de diagnóstico más honestos', version: '3.1 Beta 1', badge: 'Claridad', desc: 'La interfaz ya no promete compatibilidad total solo porque no haya incidencias detectadas; recuerda probar el paquete en Minecraft.', icon: 'bx bx-info-circle' },
+  ];
 
   const features30 = [
     {
@@ -254,7 +261,9 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
   ];
 
   const currentList =
-    selectedVersion === 'v3.0'
+    selectedVersion === 'v3.1'
+      ? features31
+      : selectedVersion === 'v3.0'
       ? features30
       : selectedVersion === 'v2.2'
       ? features22
@@ -285,7 +294,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
               <h2 className="text-sm font-black text-slate-100">Novedades de Bedrock Studio</h2>
             </div>
             <span className="text-[10px] font-mono text-cyan-400 block mt-0.5">
-              Historial de versiones — Bedrock Studio 3.0 Beta 4
+              Historial de versiones — Bedrock Studio 3.1 Beta 1
             </span>
           </div>
           <button
@@ -298,7 +307,18 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
         </div>
 
         {/* Version Switch Tabs */}
+        <div className="mb-2 flex justify-end">
+          <span className="text-[10px] font-bold tracking-wide text-blue-300 bg-blue-500/10 border border-blue-500/30 rounded-full px-2.5 py-1">NUEVO · 3.1 BETA 1</span>
+        </div>
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 my-3">
+          <button
+            type="button"
+            onClick={() => setSelectedVersion('v3.1')}
+            className={`min-h-[38px] text-[10px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1 ${selectedVersion === 'v3.1' ? 'bg-blue-500 text-slate-950 shadow-sm font-extrabold' : 'text-slate-400 hover:text-slate-200'}`}
+          >
+            <i className="bx bx-wrench" />
+            <span>3.1</span>
+          </button>
           <button
             type="button"
             onClick={() => setSelectedVersion('v3.0')}
@@ -414,7 +434,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
         {/* Footer */}
         <div className="pt-3 border-t border-slate-800 mt-2 flex justify-between items-center">
           <span className="text-[10px] text-slate-500 font-mono">
-            Bedrock Studio · v1.6
+            Bedrock Studio · v3.1 Beta 1
           </span>
           <button
             type="button"
