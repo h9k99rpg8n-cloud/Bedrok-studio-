@@ -6,7 +6,9 @@ import {
   Check,
   ChevronDown,
   CircleUserRound,
+  Copy,
   ImagePlus,
+  KeyRound,
   Languages,
   LockKeyhole,
   Plus,
@@ -16,6 +18,8 @@ import {
   UserRound,
   X,
 } from 'lucide-react';
+import { dbService } from '../services/db';
+import { decodeBackupCode, encodeBackupCode, type BackupCodeResult } from '../utils/backupCode';
 
 interface LocalProfile {
   id: string;
@@ -84,6 +88,21 @@ export const Beta1Gate: React.FC<Beta1GateProps> = ({ children, showProfileDock 
   const [accentColor, setAccentColor] = useState('#3b82f6');
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [libraryImages, setLibraryImages] = useState<Array<{ id: string; name: string; dataUrl: string }>>([]);
+
+  // Código de respaldo (v4.0.0.1): todos los proyectos comprimidos en un
+  // solo texto, para restaurarlos en otro dispositivo o Safari.
+  const [backupCode, setBackupCode] = useState('');
+  const [backupInfo, setBackupInfo] = useState<BackupCodeResult | null>(null);
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [backupCopied, setBackupCopied] = useState(false);
+  const [backupMessage, setBackupMessage] = useState('');
+
+  // Iniciar sesión con tu cuenta: nombre + contraseña + código de respaldo.
+  const [loginName, setLoginName] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginCode, setLoginCode] = useState('');
+  const [loginBusy, setLoginBusy] = useState(false);
+  const [loginMessage, setLoginMessage] = useState('');
 
   useEffect(() => {
     try {
@@ -205,6 +224,122 @@ export const Beta1Gate: React.FC<Beta1GateProps> = ({ children, showProfileDock 
       setError(createError instanceof Error ? createError.message : 'No se pudo crear la cuenta local.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const generateBackupCode = async () => {
+    setBackupBusy(true);
+    setBackupCopied(false);
+    setBackupMessage('');
+    setError('');
+    try {
+      const projects = await dbService.getProjects();
+      if (projects.length === 0) {
+        setBackupCode('');
+        setBackupInfo(null);
+        setBackupMessage('Todavía no tienes proyectos para respaldar.');
+        return;
+      }
+      const result = await encodeBackupCode(projects);
+      setBackupCode(result.code);
+      setBackupInfo(result);
+      setBackupMessage(`Código generado con ${result.projectCount} proyecto(s).`);
+    } catch {
+      setError('No se pudo generar el código de respaldo. Inténtalo de nuevo.');
+    } finally {
+      setBackupBusy(false);
+    }
+  };
+
+  const copyBackupCode = async () => {
+    if (!backupCode) return;
+    try {
+      await navigator.clipboard.writeText(backupCode);
+      setBackupCopied(true);
+      window.setTimeout(() => setBackupCopied(false), 2000);
+    } catch {
+      setError('No se pudo copiar el código. Selecciónalo en el cuadro y cópialo manualmente.');
+    }
+  };
+
+  const loginWithCode = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const cleanName = loginName.trim();
+    if (cleanName.length < 2) {
+      setError('Escribe el nombre de tu cuenta.');
+      return;
+    }
+    if (loginPassword.length < 4) {
+      setError('La contraseña debe tener al menos 4 caracteres.');
+      return;
+    }
+    if (!loginCode.trim()) {
+      setError('Pega el código de respaldo de tus proyectos.');
+      return;
+    }
+    setLoginBusy(true);
+    setError('');
+    setLoginMessage('');
+    try {
+      // Primero se lee y valida el código: si está corrupto, no se crea
+      // ninguna cuenta y no se toca ningún proyecto de este dispositivo.
+      const decoded = await decodeBackupCode(loginCode);
+      const existing = profiles.find(
+        (profile) => profile.name.toLocaleLowerCase() === cleanName.toLocaleLowerCase(),
+      );
+      let profile: LocalProfile;
+      if (existing) {
+        const hash = await hashPassword(loginPassword, existing.passwordSalt);
+        if (hash !== existing.passwordHash) {
+          setError('La contraseña no coincide con esa cuenta en este dispositivo.');
+          return;
+        }
+        profile = existing;
+      } else {
+        const salt = createSalt();
+        const passwordHash = await hashPassword(loginPassword, salt);
+        profile = {
+          id: typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `profile_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          name: cleanName,
+          bio: '',
+          avatarDataUrl: '',
+          passwordSalt: salt,
+          passwordHash,
+          createdAt: Date.now(),
+        };
+        await persistProfiles([...profiles, profile]);
+      }
+      // Restaurar fusionando: nunca se borran los proyectos que ya hay
+      // en este dispositivo; los que ya existen por id se conservan.
+      const current = await dbService.getProjects();
+      const existingIds = new Set(current.map((project) => project.id));
+      let restored = 0;
+      let skipped = 0;
+      for (const project of decoded.projects) {
+        if (existingIds.has(project.id)) {
+          skipped += 1;
+          continue;
+        }
+        await dbService.saveProject(project);
+        restored += 1;
+      }
+      await metaStore.setItem('active_profile_id', profile.id);
+      setActiveProfile(profile);
+      setProfileName(profile.name);
+      setProfileBio('');
+      setAddingAccount(false);
+      setMenuOpen(false);
+      setLoginMessage(
+        `Sesión iniciada. Se restauraron ${restored} proyecto(s)${skipped > 0 ? ` y se conservaron ${skipped} que ya estaban en este dispositivo` : ''}. Recargando…`,
+      );
+      // La app carga los proyectos una sola vez al inicio, así que se
+      // recarga para que los proyectos restaurados aparezcan en la lista.
+      window.setTimeout(() => window.location.reload(), 1200);
+    } catch (loginError) {
+      console.error('No se pudo iniciar sesión con el código:', loginError);
+      setError(loginError instanceof Error ? loginError.message : 'No se pudo leer el código de respaldo.');
+    } finally {
+      setLoginBusy(false);
     }
   };
 
@@ -333,12 +468,12 @@ export const Beta1Gate: React.FC<Beta1GateProps> = ({ children, showProfileDock 
             </div>
           </div>
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-200">
-            <ShieldCheck size={15} /> Beta 3 Release
+            <ShieldCheck size={15} /> 4.0.0.1
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Bienvenidos y bienvenidas al acceso anticipado</h1>
-          <p className="mt-2 text-base font-bold text-blue-300">Bedrock Studio 3.0 · Beta 3</p>
+          <p className="mt-2 text-base font-bold text-blue-300">Bedrock Studio 4.0.0.1</p>
           <p className="mt-4 text-sm leading-6 text-slate-300">
-            Esta versión continúa el desarrollo de Bedrock Studio. La Beta 3 incorpora mejoras clave en el editor de bloques, catálogo de texturas oficiales y un editor Pixel Art adaptado con selección directa y gestos naturales.
+            La 4.0.0.1 convierte Bedrock Studio en una PWA real, muestra su versión en la pantalla de carga y en Novedades, y añade el código de respaldo para llevar tus proyectos a otro dispositivo.
           </p>
           <div className="mt-5 rounded-2xl border border-slate-700/80 bg-[#090d16] p-4">
             <p className="text-sm font-semibold text-slate-100">Antes de continuar</p>
@@ -401,6 +536,34 @@ export const Beta1Gate: React.FC<Beta1GateProps> = ({ children, showProfileDock 
               {saving ? 'Creando cuenta…' : 'Crear cuenta'} <Check size={17} />
             </button>
           </form>
+
+          {/* Iniciar sesión con tu cuenta (v4.0.0.1) */}
+          <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+            <div className="flex items-center gap-2 text-sm font-bold text-slate-100">
+              <KeyRound size={16} className="text-blue-300" /> Iniciar sesión con tu cuenta
+            </div>
+            <p className="mt-1.5 text-xs leading-5 text-slate-400">
+              ¿Ya tienes una cuenta en otro dispositivo o Safari? Escribe tu nombre y tu contraseña, y pega tu código de respaldo. Studio lee el código y restaura todos tus proyectos en este dispositivo. Si el código no es válido, no se borra nada de lo que ya haya aquí.
+            </p>
+            <form onSubmit={loginWithCode} className="mt-4 space-y-3">
+              <label className="block text-sm font-semibold text-slate-200">
+                Nombre de usuario
+                <input value={loginName} onChange={(event) => setLoginName(event.target.value)} autoComplete="username" maxLength={32} className="mt-2 min-h-12 w-full rounded-xl border border-slate-700 bg-[#080b12] px-4 text-base text-white outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20" placeholder="El nombre de tu cuenta" />
+              </label>
+              <label className="block text-sm font-semibold text-slate-200">
+                Contraseña de tu cuenta
+                <input value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} type="password" autoComplete="current-password" className="mt-2 min-h-12 w-full rounded-xl border border-slate-700 bg-[#080b12] px-4 text-base text-white outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20" placeholder="Tu contraseña" />
+              </label>
+              <label className="block text-sm font-semibold text-slate-200">
+                Código de respaldo
+                <textarea value={loginCode} onChange={(event) => setLoginCode(event.target.value)} rows={3} className="mt-2 w-full resize-y rounded-xl border border-slate-700 bg-[#080b12] px-4 py-3 font-mono text-xs text-white outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20" placeholder="BS401-v1-…" />
+              </label>
+              {loginMessage && <p role="status" className="text-sm text-emerald-300">{loginMessage}</p>}
+              <button type="submit" disabled={loginBusy} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-500 disabled:cursor-wait disabled:opacity-60">
+                {loginBusy ? 'Leyendo código…' : 'Iniciar sesión y restaurar proyectos'} <Check size={17} />
+              </button>
+            </form>
+          </div>
         </section>
       </main>
     );
@@ -418,7 +581,7 @@ export const Beta1Gate: React.FC<Beta1GateProps> = ({ children, showProfileDock 
                 <header className="mb-4 flex items-center justify-between border-b border-slate-800 pb-3">
                   <div className="flex items-center gap-2">
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-blue-400/30 bg-blue-500/10 text-blue-300"><span className="text-xl font-black">B</span></div>
-                    <div><p className="text-sm font-extrabold">Bedrock Studio</p><p className="text-[10px] font-semibold text-blue-300">3.0 Beta 3 Release</p></div>
+                    <div><p className="text-sm font-extrabold">Bedrock Studio</p><p className="text-[10px] font-semibold text-blue-300">4.0.0.1</p></div>
                   </div>
                   <button type="button" onClick={() => setMenuOpen(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white" aria-label="Cerrar menú"><X size={18} /></button>
                 </header>
@@ -484,6 +647,31 @@ export const Beta1Gate: React.FC<Beta1GateProps> = ({ children, showProfileDock 
                     ))}
                   </div>
                   <button type="button" onClick={() => { setAddingAccount(true); setCreateName(''); setCreatePassword(''); setError(''); setMenuOpen(false); }} className="mt-2 flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-sm font-semibold text-blue-300 hover:bg-blue-500/10"><Plus size={16} /> Agregar cuenta</button>
+                </div>
+
+                <div className="mt-4 border-t border-slate-800 pt-3">
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-[.16em] text-slate-500">Respaldo de proyectos</p>
+                  <p className="mb-3 text-xs leading-5 text-slate-400">
+                    Tu código de respaldo contiene todos tus proyectos en un solo texto. Guárdalo en un lugar seguro y pégalo al iniciar sesión en otro dispositivo para restaurarlos. No lo compartas: quien lo tenga puede copiar tus proyectos.
+                  </p>
+                  <button type="button" onClick={generateBackupCode} disabled={backupBusy} className="flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600/20 px-3 text-sm font-bold text-emerald-200 hover:bg-emerald-600/30 disabled:cursor-wait disabled:opacity-60">
+                    <ShieldCheck size={15} /> {backupBusy ? 'Generando código…' : 'Mi código de respaldo'}
+                  </button>
+                  {backupMessage && <p role="status" className="mt-2 text-xs text-emerald-300">{backupMessage}</p>}
+                  {backupInfo && (
+                    <p className="mt-2 text-xs leading-5 text-slate-400">
+                      {backupInfo.charLength.toLocaleString('es-MX')} caracteres · ~{backupInfo.approxKb} KB · {backupInfo.encoding === 'gzip' ? 'comprimido' : 'sin comprimir'}.
+                      {backupInfo.charLength > 20000 && ' Es un código muy largo porque incluye las texturas de tus proyectos: guárdalo en un archivo de texto o en tus notas, no hace falta memorizarlo.'}
+                    </p>
+                  )}
+                  {backupCode && (
+                    <div className="mt-2">
+                      <textarea readOnly value={backupCode} rows={3} onFocus={(event) => event.target.select()} className="w-full resize-y rounded-lg border border-slate-700 bg-[#080b12] px-3 py-2 font-mono text-[10px] leading-4 text-slate-200 outline-none focus:border-emerald-400" aria-label="Código de respaldo de tus proyectos" />
+                      <button type="button" onClick={copyBackupCode} className="mt-2 flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-slate-800 px-3 text-sm font-bold text-slate-100 hover:bg-slate-700">
+                        <Copy size={15} /> {backupCopied ? 'Copiado' : 'Copiar código'}
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-4 border-t border-slate-800 pt-3">
