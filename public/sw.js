@@ -1,11 +1,11 @@
-/* Bedrock Studio — Service Worker (v4.0.0-alpha.1)
+/* Bedrock Studio — Service Worker (v4.0.0.1)
  * PWA mínima pero real: precache del app shell, cache-first para
  * assets locales, network-first con fallback a caché para navegación.
  * Los assets con hash de Vite (/assets/...) no se precachean por nombre
  * (cambian en cada build); se guardan en caché en la primera visita.
  */
 
-const CACHE_NAME = 'bedrock-studio-v4-alpha';
+const CACHE_NAME = 'bedrock-studio-v4-0-0-1';
 
 const APP_SHELL = [
   '/',

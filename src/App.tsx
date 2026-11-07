@@ -104,7 +104,7 @@ export default function App() {
       setLoadingMessage('Comprobando preferencias y estado...');
       setLoadingDetail('Validando compatibilidad con Minecraft Bedrock 1.26.20+');
 
-      // Bedrock Studio 3.0 Beta 3 handles its one-time welcome and local profiles in Beta1Gate.
+      // Bedrock Studio 4.0.0.1 handles its one-time welcome and local profiles in Beta1Gate.
       // Do not show the legacy 2.2 release preview or onboarding carousel.
 
       await new Promise((r) => setTimeout(r, 120));
@@ -119,7 +119,7 @@ export default function App() {
       // Stage 5: Finalized
       setLoadingProgress(100);
       setLoadingMessage('¡Inicialización completada!');
-      setLoadingDetail('Bienvenido a Bedrock Studio 3.0 Beta 3 Release');
+      setLoadingDetail('Bienvenido a Bedrock Studio 4.0.0.1');
 
       await new Promise((r) => setTimeout(r, Math.max(0, 900 - (Date.now() - startupStartedAt))));
       setIsLoading(false);
@@ -135,6 +135,23 @@ export default function App() {
   useEffect(() => {
     loadProjectsFromDb();
   }, [loadProjectsFromDb]);
+
+  // Novedades 4.0.0.1: se muestran una sola vez por navegador/dispositivo,
+  // la primera vez que se abre la app después de la actualización.
+  // Se usa el mismo ChangelogModal que abre el botón de Novedades.
+  const WHATS_NEW_SEEN_KEY = 'bedrock-studio-whats-new-seen-4-0-0-1';
+  useEffect(() => {
+    if (isLoading) return;
+    try {
+      if (window.localStorage.getItem(WHATS_NEW_SEEN_KEY) !== '1') {
+        setIsChangelogOpen(true);
+        window.localStorage.setItem(WHATS_NEW_SEEN_KEY, '1');
+      }
+    } catch {
+      // Si el almacenamiento está bloqueado, las novedades se abren
+      // desde el botón de Novedades sin romper la app.
+    }
+  }, [isLoading]);
 
   // Open an Addon folder
   const handleOpenProject = async (project: AddonProject) => {
@@ -585,16 +602,16 @@ export default function App() {
             <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 rounded-full border-2 border-[#080b12] shadow-sm shadow-blue-400" />
           </div>
           <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-slate-950 border border-blue-500/30 text-[10px] font-mono font-bold text-blue-300 whitespace-nowrap">
-            Beta 1 Release
+            4.0.0.1
           </span>
         </div>
 
         {/* Title & Description */}
         <h1 className="text-xl font-black text-slate-100 tracking-wider mb-1">
-          Bedrock Studio <span className="text-blue-400 font-extrabold">3.0</span>
+          Bedrock Studio <span className="text-blue-400 font-extrabold">4.0.0.1</span>
         </h1>
         <p className="text-xs text-slate-400 font-mono mb-7 max-w-xs">
-          Acceso anticipado · Beta 1 Release
+          Acceso anticipado · 4.0.0.1
         </p>
 
         {/* Progress Card */}

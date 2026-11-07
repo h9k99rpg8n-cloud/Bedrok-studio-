@@ -6,9 +6,33 @@ interface ChangelogModalProps {
 }
 
 export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose }) => {
-  const [selectedVersion, setSelectedVersion] = useState<'v3.0' | 'v2.2' | 'v1.8' | 'v1.6' | 'v0.1.7' | 'v0.1.5' | 'v0.1.4.1' | 'v0.1.4' | 'v0.1.3' | 'v0.1.2'>('v3.0');
+  const [selectedVersion, setSelectedVersion] = useState<'v4.0.0.1' | 'v3.0' | 'v2.2' | 'v1.8' | 'v1.6' | 'v0.1.7' | 'v0.1.5' | 'v0.1.4.1' | 'v0.1.4' | 'v0.1.3' | 'v0.1.2'>('v4.0.0.1');
 
   if (!isOpen) return null;
+
+  const features4001 = [
+    {
+      title: 'PWA real: instala Bedrock Studio como aplicación',
+      version: '4.0.0.1',
+      badge: 'PWA',
+      desc: 'Bedrock Studio ya es una PWA real: manifest, service worker e iconos propios. Añádela a tu pantalla de inicio desde Safari o Chrome y úsala sin conexión después de la primera carga.',
+      icon: 'bx bx-mobile-alt',
+    },
+    {
+      title: 'Código de respaldo: lleva tus proyectos a otro dispositivo',
+      version: '4.0.0.1',
+      badge: 'Cuentas',
+      desc: 'Desde tu perfil puedes generar "Mi código de respaldo": todos tus proyectos comprimidos en un solo código. Al iniciar sesión en otro dispositivo o en un Safari nuevo, pega el código con tu contraseña y Studio restaura tus proyectos. El código es solo tuyo: no lo compartas con nadie.',
+      icon: 'bx bx-shield-quarter',
+    },
+    {
+      title: 'Versión visible 4.0.0.1 en carga y en Novedades',
+      version: '4.0.0.1',
+      badge: 'Novedades',
+      desc: 'La versión 4.0.0.1 ya se muestra en la pantalla de carga y en la sección de Novedades. Además, estas novedades aparecen al entrar, una sola vez por navegador o dispositivo, la primera vez que abres la app después de la actualización.',
+      icon: 'bx bx-sparkles',
+    },
+  ];
 
   const features30 = [
     {
@@ -254,7 +278,9 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
   ];
 
   const currentList =
-    selectedVersion === 'v3.0'
+    selectedVersion === 'v4.0.0.1'
+      ? features4001
+      : selectedVersion === 'v3.0'
       ? features30
       : selectedVersion === 'v2.2'
       ? features22
@@ -285,7 +311,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
               <h2 className="text-sm font-black text-slate-100">Novedades de Bedrock Studio</h2>
             </div>
             <span className="text-[10px] font-mono text-cyan-400 block mt-0.5">
-              Historial de versiones — Bedrock Studio 3.0 Beta 4
+              Historial de versiones — Bedrock Studio 4.0.0.1
             </span>
           </div>
           <button
@@ -299,6 +325,17 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
 
         {/* Version Switch Tabs */}
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 my-3">
+          <button
+            type="button"
+            onClick={() => setSelectedVersion('v4.0.0.1')}
+            className={`min-h-[38px] text-[10px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1 ${
+              selectedVersion === 'v4.0.0.1' ? 'bg-cyan-500 text-slate-950 shadow-sm font-extrabold' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <i className="bx bx-rocket" />
+            <span>4.0.0.1</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setSelectedVersion('v3.0')}
@@ -414,7 +451,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose 
         {/* Footer */}
         <div className="pt-3 border-t border-slate-800 mt-2 flex justify-between items-center">
           <span className="text-[10px] text-slate-500 font-mono">
-            Bedrock Studio · v1.6
+            Bedrock Studio · 4.0.0.1
           </span>
           <button
             type="button"
