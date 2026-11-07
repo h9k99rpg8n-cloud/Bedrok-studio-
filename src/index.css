@@ -60,24 +60,20 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 ::selection { background: rgba(59, 130, 246, .32); color: #ecfdf5; }
 
-/* Keep the editor usable when Safari's visual viewport changes. */
-.fixed.inset-0 {
+/* Safe area and modal container utilities for iOS/Android */
+.bs-modal-overlay {
   padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+  padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
+  padding-right: max(0.5rem, env(safe-area-inset-right, 0px));
   box-sizing: border-box;
 }
-.fixed.inset-0 > div:not(.absolute),
-.fixed.inset-0 > section {
-  max-height: calc(100vh - 1rem);
+
+.bs-modal-card {
   max-height: calc(100dvh - max(1rem, env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px)));
   overscroll-behavior: contain;
 }
-.fixed.inset-0 > div:not(.absolute) {
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-}
+
 .box3d-visualizer:fullscreen {
   width: 100vw !important;
   height: 100vh !important;
@@ -89,9 +85,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .box3d-visualizer:fullscreen > div:first-child { flex: 1; height: auto !important; min-height: 0; }
 @media (orientation: landscape) and (max-height: 600px) {
   .box3d-visualizer:not(:fullscreen) > div:first-child { height: 52vh; min-height: 190px; }
-  .fixed.inset-0 { align-items: flex-start; }
-  .fixed.inset-0 > div.relative,
-  .fixed.inset-0 > section { margin-top: 0; margin-bottom: 0; }
 }
 @media (max-width: 420px) {
   input, select, textarea { max-width: 100%; }
@@ -146,10 +139,8 @@ html, body { background-color: #080b12; }
 
 /* Apply the selected accent across legacy utility classes used throughout the app. */
 .bg-emerald-500, .bg-teal-500 { background-color: var(--bs-accent) !important; }
-.hover\\:bg-emerald-400:hover, .hover\\:bg-teal-400:hover { background-color: var(--bs-accent) !important; filter: brightness(1.08); }
 .text-emerald-400, .text-emerald-300, .text-teal-400, .text-teal-300 { color: var(--bs-accent) !important; }
 .border-emerald-400, .border-emerald-500, .border-teal-400, .border-teal-500 { border-color: var(--bs-accent) !important; }
-.focus\\:border-emerald-500:focus, .focus-within\\:border-emerald-500:focus-within { border-color: var(--bs-accent) !important; }
 .ring-emerald-500 { --tw-ring-color: var(--bs-accent) !important; }
 
 html, body, #root { width: 100%; max-width: 100%; min-height: 100%; }
@@ -162,7 +153,4 @@ button, input, select, textarea { max-width: 100%; }
   .max-w-7xl, .max-w-6xl, .max-w-5xl, .max-w-4xl { max-width: 100%; }
   input, select, textarea { font-size: 16px; }
   button { touch-action: manipulation; }
-}
-@media (orientation: landscape) and (max-height: 500px) {
-  .fixed.inset-0 { align-items: flex-start; overflow-y: auto; }
 }

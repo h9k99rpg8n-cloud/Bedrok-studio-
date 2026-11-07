@@ -13,7 +13,14 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onOpenExport,
 }) => {
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 md:hidden pb-safe">
+    <div
+      style={{
+        paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))',
+        paddingLeft: 'env(safe-area-inset-left, 0px)',
+        paddingRight: 'env(safe-area-inset-right, 0px)',
+      }}
+      className="fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 md:hidden"
+    >
       <div className="grid grid-cols-5 items-center h-16 px-1">
         <button
           type="button"

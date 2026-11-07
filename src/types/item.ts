@@ -1,4 +1,4 @@
-// Bedrock Studio 3.0 Beta 4 - Dedicated Custom Item Types
+import type { VisualBehaviorProgram } from './addon';
 
 export type ItemCategory = 'items' | 'equipment' | 'construction' | 'nature';
 
@@ -79,6 +79,7 @@ export interface CustomItem {
   bedrockGroup?: string;
   translations?: Array<{ langCode: string; name: string }>; // Localized item names (.lang)
   canDestroyInCreative?: boolean;
+  visualBehavior?: VisualBehaviorProgram;
   customComponents?: ItemCustomComponentConfig[];
   createdAt: number;
   updatedAt?: number;

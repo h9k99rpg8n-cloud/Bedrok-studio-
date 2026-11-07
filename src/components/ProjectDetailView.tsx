@@ -341,9 +341,16 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   );
 
   return (
-    <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col pb-24 select-none">
+    <div className="min-h-dvh bg-[#090d16] text-slate-100 flex flex-col pb-24 select-none">
       {/* Top Header */}
-      <header className="sticky top-0 z-30 bg-[#0d1322]/95 backdrop-blur-md border-b border-slate-800 px-3 py-2.5 flex items-center justify-between gap-2 shadow-sm">
+      <header
+        style={{
+          paddingTop: 'max(0.625rem, env(safe-area-inset-top, 0px))',
+          paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px))',
+          paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))',
+        }}
+        className="sticky top-0 z-30 bg-[#0d1322]/95 backdrop-blur-md border-b border-slate-800 pb-2.5 flex items-center justify-between gap-2 shadow-sm"
+      >
         {/* Back Button */}
         <button
           type="button"
@@ -1545,7 +1552,14 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
       )}
 
       {/* Floating Bottom Action Bar */}
-      <nav className="fixed bottom-3 left-3 right-3 z-30 max-w-md mx-auto bg-[#0d1322]/95 backdrop-blur-md border border-slate-800 rounded-2xl p-1.5 shadow-2xl flex items-center justify-around gap-1">
+      <nav
+        style={{
+          bottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))',
+          left: 'max(0.75rem, env(safe-area-inset-left, 0px))',
+          right: 'max(0.75rem, env(safe-area-inset-right, 0px))',
+        }}
+        className="fixed z-30 max-w-md mx-auto bg-[#0d1322]/95 backdrop-blur-md border border-slate-800 rounded-2xl p-1.5 shadow-2xl flex items-center justify-around gap-1"
+      >
         {/* Guardar Manifiesto / Datos */}
         <button
           type="button"

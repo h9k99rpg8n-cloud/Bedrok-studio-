@@ -62,9 +62,16 @@ export const WorkView: React.FC<WorkViewProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col w-full max-w-6xl mx-auto min-h-screen relative select-none">
+    <div className="flex-1 flex flex-col w-full max-w-6xl mx-auto min-h-dvh relative select-none">
       {/* Top Navigation Bar: Search (Left), Brand (Center), Create & Sort (Right) */}
-      <header className="sticky top-0 z-30 bg-[#090d16]/90 backdrop-blur-md border-b border-slate-800/80 px-4 h-14 flex items-center justify-between gap-2">
+      <header
+        style={{
+          paddingTop: 'env(safe-area-inset-top, 0px)',
+          paddingLeft: 'max(1rem, env(safe-area-inset-left, 0px))',
+          paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))',
+        }}
+        className="sticky top-0 z-30 bg-[#090d16]/90 backdrop-blur-md border-b border-slate-800/80 min-h-[56px] flex items-center justify-between gap-2"
+      >
         {/* Left: Search Trigger */}
         <button
           type="button"

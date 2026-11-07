@@ -1,4 +1,6 @@
 import {createRoot} from 'react-dom/client';
+import 'boxicons/css/boxicons.min.css';
+import '@fortawesome/fontawesome-free/css/all.min.css';
 import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import './index.css';

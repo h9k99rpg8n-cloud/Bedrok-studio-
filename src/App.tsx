@@ -433,8 +433,8 @@ export default function App() {
   };
 
   // Custom Item Handlers (Beta 4)
-  const handleSaveItem = async (savedItem: CustomItem) => {
-    if (!activeProject) return;
+  const handleSaveItem = async (savedItem: CustomItem): Promise<boolean> => {
+    if (!activeProject) return false;
     try {
       setSaveStatus('saving');
       const existingItems = activeProject.items || [];
@@ -456,9 +456,11 @@ export default function App() {
       setIsItemEditorOpen(false);
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2500);
+      return true;
     } catch (err) {
       console.error('Error al guardar ítem:', err);
       setSaveStatus('error');
+      return false;
     }
   };
 
@@ -631,7 +633,15 @@ export default function App() {
 
   return (
     <Beta1Gate showProfileDock={!activeProject}>
-    <div className="min-h-screen bg-[#080b12] text-slate-100 font-sans antialiased overflow-x-hidden">
+    <div
+      style={{
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        paddingLeft: 'env(safe-area-inset-left, 0px)',
+        paddingRight: 'env(safe-area-inset-right, 0px)',
+      }}
+      className="min-h-dvh bg-[#080b12] text-slate-100 font-sans antialiased overflow-x-hidden"
+    >
       {/* Active View Switching */}
       {activeProject ? (
         <ProjectDetailView
@@ -653,10 +663,12 @@ export default function App() {
           }}
           onOpenCreateItem={() => {
             setEditingItem(null);
+            setAssignedTextureForEditor(null);
             setIsItemEditorOpen(true);
           }}
           onOpenEditItem={(it) => {
             setEditingItem(it);
+            setAssignedTextureForEditor(null);
             setIsItemEditorOpen(true);
           }}
           onDeleteItem={handleDeleteItem}
@@ -823,7 +835,17 @@ export default function App() {
           setIsTexturePainterOpen(false);
           setTargetFaceForLibrary(null);
         }}
-        onSaveTexture={handleSaveTexture}
+        onSaveTexture={(texture) => {
+          handleSaveTexture(texture);
+          if (isItemEditorOpen) {
+            setAssignedTextureForEditor({
+              face: 'item',
+              texDataUrl: texture.dataUrl,
+              textureId: texture.id,
+              timestamp: Date.now(),
+            });
+          }
+        }}
         initialBlock={editingBlock}
         targetFace={targetFaceForLibrary}
         onApplyToBlockFace={(face, dataUrl) => {
@@ -858,9 +880,11 @@ export default function App() {
           availableTextures={activeProject.textures || []}
           existingGroups={activeProject.groups || []}
           assignedTextureUrl={assignedTextureForEditor?.face === 'item' ? assignedTextureForEditor.texDataUrl : null}
+          onConsumeAssignedTexture={() => setAssignedTextureForEditor(null)}
           onClose={() => {
             setIsItemEditorOpen(false);
             setEditingItem(null);
+            setAssignedTextureForEditor(null);
           }}
           onSaveItem={handleSaveItem}
           onOpenTexturePainter={() => setIsTexturePainterOpen(true)}

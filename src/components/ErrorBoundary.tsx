@@ -42,7 +42,7 @@ export class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col items-center justify-center p-6 text-center select-none">
+        <div className="min-h-dvh bg-[#090d16] text-slate-100 flex flex-col items-center justify-center p-6 text-center select-none">
           <div className="w-full max-w-md bg-[#0d1322] border border-rose-500/40 rounded-3xl p-6 shadow-2xl flex flex-col items-center gap-4 animate-in fade-in zoom-in-95 duration-200">
             {/* Warning Icon */}
             <div className="w-16 h-16 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 shadow-lg">
